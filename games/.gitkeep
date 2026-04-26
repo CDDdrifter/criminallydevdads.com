@@ -1,0 +1,17 @@
+# Games Folder
+
+Upload your game .zip files here.
+
+Each .zip file should contain an `index.html` file as the entry point.
+
+Example structure:
+```
+terracraft.zip
+├── index.html
+├── css/
+├── js/
+├── assets/
+└── ...
+```
+
+Simply drag and drop your .zip files into this folder on GitHub.
