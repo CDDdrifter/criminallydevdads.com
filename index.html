@@ -387,7 +387,7 @@
                         <div class="game-title">${game.title}</div>
                         <div class="game-description">${game.description}</div>
                         <div class="game-actions">
-                            ${game.url ? `<button class="btn-play" onclick="window.open('${game.url}', '_blank')">Play Now</button>` : ''}
+                            <button class="btn-play" onclick="playGame('${game.filename}')">Play Now</button>
                             <button class="btn-download" onclick="openModal('${game.id}')">Info</button>
                         </div>
                     </div>
@@ -396,9 +396,13 @@
         }
         
         function filterGames(type) {
-            document.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.filter-buttons button').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             renderGames(type);
+        }
+        
+        function playGame(filename) {
+            window.location.href = `games/${filename.replace('.zip', '')}/index.html`;
         }
         
         function openModal(gameId) {
@@ -418,7 +422,7 @@
                         <strong>File:</strong> ${game.filename}
                     </p>
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        ${game.url ? `<a href="${game.url}" target="_blank" style="flex: 1; padding: 12px; background: #00ff88; color: #0a0e27; text-align: center; border-radius: 6px; text-decoration: none; font-weight: bold; cursor: pointer;">PLAY NOW</a>` : ''}
+                        <button onclick="playGame('${game.filename}')" style="flex: 1; padding: 12px; background: #00ff88; color: #0a0e27; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">PLAY NOW</button>
                         <button onclick="closeModal()" style="flex: 1; padding: 12px; background: #555; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">CLOSE</button>
                     </div>
                 </div>
