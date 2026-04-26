@@ -1,0 +1,19 @@
+CUSTOM TILE TEXTURES
+====================
+Drop a 16x16 PNG here named after the tile ID.
+
+Examples:
+  grass.png
+  stone.png
+  coal_ore.png
+  chest.png
+
+Rules:
+  - File name must exactly match the tile ID used in the game (see ItemDatabase.gd)
+  - Recommended size: 16x16 pixels (any size works, gets scaled to 16x16)
+  - Transparent PNG supported
+  - The game falls back to procedural drawing if no PNG is found
+
+Full tile ID list: see TileTextureGenerator.gd -> ATLAS_LAYOUT array
+
+After adding a PNG, reimport it in Godot (right-click -> Reimport) then relaunch.

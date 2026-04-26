@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://quest_hud"]
+
+[ext_resource type="Script" path="res://scripts/QuestHUD.gd" id="1"]
+
+[node name="QuestHUD" type="CanvasLayer"]
+layer = 5
+script = ExtResource("1")

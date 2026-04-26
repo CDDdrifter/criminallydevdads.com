@@ -1,0 +1,57 @@
+[gd_scene load_steps=2 format=3 uid="uid://dropped_item_001"]
+
+[sub_resource type="GDScript" id="GDScript_dropped_item"]
+script/source = "extends Area2D
+@export var item_id: String = \"\"
+@export var count: int = 1
+var _can_pickup := false
+
+func _ready():
+	$PickupDelay.timeout.connect(func(): _can_pickup = true)
+	$DespawnTimer.timeout.connect(queue_free)
+	$DespawnTimer.start()
+	$PickupDelay.start()
+	var d = ItemDB.get_item(item_id)
+	$Icon.color = d.get(\"icon_color\", Color.WHITE)
+	$CountLabel.text = str(count) if count > 1 else \"\"
+
+func _physics_process(_delta):
+	if _can_pickup:
+		var player = get_tree().get_first_node_in_group(\"player\")
+		if player and global_position.distance_to(player.global_position) < 32:
+			if player.add_item(item_id, count):
+				queue_free()
+"
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_dropped"]
+radius = 6.0
+
+[node name="DroppedItem" type="Area2D"]
+script = SubResource("GDScript_dropped_item")
+collision_layer = 8
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_dropped")
+
+[node name="Icon" type="ColorRect" parent="."]
+offset_left = -6.0
+offset_top = -6.0
+offset_right = 6.0
+offset_bottom = 6.0
+color = Color(1.0, 1.0, 1.0, 1.0)
+
+[node name="CountLabel" type="Label" parent="."]
+offset_left = -6.0
+offset_top = 6.0
+offset_right = 20.0
+offset_bottom = 18.0
+theme_override_font_sizes/font_size = 8
+
+[node name="PickupDelay" type="Timer" parent="."]
+wait_time = 0.5
+one_shot = true
+
+[node name="DespawnTimer" type="Timer" parent="."]
+wait_time = 300.0
+one_shot = true

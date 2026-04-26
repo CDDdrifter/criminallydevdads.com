@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://dcsk1lqh0qqdv"]
+
+[ext_resource type="Script" uid="uid://d1j2xs27qnfh7" path="res://scripts/CraftingUI.gd" id="1"]
+
+[node name="CraftingUI" type="Control" unique_id=135739594]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")

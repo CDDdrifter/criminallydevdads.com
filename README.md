@@ -8,14 +8,25 @@ Your website is now a fully functional game distribution platform. Here's how to
 
 ## 📋 How to Add a New Game or Asset
 
-### Step 1: Upload Your Game File
+### Step 1: Create a Game Folder (IMPORTANT)
+1. Go to the `games` folder in your repo.
+2. Create a folder for each game using the game id:
+   - `games/terracraft/`
+   - `games/infinit-orbit/`
+3. Put each game's exported web files inside its own folder.
+4. Each folder must contain its own `index.html`.
+
+> Do **not** upload games as `index.html.zip` at the root of `games/`.
+> This causes collisions because every web export has the same `index.html` filename.
+
+### Step 2: Upload Your Game Files
 1. Go to your GitHub repo: https://github.com/CDDdrifter/criminallydevdads.com
-2. Click on the `games` folder (create it if it doesn't exist)
+2. Click on the game folder you created in Step 1
 3. Click "Add file" → "Upload files"
-4. Upload your compressed `.zip` file (e.g., `mygame.zip`)
+4. Upload all exported web files (`index.html`, `.js`, `.wasm`, assets, etc.)
 5. Commit the changes
 
-### Step 2: Edit `games.json`
+### Step 3: Edit `games.json`
 1. Open `games.json` file in your repo
 2. Click the edit (pencil) icon
 3. Add a new game entry:
@@ -33,7 +44,7 @@ Your website is now a fully functional game distribution platform. Here's how to
 }
 ```
 
-### Step 3: Commit Your Changes
+### Step 4: Commit Your Changes
 1. Add a commit message like: "Add My Awesome Game"
 2. Click "Commit changes"
 3. Done! Your game now appears on the website
@@ -59,11 +70,12 @@ Your website is now a fully functional game distribution platform. Here's how to
 
 ### Option 1: HTML5 Games (Recommended)
 If your game is built with HTML5/JavaScript:
-1. Extract your `.zip` file
-2. Make sure it contains an `index.html` file
-3. Re-compress it as `.zip`
-4. Upload to `/games` folder
-5. The website will automatically extract and play it
+1. Export/build for Web/HTML5
+2. Make sure output includes `index.html`
+3. Create `games/<your-game-id>/`
+4. Upload the full exported web build into that folder
+5. Set `filename` in `games.json` to `<your-game-id>.zip` (used as folder key)
+6. The site will load from `games/<your-game-id>/index.html`
 
 ### Option 2: Link to itch.io
 If hosting on itch.io:
@@ -117,10 +129,15 @@ criminallydevdads.com/
 ├── index.html           (Main website - don't need to edit)
 ├── game-player.html     (Game viewer - auto-generated)
 ├── games.json           (YOUR GAME DATABASE - EDIT THIS)
-└── games/               (YOUR GAME ZIP FILES - UPLOAD HERE)
-    ├── terracraft.zip
-    ├── game2.zip
-    └── asset1.zip
+└── games/               (YOUR GAME FOLDERS)
+    ├── terracraft/
+    │   ├── index.html
+    │   ├── index.js
+    │   └── ...
+    ├── infinit-orbit/
+    │   ├── index.html
+    │   └── ...
+    └── ...
 ```
 
 ---

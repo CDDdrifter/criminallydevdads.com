@@ -1,0 +1,6 @@
+res://scripts/autoload/save_manager.gd
+res://scripts/ui/mini_game.gd
+res://scenes/daily_rewards.tscn
+res://scripts/autoload/game_manager.gd
+res://scripts/game.gd
+res://scenes/mini_game.tscn

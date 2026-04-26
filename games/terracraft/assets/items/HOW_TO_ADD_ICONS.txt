@@ -1,0 +1,160 @@
+CUSTOM ITEM ICONS — HOW TO ADD ANY ICON FOR ANY ITEM
+=====================================================
+This covers every item type: blocks, ores, resources, food, weapons, tools.
+
+────────────────────────────────────────────────────────
+ QUICK VERSION
+────────────────────────────────────────────────────────
+Drop a PNG named after the item ID here in assets/items/.
+
+  iron_ore.png         ← overrides the iron_ore block icon
+  apple.png            ← overrides the apple food icon
+  diamond_sword.png    ← overrides the diamond_sword weapon icon
+  wood_axe.png         ← this already exists — it's already applied
+
+The file name must EXACTLY match the item ID key in ItemDatabase.gd.
+
+After adding any PNG, reload the project in Godot (it auto-imports).
+
+────────────────────────────────────────────────────────
+ PRIORITY ORDER  (TileTextureGenerator.gd)
+────────────────────────────────────────────────────────
+1. Individual PNG in a subdirectory:   assets/items/<id>/<id>.png
+2. Individual PNG (flat):              assets/items/<id>.png
+3. Atlas crop from master_weapon.png:  atlas_id + atlas_coords in ItemDatabase
+4. Block tile atlas crop:             tile_id in ItemDatabase
+5. Procedural icon (icon_color + icon_shape from ItemDatabase)
+
+Most items currently use option 3 or 5.
+Adding a PNG (option 1 or 2) instantly overrides everything below it.
+
+────────────────────────────────────────────────────────
+ HOW TO ADD AN ICON — STEP BY STEP
+────────────────────────────────────────────────────────
+1. Find the item ID in ItemDatabase.gd (search for "item_id": in that file).
+   Example:
+     "coal_ore": {
+       "name": "Coal Ore",           ← display name (not the ID)
+       "icon_color": Color(0.1, 0.1, 0.1),
+       ...
+     }
+   The item ID here is:  coal_ore
+
+2. Create a PNG image. Any size works — it will be scaled to 16×16.
+   Recommended: 16×16 or 32×32, transparent background (RGBA PNG).
+
+3. Save the file as:
+   Option A (subdirectory, preferred for new gems/tiers):
+       assets/items/coal_ore/coal_ore.png
+   Option B (flat):
+       assets/items/coal_ore.png
+
+4. Relaunch Godot or right-click → Reimport in the FileSystem dock.
+
+────────────────────────────────────────────────────────
+ ITEM ID LIST BY CATEGORY
+────────────────────────────────────────────────────────
+(These are all the keys from ItemDatabase.gd as of last update.)
+
+ BLOCKS / TERRAIN
+   dirt, grass, stone, sand, gravel, clay
+   snow_grass, snow, ice
+   cactus, cactus_top
+   bedrock
+
+ ORES
+   coal_ore, copper_ore, iron_ore, silver_ore
+   gold_ore, diamond_ore, ruby_ore, emerald_ore
+
+ WOOD / PLANTS
+   oak_log, birch_log, pine_log, jungle_log
+   leaves_oak, leaves_birch, leaves_pine, leaves_jungle
+   sapling_oak, sapling_birch, sapling_pine
+   tall_grass, vines
+   wheat_seeds, wheat_crop
+
+ NATURAL RESOURCES
+   coal, copper_ingot, iron_ingot, silver_ingot
+   gold_ingot, diamond, ruby, emerald
+
+ FOOD
+   apple, mushroom_red, mushroom_brown, bread, cooked_meat, raw_meat
+
+ CRAFTED BLOCKS / FURNITURE
+   plank, plank_birch, plank_pine, plank_jungle
+   stone_brick, cobblestone
+   glass, glass_pane
+   torch, torch_wall, campfire
+   chest, workbench, furnace
+   door_wood (etc.)
+
+ WOOD-TIER TOOLS & WEAPONS
+   wood_sword, wood_pick, wood_axe, wood_shovel
+
+ STONE-TIER
+   stone_sword, stone_pick, stone_axe, stone_shovel
+
+ IRON-TIER
+   iron_sword, iron_pick, iron_axe, iron_shovel
+
+ GOLD-TIER
+   gold_sword, gold_pick, gold_axe, gold_shovel
+
+ DIAMOND-TIER
+   diamond_sword, diamond_pick, diamond_axe, diamond_shovel
+
+ RUBY-TIER  (icons in assets/items/ruby_*/ruby_*.png)
+   ruby_sword, ruby_pick, ruby_axe, ruby_shovel
+
+ EMERALD-TIER  (icons in assets/items/emerald_*/emerald_*.png)
+   emerald_sword, emerald_pick, emerald_axe, emerald_shovel
+
+ SPECIAL WEAPONS
+   katana   (icon in assets/items/katana/katana.png)
+
+ RANGED / GUNS
+   wood_bow, iron_bow, crossbow
+   pistol, rifle, shotgun, machine_gun, flamethrower
+
+ AMMO
+   bullet, arrow, fuel
+
+────────────────────────────────────────────────────────
+ BULK ICON GENERATION (Python script)
+────────────────────────────────────────────────────────
+tools/gen_icons.py generates tinted variants automatically.
+Run from the TerraCraft project root:
+
+    python tools/gen_icons.py
+
+Edit that script to:
+  • Add new tiers: copy a ruby/emerald block and change H (hue 0-1) and S (sat)
+  • Change source cell: edit the (col, row) in crop_cell() — col/row are
+    the atlas_coords from ItemDatabase for the item you want to base it on
+  • Add ranged weapons: add crop_cell() calls for bow/gun shapes if you draw
+    new cells in master_weapon.png
+
+────────────────────────────────────────────────────────
+ EXTENDING master_weapon.png (32×32 atlas)
+────────────────────────────────────────────────────────
+master_weapon.png is a 1024×1024 sprite sheet (32 columns × 32 rows of 32×32 cells).
+Row 2 is the main weapons/tools row. Rows 3-31 are currently empty.
+
+To add a new sprite to the atlas:
+1. Open master_weapon.png in Aseprite, Photoshop, GIMP, etc.
+2. Draw your sprite in an empty 32×32 cell (pick any empty cell — e.g. row 3, col 0).
+3. Save master_weapon.png.
+4. In ItemDatabase.gd, set:
+     "atlas_id": "weapons",
+     "atlas_coords": Vector2i(col, row),
+   where col/row match the cell you drew into.
+5. If the item also has an individual PNG (takes priority), the atlas is bypassed.
+
+────────────────────────────────────────────────────────
+ SIZES & FORMAT
+────────────────────────────────────────────────────────
+• Any PNG size is accepted — TileTextureGenerator scales to 16×16 at load time.
+• 16×16 is native (no scaling needed, sharpest result with NEAREST filter).
+• 32×32 is also good — it downscales cleanly to 16×16.
+• RGBA (transparent background) is fully supported.
+• Indexed-color PNGs also work.

@@ -1,0 +1,92 @@
+[gd_scene load_steps=8 format=3 uid="uid://sheep_animal"]
+
+[ext_resource type="Script" path="res://scripts/AnimalBase.gd" id="1_animalbase"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]
+radius = 7.0
+height = 14.0
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_1"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": null
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": null
+}, {
+"duration": 1.0,
+"texture": null
+}, {
+"duration": 1.0,
+"texture": null
+}, {
+"duration": 1.0,
+"texture": null
+}],
+"loop": true,
+"name": &"walk",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": null
+}],
+"loop": false,
+"name": &"hurt",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": null
+}, {
+"duration": 1.0,
+"texture": null
+}],
+"loop": false,
+"name": &"die",
+"speed": 4.0
+}]
+
+[node name="AnimalSheep" type="CharacterBody2D"]
+script = ExtResource("1_animalbase")
+animal_type = "sheep"
+max_health = 8.0
+move_speed = 70.0
+drop_table = [{
+"chance": 1.0,
+"item": "wool",
+"max": 3,
+"min": 1
+}, {
+"chance": 1.0,
+"item": "mutton_raw",
+"max": 2,
+"min": 1
+}]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 0)
+shape = SubResource("CapsuleShape2D_1")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -2)
+sprite_frames = SubResource("SpriteFrames_1")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="HurtTimer" type="Timer" parent="."]
+wait_time = 0.2
+one_shot = true
+
+[node name="WoolLabel" type="Label" parent="."]
+position = Vector2(-12, -28)
+size = Vector2(24, 12)
+text = ""
+theme_override_font_sizes/font_size = 9
+visible = false

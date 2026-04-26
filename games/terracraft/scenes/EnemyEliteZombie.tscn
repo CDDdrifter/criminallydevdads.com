@@ -1,0 +1,59 @@
+[gd_scene load_steps=3 format=3 uid="uid://enemy_elite_zombie_001"]
+
+[ext_resource type="Script" path="res://scripts/EnemyBase.gd" id="1"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_elite_zombie"]
+animations = [{
+"frames": [{"duration": 1.0, "texture": null}],
+"loop": true, "name": &"idle", "speed": 1.0
+}, {
+"frames": [{"duration": 1.0, "texture": null}, {"duration": 1.0, "texture": null},
+           {"duration": 1.0, "texture": null}, {"duration": 1.0, "texture": null}],
+"loop": true, "name": &"walk", "speed": 6.0
+}, {
+"frames": [{"duration": 1.0, "texture": null}, {"duration": 1.0, "texture": null},
+           {"duration": 1.0, "texture": null}],
+"loop": false, "name": &"attack", "speed": 8.0
+}, {
+"frames": [{"duration": 1.0, "texture": null}],
+"loop": false, "name": &"hurt", "speed": 1.0
+}, {
+"frames": [{"duration": 1.0, "texture": null}, {"duration": 1.0, "texture": null}],
+"loop": false, "name": &"die", "speed": 4.0
+}]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_elite_zombie"]
+radius = 7.0
+height = 20.0
+
+[node name="EnemyEliteZombie" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1")
+max_health = 30
+move_speed = 60.0
+attack_damage = 8
+detection_range = 200.0
+enemy_tier = 1
+drop_table = [{
+"item_id": "rotten_flesh", "chance": 1.0, "min_count": 2, "max_count": 4
+}, {
+"item_id": "bone", "chance": 0.6, "min_count": 1, "max_count": 2
+}, {
+"item_id": "iron_ingot", "chance": 0.15, "min_count": 1, "max_count": 1
+}]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CapsuleShape2D_elite_zombie")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = SubResource("SpriteFrames_elite_zombie")
+animation = &"idle"
+
+[node name="AttackTimer" type="Timer" parent="."]
+wait_time = 1.5
+one_shot = true
+
+[node name="HurtTimer" type="Timer" parent="."]
+wait_time = 0.4
+one_shot = true

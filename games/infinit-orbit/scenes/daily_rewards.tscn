@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://dwu752umnb7jt"]
+
+[ext_resource type="Script" uid="uid://cwbhdb3gwqe2y" path="res://scripts/ui/daily_rewards.gd" id="1_daily"]
+
+[node name="DailyRewards" type="Control" unique_id=127761846]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_daily")

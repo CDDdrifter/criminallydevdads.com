@@ -356,9 +356,29 @@
     <script>
         let allGames = [];
         
+        function slugFromFilename(filename) {
+            return filename.replace(/\.zip$/i, '');
+        }
+
+        async function markPlayableGames(games) {
+            const checks = games.map(async (game) => {
+                const gameIndexPath = `games/${slugFromFilename(game.filename)}/index.html`;
+                try {
+                    const response = await fetch(gameIndexPath, { cache: 'no-store' });
+                    game.isPlayable = response.ok;
+                } catch (error) {
+                    game.isPlayable = false;
+                }
+                return game;
+            });
+
+            return Promise.all(checks);
+        }
+
         // Load games from JSON
         fetch('games.json')
             .then(response => response.json())
+            .then(data => markPlayableGames(data))
             .then(data => {
                 allGames = data;
                 renderGames('all');
@@ -387,7 +407,7 @@
                         <div class="game-title">${game.title}</div>
                         <div class="game-description">${game.description}</div>
                         <div class="game-actions">
-                            <button class="btn-play" onclick="playGame('${game.filename}')">Play Now</button>
+                            <button class="btn-play" onclick="playGame('${game.filename}', ${game.isPlayable})">${game.isPlayable ? 'Play Now' : 'Setup Needed'}</button>
                             <button class="btn-download" onclick="openModal('${game.id}')">Info</button>
                         </div>
                     </div>
@@ -401,8 +421,13 @@
             renderGames(type);
         }
         
-        function playGame(filename) {
-            window.location.href = `games/${filename.replace('.zip', '')}/index.html`;
+        function playGame(filename, isPlayable = true) {
+            if (!isPlayable) {
+                alert(`"${filename}" is listed in games.json but is not set up yet.\n\nCreate this folder and place game files inside:\ngames/${slugFromFilename(filename)}/index.html`);
+                return;
+            }
+
+            window.location.href = `games/${slugFromFilename(filename)}/index.html`;
         }
         
         function openModal(gameId) {
@@ -422,7 +447,7 @@
                         <strong>File:</strong> ${game.filename}
                     </p>
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <button onclick="playGame('${game.filename}')" style="flex: 1; padding: 12px; background: #00ff88; color: #0a0e27; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">PLAY NOW</button>
+                        <button onclick="playGame('${game.filename}', ${game.isPlayable})" style="flex: 1; padding: 12px; background: #00ff88; color: #0a0e27; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">${game.isPlayable ? 'PLAY NOW' : 'SETUP NEEDED'}</button>
                         <button onclick="closeModal()" style="flex: 1; padding: 12px; background: #555; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">CLOSE</button>
                     </div>
                 </div>

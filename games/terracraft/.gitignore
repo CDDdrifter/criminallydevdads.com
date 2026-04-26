@@ -1,0 +1,13 @@
+# Godot auto-generated cache — rebuilt on every project open, never commit
+.godot/
+
+# OS junk
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Export output
+*.pck
+*.apk
+*.aab
+*.ipa
