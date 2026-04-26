@@ -6,8 +6,7 @@
     "description": "A 2D sandbox where you build, explore, and survive in infinite worlds.",
     "details": "Dig, build, craft, and survive in this infinite 2D sandbox. Gather resources, fight enemies, build structures, and explore procedurally generated worlds.",
     "thumbnail": "https://img.itch.zone/aW1hZ2UvMjY0NjE3Mi8xMjYwNDg4Ni5wbmc=/315x250%23c/d8L%2Buz.png",
-    "filename": "terracraft.zip",
-    "url": "https://moargolem.itch.io/terracraft"
+    "filename": "terracraft.zip"
   },
   {
     "id": "infinit-orbit",
@@ -16,9 +15,7 @@
     "description": "Navigate through an endless orbital maze with gravity-defying mechanics.",
     "details": "A challenging arcade game where you control a ship orbiting through procedurally generated obstacles. Test your reflexes in this minimalist space adventure.",
     "thumbnail": "https://img.itch.zone/aW1hZ2UvMTEzNTkyMzUvNTMzOTIzMjYucG5n/315x250%23c/cCuTQy.png",
-    "filename": "infinit-orbit.zip",
-    "url": "https://moargolem.itch.io/infinit-orbit"
-  },
+    "filename": "infinit-orbit.zip"
   {
     "id": "gardensage",
     "title": "GardenSage",
@@ -26,8 +23,7 @@
     "description": "Grow and nurture your digital garden with strategy and care.",
     "details": "A relaxing farming and garden simulation where you plant seeds, watch them grow, and manage your expanding garden. Perfect for chill gaming sessions.",
     "thumbnail": "https://img.itch.zone/aW1hZ2UvMTIxMzgyOTAvNTc0MzU2NDcucG5n/315x250%23c/bT%2FrJv.png",
-    "filename": "gardensage.zip",
-    "url": "https://moargolem.itch.io/gardensage"
+    "filename": "gardensage.zip"
   },
   {
     "id": "rogue-ai",
@@ -36,7 +32,6 @@
     "description": "Battle against intelligent AI in this strategic roguelike.",
     "details": "An AI-driven roguelike where every enemy adapts to your playstyle. Defeat procedurally intelligent opponents in this challenging tactical game.",
     "thumbnail": "https://img.itch.zone/aW1hZ2UvMTQzMzM0MzUvNjc5NzQ4NjMucG5n/315x250%23c/HhKh%2B7.png",
-    "filename": "rogue-ai.zip",
-    "url": "https://itch.io/e/32458657/moargolem-updated-rogue-ai"
+    "filename": "rogue-ai.zip"
   }
 ]
