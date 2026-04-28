@@ -372,8 +372,11 @@
 
         async function pathExists(path) {
             try {
-                const response = await fetch(path, { method: 'HEAD', cache: 'no-store' });
-                return response.ok;
+                const response = await fetch(path, { cache: 'no-store' });
+                if (!response.ok) {
+                    return false;
+                }
+                return true;
             } catch (error) {
                 return false;
             }
