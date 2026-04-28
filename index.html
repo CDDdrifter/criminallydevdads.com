@@ -355,38 +355,102 @@
     
     <script>
         let allGames = [];
-        
-        function slugFromFilename(filename) {
+        const REPO_OWNER = 'CDDdrifter';
+        const REPO_NAME = 'criminallydevdads.com';
+
+        function slugFromFilename(filename = '') {
             return filename.replace(/\.zip$/i, '');
         }
 
-        async function markPlayableGames(games) {
-            const checks = games.map(async (game) => {
-                const gameIndexPath = `games/${slugFromFilename(game.filename)}/index.html`;
-                try {
-                    const response = await fetch(gameIndexPath, { cache: 'no-store' });
-                    game.isPlayable = response.ok;
-                } catch (error) {
-                    game.isPlayable = false;
-                }
-                return game;
-            });
-
-            return Promise.all(checks);
+        function titleFromId(id = '') {
+            return id
+                .split('-')
+                .filter(Boolean)
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
         }
 
-        // Load games from JSON
-        fetch('games.json')
-            .then(response => response.json())
-            .then(data => markPlayableGames(data))
-            .then(data => {
-                allGames = data;
-                renderGames('all');
-            })
-            .catch(error => {
-                console.error('Error loading games:', error);
-                document.getElementById('gameGrid').innerHTML = '<div class="empty-state">Error loading games. Check console.</div>';
-            });
+        async function pathExists(path) {
+            try {
+                const response = await fetch(path, { method: 'HEAD', cache: 'no-store' });
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        async function loadOptionalMetadata() {
+            try {
+                const response = await fetch('games.json', { cache: 'no-store' });
+                if (!response.ok) {
+                    return [];
+                }
+                const data = await response.json();
+                return Array.isArray(data) ? data : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        async function discoverGameFolders() {
+            const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/games`;
+            const response = await fetch(apiUrl, { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error(`Could not load game folders (${response.status})`);
+            }
+
+            const items = await response.json();
+            if (!Array.isArray(items)) {
+                return [];
+            }
+
+            return items
+                .filter(item => item && item.type === 'dir' && item.name && !item.name.startsWith('.'))
+                .map(item => item.name);
+        }
+
+        async function buildGameFromFolder(folderId, metadataById) {
+            const metadata = metadataById[folderId] || {};
+            const launchPath = `games/${folderId}/index.html`;
+            const thumbnailPath = `games/${folderId}/index.png`;
+            const isPlayable = await pathExists(launchPath);
+            const hasLocalThumbnail = await pathExists(thumbnailPath);
+
+            return {
+                id: folderId,
+                type: metadata.type || 'game',
+                title: metadata.title || titleFromId(folderId),
+                description: metadata.description || 'Auto-discovered game build from the games folder.',
+                details: metadata.details || 'This game was auto-added because a web build was detected in the games directory.',
+                thumbnail: metadata.thumbnail || (hasLocalThumbnail ? thumbnailPath : ''),
+                filename: metadata.filename || `${folderId}.zip`,
+                url: metadata.url || '',
+                launchPath,
+                isPlayable
+            };
+        }
+
+        async function loadGames() {
+            const metadataList = await loadOptionalMetadata();
+            const metadataById = metadataList.reduce((acc, game) => {
+                const id = game.id || slugFromFilename(game.filename || '');
+                if (id) {
+                    acc[id] = game;
+                }
+                return acc;
+            }, {});
+
+            const folderIds = await discoverGameFolders();
+            const discoveredGames = await Promise.all(folderIds.map(folderId => buildGameFromFolder(folderId, metadataById)));
+
+            allGames = discoveredGames.sort((a, b) => a.title.localeCompare(b.title));
+            renderGames('all');
+        }
+
+        loadGames().catch(error => {
+            console.error('Error loading games:', error);
+            document.getElementById('gameGrid').innerHTML = '<div class="empty-state">Error loading games. Check console.</div>';
+        });
         
         function renderGames(type) {
             const gameGrid = document.getElementById('gameGrid');
@@ -407,7 +471,7 @@
                         <div class="game-title">${game.title}</div>
                         <div class="game-description">${game.description}</div>
                         <div class="game-actions">
-                            <button class="btn-play" onclick="playGame('${game.filename}', ${game.isPlayable})">${game.isPlayable ? 'Play Now' : 'Setup Needed'}</button>
+                            <button class="btn-play" onclick="playGame('${game.id}', ${game.isPlayable})">${game.isPlayable ? 'Play Now' : 'Setup Needed'}</button>
                             <button class="btn-download" onclick="openModal('${game.id}')">Info</button>
                         </div>
                     </div>
@@ -421,13 +485,23 @@
             renderGames(type);
         }
         
-        function playGame(filename, isPlayable = true) {
-            if (!isPlayable) {
-                alert(`"${filename}" is listed in games.json but is not set up yet.\n\nCreate this folder and place game files inside:\ngames/${slugFromFilename(filename)}/index.html`);
+        function playGame(gameId, isPlayable = true) {
+            const game = allGames.find(g => g.id === gameId);
+            if (!game) {
                 return;
             }
 
-            window.location.href = `games/${slugFromFilename(filename)}/index.html`;
+            if (game.url) {
+                window.location.href = game.url;
+                return;
+            }
+
+            if (!isPlayable) {
+                alert(`"${gameId}" was found in /games but no playable index file was found.\n\nExpected path:\n${game.launchPath}`);
+                return;
+            }
+
+            window.location.href = game.launchPath;
         }
         
         function openModal(gameId) {
@@ -444,10 +518,10 @@
                 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #00ff88;">
                     <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">
                         <strong>Type:</strong> ${game.type.toUpperCase()} | 
-                        <strong>File:</strong> ${game.filename}
+                        <strong>Folder:</strong> ${game.id}
                     </p>
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <button onclick="playGame('${game.filename}', ${game.isPlayable})" style="flex: 1; padding: 12px; background: #00ff88; color: #0a0e27; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">${game.isPlayable ? 'PLAY NOW' : 'SETUP NEEDED'}</button>
+                        <button onclick="playGame('${game.id}', ${game.isPlayable})" style="flex: 1; padding: 12px; background: #00ff88; color: #0a0e27; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">${game.isPlayable ? 'PLAY NOW' : 'SETUP NEEDED'}</button>
                         <button onclick="closeModal()" style="flex: 1; padding: 12px; background: #555; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">CLOSE</button>
                     </div>
                 </div>
