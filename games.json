@@ -16,5 +16,29 @@
     "details": "A challenging arcade game where you control a ship orbiting through procedurally generated obstacles. Test your reflexes in this minimalist space adventure.",
     "thumbnail": "https://img.itch.zone/aW1hZ2UvMTEzNTkyMzUvNTMzOTIzMjYucG5n/315x250%23c/cCuTQy.png",
     "filename": "infinit-orbit.zip"
+  },
+  {
+    "id": "gridbreach",
+    "title": "GridBreach",
+    "type": "game",
+    "description": "Hack through hostile grids in this fast-paced tactical challenge.",
+    "details": "A high-intensity action strategy game where timing and positioning matter. Survive waves, outmaneuver threats, and push deeper into the breach.",
+    "filename": "gridbreach.zip"
+  },
+  {
+    "id": "virtual-garden",
+    "title": "Virtual Garden",
+    "type": "game",
+    "description": "Grow and tend your own relaxing digital garden.",
+    "details": "Plant, nurture, and expand your garden in a calm simulation focused on creativity, progression, and chill vibes.",
+    "filename": "virtual-garden.zip"
+  },
+  {
+    "id": "bomb-blitz",
+    "title": "Bomb Blitz",
+    "type": "game",
+    "description": "A frantic explosive arcade game with quick rounds and big plays.",
+    "details": "Dodge danger, chain reactions, and outlast the chaos in this fast-paced arcade experience.",
+    "filename": "bomb-blitz.zip"
   }
 ]

@@ -379,6 +379,36 @@
             }
         }
 
+        async function resolveThumbnailFromIndexHtml(launchPath, folderId) {
+            try {
+                const response = await fetch(launchPath, { cache: 'no-store' });
+                if (!response.ok) {
+                    return '';
+                }
+
+                const html = await response.text();
+                const candidates = [];
+                const splashMatch = html.match(/id=["']status-splash["'][^>]*src=["']([^"']+)["']/i);
+                if (splashMatch && splashMatch[1]) {
+                    candidates.push(`games/${folderId}/${splashMatch[1]}`);
+                }
+                const iconMatch = html.match(/id=["']-gd-engine-icon["'][^>]*href=["']([^"']+)["']/i);
+                if (iconMatch && iconMatch[1]) {
+                    candidates.push(`games/${folderId}/${iconMatch[1]}`);
+                }
+
+                for (const candidate of candidates) {
+                    if (await pathExists(candidate)) {
+                        return candidate;
+                    }
+                }
+
+                return '';
+            } catch (error) {
+                return '';
+            }
+        }
+
         async function loadOptionalMetadata() {
             try {
                 const response = await fetch('games.json', { cache: 'no-store' });
@@ -412,9 +442,24 @@
         async function buildGameFromFolder(folderId, metadataById) {
             const metadata = metadataById[folderId] || {};
             const launchPath = `games/${folderId}/index.html`;
-            const thumbnailPath = `games/${folderId}/index.png`;
             const isPlayable = await pathExists(launchPath);
-            const hasLocalThumbnail = await pathExists(thumbnailPath);
+            const thumbnailCandidates = [
+                `games/${folderId}/index.png`,
+                `games/${folderId}/index.icon.png`,
+                `games/${folderId}/icon.png`,
+                `games/${folderId}/icon.svg`
+            ];
+            let resolvedThumbnail = '';
+            for (const candidate of thumbnailCandidates) {
+                if (await pathExists(candidate)) {
+                    resolvedThumbnail = candidate;
+                    break;
+                }
+            }
+
+            if (!resolvedThumbnail && isPlayable) {
+                resolvedThumbnail = await resolveThumbnailFromIndexHtml(launchPath, folderId);
+            }
 
             return {
                 id: folderId,
@@ -422,7 +467,7 @@
                 title: metadata.title || titleFromId(folderId),
                 description: metadata.description || 'Auto-discovered game build from the games folder.',
                 details: metadata.details || 'This game was auto-added because a web build was detected in the games directory.',
-                thumbnail: metadata.thumbnail || (hasLocalThumbnail ? thumbnailPath : ''),
+                thumbnail: resolvedThumbnail || metadata.thumbnail || '',
                 filename: metadata.filename || `${folderId}.zip`,
                 url: metadata.url || '',
                 launchPath,
@@ -464,7 +509,7 @@
             gameGrid.innerHTML = filteredGames.map(game => `
                 <div class="game-card">
                     <div class="game-thumbnail">
-                        ${game.thumbnail ? `<img src="${game.thumbnail}" alt="${game.title}">` : '🎮'}
+                        ${game.thumbnail ? `<img src="${game.thumbnail}" alt="${game.title}" onerror="this.parentElement.innerHTML='🎮'">` : '🎮'}
                     </div>
                     <div class="game-info">
                         <div class="game-type">${game.type}</div>
@@ -513,7 +558,7 @@
             
             modalBody.innerHTML = `
                 <h2 style="color: #00ff88; margin-bottom: 20px;">${game.title}</h2>
-                ${game.thumbnail ? `<img src="${game.thumbnail}" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 6px; margin-bottom: 20px;">` : ''}
+                ${game.thumbnail ? `<img src="${game.thumbnail}" onerror="this.style.display='none'" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 6px; margin-bottom: 20px;">` : ''}
                 <p style="margin-bottom: 15px; line-height: 1.6;">${game.details || game.description}</p>
                 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #00ff88;">
                     <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">
