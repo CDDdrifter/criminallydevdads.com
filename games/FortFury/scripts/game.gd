@@ -56,7 +56,9 @@ func _setup_scene() -> void:
 	_world_width = float(level_cfg.get("world_width", 1920))
 	var zoom := float(level_cfg.get("cam_zoom", 1.0))
 	_wind = float(level_cfg.get("wind", 0.0)) * (1 if randf() > 0.5 else -1)
-	_available_bombs = _filter_bombs(level_cfg.get("player_bombs", ["standard"]))
+	_available_bombs = GameState.unlocked_bombs.duplicate()
+	if _available_bombs.is_empty():
+		_available_bombs = ["standard"]
 	_ai_bomb_types = level_cfg.get("ai_bombs", ["standard"])
 	_player_bombs_left = level_cfg.get("player_bomb_count", 10)
 	_ai_bombs_left = level_cfg.get("ai_bomb_count", 8)
@@ -165,6 +167,7 @@ func _setup_scene() -> void:
 	_hud.bomb_selected.connect(_on_bomb_selected)
 	_hud.pause_pressed.connect(_on_pause)
 	_hud.resume_pressed.connect(_on_resume)
+	_hud.restart_pressed.connect(_on_restart)
 	_hud.quit_to_menu_pressed.connect(_quit_to_menu)
 	_hud.special_pressed.connect(_on_special_pressed)
 	add_child(_hud)
@@ -631,6 +634,10 @@ func _on_pause() -> void:
 func _on_resume() -> void:
 	get_tree().paused = false
 	_hud.show_pause(false)
+
+func _on_restart() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 func _quit_to_menu() -> void:
 	get_tree().paused = false

@@ -20,6 +20,7 @@ var _turn_label: Label
 var _score_label: Label
 var _bombs_left_label: Label
 var _status_label: Label
+var _bomb_scroll: ScrollContainer
 var _bomb_panel: HBoxContainer
 var _pause_btn: Button
 var _spec_btn: Button
@@ -27,9 +28,15 @@ var _pause_overlay: Control
 var _wind_label: Label
 var _selected_bomb_highlight: int = 0
 
+var _scroll_drag_active: bool = false
+var _scroll_drag_start_x: float = 0.0
+var _scroll_drag_base: int = 0
+var _scroll_dragging: bool = false
+
 signal bomb_selected(index: int)
 signal pause_pressed
 signal resume_pressed
+signal restart_pressed
 signal quit_to_menu_pressed
 signal special_pressed
 
@@ -122,11 +129,17 @@ func _build_ui() -> void:
 	_bombs_left_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_root.add_child(_bombs_left_label)
 
+	_bomb_scroll = ScrollContainer.new()
+	_bomb_scroll.position = Vector2(208, 1008)
+	_bomb_scroll.size = Vector2(1470, 64)
+	_bomb_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_bomb_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_bomb_scroll.gui_input.connect(_on_bomb_scroll_input)
+	_root.add_child(_bomb_scroll)
+
 	_bomb_panel = HBoxContainer.new()
-	_bomb_panel.position = Vector2(208, 1008)
-	_bomb_panel.size = Vector2(1470, 64)
 	_bomb_panel.add_theme_constant_override("separation", 5)
-	_root.add_child(_bomb_panel)
+	_bomb_scroll.add_child(_bomb_panel)
 
 	_spec_btn = Button.new()
 	_spec_btn.text = "* SPECIAL"
@@ -141,6 +154,7 @@ func _build_ui() -> void:
 	_pause_overlay = Control.new()
 	_pause_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pause_overlay.visible = false
+	_pause_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	_root.add_child(_pause_overlay)
 
 	var dim: ColorRect = ColorRect.new()
@@ -172,7 +186,7 @@ func _build_ui() -> void:
 	vbox.add_child(resume_btn)
 
 	var restart_btn: Button = _make_menu_btn("~ RESTART LEVEL", Color(0.12, 0.24, 0.42), Color(0.38, 0.65, 1.0))
-	restart_btn.pressed.connect(func(): get_tree().reload_current_scene())
+	restart_btn.pressed.connect(func(): restart_pressed.emit())
 	vbox.add_child(restart_btn)
 
 	var menu_btn: Button = _make_menu_btn("X QUIT TO MENU", Color(0.36, 0.10, 0.10), Color(0.92, 0.22, 0.18))
@@ -365,6 +379,23 @@ func _progress_bar(rect: Rect2, col: Color, radius: int) -> ProgressBar:
 	bg.corner_radius_bottom_right = radius
 	pb.add_theme_stylebox_override("background", bg)
 	return pb
+
+func _on_bomb_scroll_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_scroll_drag_active = true
+			_scroll_drag_start_x = event.global_position.x
+			_scroll_drag_base = _bomb_scroll.scroll_horizontal
+			_scroll_dragging = false
+		else:
+			_scroll_drag_active = false
+			_scroll_dragging = false
+	elif event is InputEventMouseMotion and _scroll_drag_active:
+		var delta: float = _scroll_drag_start_x - event.global_position.x
+		if not _scroll_dragging and abs(delta) > 8.0:
+			_scroll_dragging = true
+		if _scroll_dragging:
+			_bomb_scroll.scroll_horizontal = int(_scroll_drag_base + delta)
 
 func _label(txt: String, size: int, rect: Rect2, col: Color) -> Label:
 	var l: Label = Label.new()
