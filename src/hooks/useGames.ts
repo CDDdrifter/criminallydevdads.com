@@ -25,15 +25,15 @@ export function useGames() {
     let cancelled = false;
     (async () => {
       try {
+        // Website-only catalog: when Supabase env is present, games come only from Admin/CMS + ZIP storage.
+        // No fallback to GitHub folders / games.json (avoids repo edits per release).
         if (supabaseConfigured) {
           const cms = await fetchPublishedGames();
-          if (cms.length > 0) {
-            const verified = await verifyPlayability(cms);
-            if (!cancelled) {
-              setGames(verified);
-            }
-            return;
+          const verified = await verifyPlayability(cms);
+          if (!cancelled) {
+            setGames(verified);
           }
+          return;
         }
         const legacy = await loadLegacyGames();
         if (!cancelled) {

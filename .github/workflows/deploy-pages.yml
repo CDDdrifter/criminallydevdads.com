@@ -1,0 +1,60 @@
+# Builds the React hub with Supabase env vars and deploys dist/ to GitHub Pages.
+#
+# One-time repo settings:
+# 1. Settings → Secrets and variables → Actions → New repository secret:
+#    - VITE_SUPABASE_URL   (Project Settings → API → Project URL)
+#    - VITE_SUPABASE_ANON_KEY (anon public key)
+#    Optional:
+#    - VITE_ALLOWED_EMAIL_DOMAINS (default criminallydevdads.com if unset — still set explicitly for clarity)
+# 2. Settings → Pages → Build and deployment → Source: GitHub Actions
+#
+# After that, every push to these branches redeploys; add games only via /#/admin (no repo edits).
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, fixing.fortfury]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install and build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_ALLOWED_EMAIL_DOMAINS: ${{ secrets.VITE_ALLOWED_EMAIL_DOMAINS }}
+          VITE_GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          VITE_GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+        run: npm ci && npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

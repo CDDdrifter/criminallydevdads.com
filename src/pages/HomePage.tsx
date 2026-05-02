@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteChrome } from '../components/SiteChrome';
 import { useGames } from '../hooks/useGames';
+import { supabaseConfigured } from '../lib/supabase';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import type { GameView } from '../types';
 
@@ -53,7 +54,14 @@ export function HomePage() {
       {error && <div className="empty-state">Error: {error}</div>}
 
       {!loading && !error && filtered.length === 0 && (
-        <div className="empty-state">No games found in this category.</div>
+        <div className="empty-state">
+          <p>No games found in this category.</p>
+          {supabaseConfigured && games.length === 0 && filter === 'all' ? (
+            <p style={{ marginTop: 16 }}>
+              <Link to="/admin">Open Admin</Link> to add games (ZIP upload, external link, or details).
+            </p>
+          ) : null}
+        </div>
       )}
 
       {!loading && !error && filtered.length > 0 && (

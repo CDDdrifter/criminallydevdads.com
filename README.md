@@ -1,15 +1,39 @@
 # CRIMINALLYDEV DADS - Game Distribution Hub
 
-## Site v2 (React hub + optional Supabase CMS)
+## Site v2 (React hub + Supabase CMS)
 
-The main site is now a **Vite + React** app that keeps the same neon / terminal aesthetic.
+The main site is a **Vite + React** app with the same neon / terminal look.
 
-- **Public hub**: `npm run dev` locally, or deploy the `dist/` folder after `npm run build` (the build copies `games/` and `games.json` into `dist/` and adds `404.html` for GitHub Pages).
-- **Routing**: the live site uses **hash routes** (for example `yoursite.com/#/admin`, `/#/game/terracraft`, `/#/play/terracraft`) so static hosting works without extra server rules.
-- **No-database mode**: if Supabase env vars are missing, the hub still loads games via the GitHub API + `games.json` like before.
-- **Full CMS**: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env.example`), run `supabase/schema.sql` in Supabase (if the project already existed, also run `supabase/migrations/001_site_page_sections.sql` for the `sections` column on `site_pages`). Enable **Google** and **Email** under Authentication → Providers; add your production URL + `https://<project>.supabase.co/auth/v1/callback` to Google’s redirect list. Editors sign in at `/#/admin` with **Google** or an **email magic link**; the address must match `site_admin_domains` (defaults to `@criminallydevdads.com`) or `site_admin_emails`.
-- **Pages & panels**: in Admin → Pages, stack **headings, text, panels, images, and dividers** for each custom page (`/#/p/<slug>`). Legacy single **Body** field still works when no blocks are added.
-- **Games via ZIP (itch-style)**: run `supabase/migrations/002_game_builds_storage.sql` (or full `schema.sql`) so bucket `game-builds` exists. In Admin → Games, fill **slug + title**, choose your Godot **Web export .zip**, then **Upload ZIP & save game**. Play uses Supabase Storage `index.html` (external play URL still wins if set).
+### Website-only editing (recommended — no repo edits per game)
+
+Once this is done **one time**, you add games, pages, and visuals only at **`/#/admin`** (ZIP upload like itch, or external play URL).
+
+1. **Supabase** — Create a project → SQL Editor → paste and run **`supabase/schema.sql`** once (includes tables, RLS, Storage bucket `game-builds`, page `sections`).
+2. **Auth** — Authentication → Providers: enable **Google** and **Email**. Under URL configuration, add your live site URL (and `http://localhost:5173` for local dev). For Google OAuth, add redirect `https://<project-ref>.supabase.co/auth/v1/callback`.
+3. **GitHub Secrets** — Repo → **Settings → Secrets and variables → Actions** → add:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - Optional: `VITE_ALLOWED_EMAIL_DOMAINS` (e.g. `criminallydevdads.com`)
+4. **GitHub Pages** — **Settings → Pages** → **Build and deployment → Source: GitHub Actions** (not “Deploy from branch”).  
+   The workflow **[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)** builds on every push to **`main`** or **`fixing.fortfury`** and deploys **`dist/`** with those secrets baked in — you never commit `.env` or reconfigure per game.
+
+**Catalog behavior:** If `VITE_SUPABASE_*` is present at build time, the hub loads games **only from the database** (what you edit in Admin). It does **not** fall back to `games/` folders or `games.json`, so releases are not tied to Git file changes.
+
+### Local dev
+
+- Copy `.env.example` → `.env.local` with the same `VITE_*` keys.
+- `npm run dev`
+
+### Legacy mode (no Supabase)
+
+If the site is built **without** Supabase env vars, the hub falls back to **GitHub API + `games.json` + `games/`** (old workflow).
+
+### Features
+
+- **Routing**: hash routes (e.g. `yoursite.com/#/admin`, `/#/play/my-game`).
+- **Admin**: Google or **email magic link** for `@criminallydevdads.com` (or rows in `site_admin_emails`).
+- **Pages & panels**: Admin → Pages — headings, text, panels, images; URL `/#/p/<slug>`.
+- **Games**: Admin → Games — **ZIP** → Supabase Storage, or **external play URL**, plus titles/thumbnails/copy.
 
 ---
 
