@@ -20,6 +20,11 @@ import {
 } from '../lib/cmsData';
 import { supabaseConfigured } from '../lib/supabase';
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
+import {
+  deleteGameBuild,
+  sanitizeGameStorageSlug,
+  uploadGameZip,
+} from '../lib/gameStorageUpload';
 import type { DevLogPost, GameRecord, NavItem, PageSection, SitePage, SiteSettings } from '../types';
 import { defaultSiteSettings } from '../types';
 
@@ -49,6 +54,7 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
   thumbnail_url: '',
   external_url: '',
   local_folder: '',
+  storage_slug: null,
   sort_order: 0,
   published: true,
 });
@@ -69,6 +75,7 @@ export function AdminPage() {
   const [pageDraft, setPageDraft] = useState(emptyPageDraft());
   const [emailForOtp, setEmailForOtp] = useState('');
   const [otpMessage, setOtpMessage] = useState<string | null>(null);
+  const [gameZipFile, setGameZipFile] = useState<File | null>(null);
   const [navDraft, setNavDraft] = useState<Partial<NavItem> & { label: string; href: string }>({
     label: '',
     href: '',
@@ -140,6 +147,7 @@ export function AdminPage() {
         thumbnail_url: gameDraft.thumbnail_url ?? '',
         external_url: gameDraft.external_url ?? '',
         local_folder: gameDraft.local_folder?.trim() || gameDraft.slug.trim(),
+        storage_slug: gameDraft.storage_slug ?? null,
         sort_order: Number(gameDraft.sort_order ?? 0),
         published: gameDraft.published ?? true,
       });
@@ -149,6 +157,84 @@ export function AdminPage() {
     } catch (e) {
       console.error(e);
       flash(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onUploadGameZip = async () => {
+    if (!gameDraft.slug.trim() || !gameDraft.title.trim()) {
+      flash('Fill slug and title before uploading a ZIP.');
+      return;
+    }
+    if (!gameZipFile) {
+      flash('Choose a .zip file (Godot Web export folder).');
+      return;
+    }
+    const storageKey = sanitizeGameStorageSlug(gameDraft.slug);
+    if (!storageKey) {
+      flash('Slug must include letters or numbers for cloud hosting.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const count = await uploadGameZip(gameDraft.slug, gameZipFile);
+      await upsertGame({
+        slug: gameDraft.slug.trim(),
+        title: gameDraft.title.trim(),
+        type: gameDraft.type ?? 'game',
+        description: gameDraft.description ?? '',
+        details: gameDraft.details ?? '',
+        thumbnail_url: gameDraft.thumbnail_url ?? '',
+        external_url: gameDraft.external_url ?? '',
+        local_folder: gameDraft.local_folder?.trim() || gameDraft.slug.trim(),
+        storage_slug: storageKey,
+        sort_order: Number(gameDraft.sort_order ?? 0),
+        published: gameDraft.published ?? true,
+      });
+      setGameDraft((prev) => ({ ...prev, storage_slug: storageKey }));
+      setGameZipFile(null);
+      await reload();
+      flash(`Uploaded ${count} files to cloud storage. Play opens your index.html like itch.io.`);
+    } catch (e) {
+      console.error(e);
+      flash(e instanceof Error ? e.message : 'ZIP upload failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onClearHostedGame = async () => {
+    const key = gameDraft.storage_slug?.trim();
+    if (!key) {
+      flash('This draft has no cloud build (storage_slug empty).');
+      return;
+    }
+    if (!confirm('Remove all uploaded files for this game from Supabase Storage?')) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await deleteGameBuild(key);
+      await upsertGame({
+        slug: gameDraft.slug.trim(),
+        title: gameDraft.title.trim(),
+        type: gameDraft.type ?? 'game',
+        description: gameDraft.description ?? '',
+        details: gameDraft.details ?? '',
+        thumbnail_url: gameDraft.thumbnail_url ?? '',
+        external_url: gameDraft.external_url ?? '',
+        local_folder: gameDraft.local_folder?.trim() || gameDraft.slug.trim(),
+        storage_slug: null,
+        sort_order: Number(gameDraft.sort_order ?? 0),
+        published: gameDraft.published ?? true,
+      });
+      setGameDraft((prev) => ({ ...prev, storage_slug: null }));
+      await reload();
+      flash('Cloud build removed.');
+    } catch (e) {
+      console.error(e);
+      flash(e instanceof Error ? e.message : 'Could not remove cloud build');
     } finally {
       setBusy(false);
     }
@@ -363,12 +449,46 @@ export function AdminPage() {
       )}
 
       <div className="admin-tabs">
-        {(['settings', 'games', 'pages', 'nav', 'devlogs'] as Tab[]).map((t) => (
+        {(['overview', 'settings', 'games', 'pages', 'nav', 'devlogs'] as Tab[]).map((t) => (
           <button key={t} type="button" className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
-            {t}
+            {t === 'devlogs' ? 'dev logs' : t}
           </button>
         ))}
       </div>
+
+      {tab === 'overview' && (
+        <div
+          className="admin-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gap: 16,
+          }}
+        >
+          {(
+            [
+              ['settings', 'Site settings', 'Hero, footer, support block'],
+              ['games', 'Games', 'ZIP uploads (itch-style), itch links, repo folders'],
+              ['pages', 'Pages & panels', 'Custom URLs with headings, text, panels, images'],
+              ['nav', 'Navigation', 'Extra header links'],
+              ['devlogs', 'Dev logs', 'News and build notes'],
+            ] as const
+          ).map(([id, title, desc]) => (
+            <button
+              key={id}
+              type="button"
+              className="admin-panel"
+              style={{ textAlign: 'left', cursor: 'pointer' }}
+              onClick={() => setTab(id as Tab)}
+            >
+              <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>{title}</h2>
+              <p className="admin-muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+                {desc}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab === 'settings' && (
         <div className="admin-panel admin-grid">
@@ -425,9 +545,11 @@ export function AdminPage() {
               Add or update game
             </h2>
             <p className="admin-muted">
-              <strong>Local folder</strong> should match <code>games/&lt;folder&gt;/index.html</code> on the
-              host. Leave <strong>external URL</strong> empty to play from this site; set it to itch.io etc.
-              to open off-site.
+              <strong>ZIP upload:</strong> Export Web from Godot, zip the folder, upload below — files go to
+              Supabase Storage (public <code>game-builds/</code>) like itch hosting.
+              <strong> External URL</strong> overrides hosting if set (itch / CDN).
+              <strong> Local folder</strong> is for copies in <code>games/&lt;slug&gt;/</code> on GitHub
+              Pages only.
             </p>
             <div className="admin-field">
               <label htmlFor="g_slug">Slug (URL id)</label>
@@ -495,6 +617,38 @@ export function AdminPage() {
                 value={gameDraft.local_folder ?? ''}
                 onChange={(e) => setGameDraft({ ...gameDraft, local_folder: e.target.value })}
               />
+            </div>
+            <div className="admin-panel admin-grid danger-zone" style={{ borderStyle: 'dashed' }}>
+              <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--accent)' }}>
+                Cloud HTML5 (itch-style ZIP)
+              </h3>
+              <p className="admin-muted" style={{ margin: 0 }}>
+                ZIP must contain <code>index.html</code> (and <code>.js</code> / <code>.wasm</code> /{' '}
+                <code>.pck</code> next to it). Godot often zips one folder — we strip the wrapper automatically.
+              </p>
+              {gameDraft.storage_slug ? (
+                <p className="admin-muted" style={{ margin: 0 }}>
+                  Cloud folder: <code>{gameDraft.storage_slug}</code>
+                </p>
+              ) : null}
+              <div className="admin-field">
+                <label htmlFor="g_zip">Web export .zip</label>
+                <input
+                  id="g_zip"
+                  type="file"
+                  accept=".zip,application/zip"
+                  disabled={busy || !gameDraft.slug.trim()}
+                  onChange={(e) => setGameZipFile(e.target.files?.[0] ?? null)}
+                />
+              </div>
+              <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
+                <button type="button" disabled={busy || !gameZipFile || !gameDraft.slug.trim()} onClick={onUploadGameZip}>
+                  Upload ZIP & save game
+                </button>
+                <button type="button" disabled={busy || !gameDraft.storage_slug} onClick={onClearHostedGame}>
+                  Remove cloud build
+                </button>
+              </div>
             </div>
             <div className="admin-field">
               <label htmlFor="g_order">Sort order</label>

@@ -9,6 +9,8 @@ export type GameRecord = {
   external_url: string | null;
   /** Folder under /games/<folder>/index.html when hosted with static files */
   local_folder: string | null;
+  /** Supabase Storage folder under bucket game-builds/ — itch-style uploaded HTML5 build */
+  storage_slug?: string | null;
   sort_order: number;
   published: boolean;
 };

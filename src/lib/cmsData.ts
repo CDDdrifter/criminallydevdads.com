@@ -2,6 +2,7 @@ import type { DevLogPost, GameRecord, GameView, NavItem, SitePage, SiteSettings 
 import { defaultSiteSettings } from '../types';
 import { supabase, supabaseConfigured } from './supabase';
 import { normalizePageSections } from './pageSections';
+import { publicGameIndexUrl } from './gameStorageUpload';
 
 function normalizeSitePage(row: Record<string, unknown>): SitePage {
   return {
@@ -18,7 +19,17 @@ function normalizeSitePage(row: Record<string, unknown>): SitePage {
 function recordToView(g: GameRecord): GameView {
   const folder = g.local_folder ?? g.slug;
   const localPath = `games/${folder}/index.html`;
-  const hasExternal = Boolean(g.external_url?.trim());
+  const ext = g.external_url?.trim();
+  const storageSlug = g.storage_slug?.trim();
+  const storageUrl = storageSlug ? publicGameIndexUrl(storageSlug) : '';
+
+  let launchPath = localPath;
+  if (ext) {
+    launchPath = ext;
+  } else if (storageUrl) {
+    launchPath = storageUrl;
+  }
+
   return {
     id: g.id,
     slug: g.slug,
@@ -29,8 +40,8 @@ function recordToView(g: GameRecord): GameView {
     thumbnail: g.thumbnail_url ?? '',
     external_url: g.external_url ?? '',
     local_folder: folder,
-    launchPath: hasExternal ? (g.external_url as string) : localPath,
-    isPlayable: hasExternal || Boolean(folder),
+    launchPath,
+    isPlayable: Boolean(ext) || Boolean(storageUrl) || Boolean(folder),
   };
 }
 

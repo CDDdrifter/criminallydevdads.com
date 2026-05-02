@@ -9,6 +9,7 @@ The main site is now a **Vite + React** app that keeps the same neon / terminal 
 - **No-database mode**: if Supabase env vars are missing, the hub still loads games via the GitHub API + `games.json` like before.
 - **Full CMS**: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env.example`), run `supabase/schema.sql` in Supabase (if the project already existed, also run `supabase/migrations/001_site_page_sections.sql` for the `sections` column on `site_pages`). Enable **Google** and **Email** under Authentication → Providers; add your production URL + `https://<project>.supabase.co/auth/v1/callback` to Google’s redirect list. Editors sign in at `/#/admin` with **Google** or an **email magic link**; the address must match `site_admin_domains` (defaults to `@criminallydevdads.com`) or `site_admin_emails`.
 - **Pages & panels**: in Admin → Pages, stack **headings, text, panels, images, and dividers** for each custom page (`/#/p/<slug>`). Legacy single **Body** field still works when no blocks are added.
+- **Games via ZIP (itch-style)**: run `supabase/migrations/002_game_builds_storage.sql` (or full `schema.sql`) so bucket `game-builds` exists. In Admin → Games, fill **slug + title**, choose your Godot **Web export .zip**, then **Upload ZIP & save game**. Play uses Supabase Storage `index.html` (external play URL still wins if set).
 
 ---
 
