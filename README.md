@@ -7,7 +7,8 @@ The main site is now a **Vite + React** app that keeps the same neon / terminal 
 - **Public hub**: `npm run dev` locally, or deploy the `dist/` folder after `npm run build` (the build copies `games/` and `games.json` into `dist/` and adds `404.html` for GitHub Pages).
 - **Routing**: the live site uses **hash routes** (for example `yoursite.com/#/admin`, `/#/game/terracraft`, `/#/play/terracraft`) so static hosting works without extra server rules.
 - **No-database mode**: if Supabase env vars are missing, the hub still loads games via the GitHub API + `games.json` like before.
-- **Full CMS**: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env.example`), run `supabase/schema.sql` in Supabase, enable **Google** under Authentication → Providers, and add your production URL + `https://<project>.supabase.co/auth/v1/callback` to Google’s redirect list. Editors must use an email on a domain listed in `site_admin_domains` (defaults to `@criminallydevdads.com`) or be listed in `site_admin_emails`.
+- **Full CMS**: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env.example`), run `supabase/schema.sql` in Supabase (if the project already existed, also run `supabase/migrations/001_site_page_sections.sql` for the `sections` column on `site_pages`). Enable **Google** and **Email** under Authentication → Providers; add your production URL + `https://<project>.supabase.co/auth/v1/callback` to Google’s redirect list. Editors sign in at `/#/admin` with **Google** or an **email magic link**; the address must match `site_admin_domains` (defaults to `@criminallydevdads.com`) or `site_admin_emails`.
+- **Pages & panels**: in Admin → Pages, stack **headings, text, panels, images, and dividers** for each custom page (`/#/p/<slug>`). Legacy single **Body** field still works when no blocks are added.
 
 ---
 

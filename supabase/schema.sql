@@ -37,6 +37,7 @@ create table if not exists site_pages (
   slug text not null unique,
   title text not null,
   body text not null default '',
+  sections jsonb not null default '[]'::jsonb,
   show_in_nav boolean not null default true,
   sort_order int not null default 0,
   created_at timestamptz not null default now(),

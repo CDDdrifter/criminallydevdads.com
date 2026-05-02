@@ -1,6 +1,19 @@
 import type { DevLogPost, GameRecord, GameView, NavItem, SitePage, SiteSettings } from '../types';
 import { defaultSiteSettings } from '../types';
 import { supabase, supabaseConfigured } from './supabase';
+import { normalizePageSections } from './pageSections';
+
+function normalizeSitePage(row: Record<string, unknown>): SitePage {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    title: String(row.title),
+    body: String(row.body ?? ''),
+    sections: normalizePageSections(row.sections),
+    show_in_nav: Boolean(row.show_in_nav ?? true),
+    sort_order: Number(row.sort_order ?? 0),
+  };
+}
 
 function recordToView(g: GameRecord): GameView {
   const folder = g.local_folder ?? g.slug;
@@ -82,7 +95,7 @@ export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
     console.error(error);
     return null;
   }
-  return data as SitePage | null;
+  return data ? normalizeSitePage(data as Record<string, unknown>) : null;
 }
 
 export async function fetchSitePages(): Promise<SitePage[]> {
@@ -97,7 +110,7 @@ export async function fetchSitePages(): Promise<SitePage[]> {
     console.error(error);
     return [];
   }
-  return data as SitePage[];
+  return (data as Record<string, unknown>[]).map(normalizeSitePage);
 }
 
 export async function fetchNavItems(): Promise<NavItem[]> {
@@ -192,7 +205,7 @@ export async function fetchAllPagesAdmin(): Promise<SitePage[]> {
     console.error(error);
     return [];
   }
-  return data as SitePage[];
+  return (data as Record<string, unknown>[]).map(normalizeSitePage);
 }
 
 export async function upsertPage(row: Partial<SitePage> & { slug: string; title: string }) {

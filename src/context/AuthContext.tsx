@@ -1,6 +1,6 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { isAllowedEditorEmail } from '../lib/auth';
+import { allowedEmailDomains, isAllowedEditorEmail } from '../lib/auth';
 import { supabase, supabaseConfigured } from '../lib/supabase';
 
 type AuthState = {
@@ -9,6 +9,7 @@ type AuthState = {
   loading: boolean;
   isAdmin: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -56,6 +57,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signInWithEmail = useCallback(async (email: string) => {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+    const trimmed = email.trim().toLowerCase();
+    if (!isAllowedEditorEmail(trimmed)) {
+      throw new Error(
+        `Only ${allowedEmailDomains().map((d) => `@${d}`).join(', ')} (or allow-listed emails) can sign in.`,
+      );
+    }
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { error } = await supabase.auth.signInWithOtp({
+      email: trimmed,
+      options: { emailRedirectTo: redirectTo },
+    });
+    if (error) {
+      throw error;
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     if (!supabase) {
       return;
@@ -70,9 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       isAdmin,
       signInWithGoogle,
+      signInWithEmail,
       signOut,
     }),
-    [session, user, loading, isAdmin, signInWithGoogle, signOut],
+    [session, user, loading, isAdmin, signInWithGoogle, signInWithEmail, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

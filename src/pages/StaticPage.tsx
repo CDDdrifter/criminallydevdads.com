@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchPageBySlug } from '../lib/cmsData';
 import type { SitePage } from '../types';
@@ -45,13 +46,19 @@ export function StaticPage() {
 
   return (
     <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
-      <article className="admin-panel">
+      <article className="admin-panel page-article">
         <h1 className="header-title" style={{ fontSize: '2.2rem', textAlign: 'left' }}>
           {page.title}
         </h1>
-        <div className="prose" style={{ marginTop: 24, whiteSpace: 'pre-wrap' }}>
-          {page.body}
-        </div>
+        {page.sections.length > 0 ? (
+          <div style={{ marginTop: 24 }}>
+            <PageSectionsView sections={page.sections} />
+          </div>
+        ) : (
+          <div className="prose" style={{ marginTop: 24, whiteSpace: 'pre-wrap' }}>
+            {page.body}
+          </div>
+        )}
       </article>
     </SiteChrome>
   );

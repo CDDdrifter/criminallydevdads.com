@@ -27,11 +27,21 @@ export type GameView = {
   isPlayable: boolean;
 };
 
+export type PageSection =
+  | { id: string; kind: 'heading'; title: string; subtitle?: string }
+  | { id: string; kind: 'text'; body: string }
+  | { id: string; kind: 'panel'; title: string; body: string; variant?: 'default' | 'accent' | 'muted' }
+  | { id: string; kind: 'image'; url: string; alt?: string; caption?: string }
+  | { id: string; kind: 'divider' };
+
 export type SitePage = {
   id: string;
   slug: string;
   title: string;
+  /** Legacy single block; still shown if sections is empty */
   body: string;
+  /** Ordered blocks: headings, text, panels, images, dividers */
+  sections: PageSection[];
   show_in_nav: boolean;
   sort_order: number;
 };

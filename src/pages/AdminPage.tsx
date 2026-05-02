@@ -19,10 +19,26 @@ import {
   upsertPage,
 } from '../lib/cmsData';
 import { supabaseConfigured } from '../lib/supabase';
-import type { DevLogPost, GameRecord, NavItem, SitePage, SiteSettings } from '../types';
+import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
+import type { DevLogPost, GameRecord, NavItem, PageSection, SitePage, SiteSettings } from '../types';
 import { defaultSiteSettings } from '../types';
 
-type Tab = 'settings' | 'games' | 'pages' | 'nav' | 'devlogs';
+type Tab = 'overview' | 'settings' | 'games' | 'pages' | 'nav' | 'devlogs';
+
+function emptyPageDraft(): Partial<SitePage> & {
+  slug: string;
+  title: string;
+  sections: PageSection[];
+} {
+  return {
+    slug: '',
+    title: '',
+    body: '',
+    sections: [],
+    show_in_nav: true,
+    sort_order: 0,
+  };
+}
 
 const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => ({
   slug: '',
@@ -39,7 +55,7 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
 
 export function AdminPage() {
   const auth = useAuth();
-  const [tab, setTab] = useState<Tab>('settings');
+  const [tab, setTab] = useState<Tab>('overview');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -50,13 +66,9 @@ export function AdminPage() {
   const [logs, setLogs] = useState<DevLogPost[]>([]);
 
   const [gameDraft, setGameDraft] = useState(emptyGame());
-  const [pageDraft, setPageDraft] = useState<Partial<SitePage> & { slug: string; title: string }>({
-    slug: '',
-    title: '',
-    body: '',
-    show_in_nav: true,
-    sort_order: 0,
-  });
+  const [pageDraft, setPageDraft] = useState(emptyPageDraft());
+  const [emailForOtp, setEmailForOtp] = useState('');
+  const [otpMessage, setOtpMessage] = useState<string | null>(null);
   const [navDraft, setNavDraft] = useState<Partial<NavItem> & { label: string; href: string }>({
     label: '',
     href: '',
@@ -147,18 +159,20 @@ export function AdminPage() {
       flash('Page slug and title required.');
       return;
     }
+    const slugSaved = pageDraft.slug.trim();
     setBusy(true);
     try {
       await upsertPage({
-        slug: pageDraft.slug.trim(),
+        slug: slugSaved,
         title: pageDraft.title.trim(),
         body: pageDraft.body ?? '',
+        sections: ensureSectionIds(pageDraft.sections ?? []),
         show_in_nav: pageDraft.show_in_nav ?? true,
         sort_order: Number(pageDraft.sort_order ?? 0),
       });
-      setPageDraft({ slug: '', title: '', body: '', show_in_nav: true, sort_order: 0 });
+      setPageDraft(emptyPageDraft());
       await reload();
-      flash('Page saved. Public URL: /p/' + pageDraft.slug.trim());
+      flash(`Page saved. Public URL: /p/${slugSaved}`);
     } catch (e) {
       console.error(e);
       flash(e instanceof Error ? e.message : 'Save failed');
@@ -259,13 +273,41 @@ export function AdminPage() {
             Team login
           </h1>
           <p className="admin-muted" style={{ margin: '16px 0' }}>
-            Sign in with Google using an email on:{' '}
-            <strong>{allowedEmailDomains().join(', ')}</strong> (or an address manually allow-listed in
-            Supabase).
+            Editors must use an address on{' '}
+            <strong>{allowedEmailDomains().map((d) => `@${d}`).join(', ')}</strong> (or an email
+            listed in Supabase <code>site_admin_emails</code>). Enable <strong>Email</strong> under
+            Authentication → Providers in Supabase to use magic links.
           </p>
           <button type="button" disabled={busy} onClick={() => auth.signInWithGoogle().catch(console.error)}>
             Continue with Google
           </button>
+          <div className="admin-field" style={{ marginTop: 20 }}>
+            <label htmlFor="otp_email">Or sign in with email (magic link)</label>
+            <input
+              id="otp_email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@criminallydevdads.com"
+              value={emailForOtp}
+              onChange={(e) => setEmailForOtp(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            disabled={busy || !emailForOtp.trim()}
+            onClick={() => {
+              setBusy(true);
+              setOtpMessage(null);
+              auth
+                .signInWithEmail(emailForOtp)
+                .then(() => setOtpMessage('Check your inbox for the login link.'))
+                .catch((e) => setOtpMessage(e instanceof Error ? e.message : 'Could not send link'))
+                .finally(() => setBusy(false));
+            }}
+          >
+            Send login link
+          </button>
+          {otpMessage ? <p className="admin-muted" style={{ marginTop: 12 }}>{otpMessage}</p> : null}
           <p style={{ marginTop: 20 }}>
             <Link to="/">← Back to site</Link>
           </p>
@@ -524,9 +566,12 @@ export function AdminPage() {
         <div className="admin-grid">
           <div className="admin-panel admin-grid">
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>
-              Custom page
+              Custom page (blocks)
             </h2>
-            <p className="admin-muted">Public URL: /p/&lt;slug&gt;</p>
+            <p className="admin-muted">
+              Public URL: <code>/#/p/&lt;slug&gt;</code>. Stack headings, text, panels, and images. If you add
+              no blocks, the legacy <strong>Body</strong> field is shown instead.
+            </p>
             <div className="admin-field">
               <label htmlFor="p_slug">Slug</label>
               <input
@@ -543,8 +588,15 @@ export function AdminPage() {
                 onChange={(e) => setPageDraft({ ...pageDraft, title: e.target.value })}
               />
             </div>
+            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 8 }}>
+              Page blocks
+            </h3>
+            <PageSectionsForm
+              sections={pageDraft.sections ?? []}
+              onChange={(sections) => setPageDraft({ ...pageDraft, sections })}
+            />
             <div className="admin-field">
-              <label htmlFor="p_body">Body</label>
+              <label htmlFor="p_body">Legacy body (only if no blocks above)</label>
               <textarea
                 id="p_body"
                 value={pageDraft.body ?? ''}
@@ -586,7 +638,15 @@ export function AdminPage() {
                     </span>
                   </span>
                   <span className="admin-row">
-                    <button type="button" onClick={() => setPageDraft({ ...p })}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPageDraft({
+                          ...p,
+                          sections: p.sections ?? [],
+                        })
+                      }
+                    >
                       Edit
                     </button>
                     <Link to={`/p/${p.slug}`}>View</Link>
