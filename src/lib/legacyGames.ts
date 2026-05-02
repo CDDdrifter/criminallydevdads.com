@@ -150,8 +150,27 @@ export async function loadLegacyGames(): Promise<GameView[]> {
     return acc;
   }, {});
   const folderIds = await discoverGameFolders();
+  const folderSet = new Set(folderIds);
+
   const discoveredGames = await Promise.all(
     folderIds.map((folderId) => buildGameFromFolder(folderId, metadataById)),
   );
-  return discoveredGames.sort((a, b) => a.title.localeCompare(b.title));
+
+  const orphanIds = Object.keys(metadataById).filter((id) => !folderSet.has(id));
+  const orphanGames =
+    orphanIds.length > 0
+      ? await Promise.all(orphanIds.map((id) => buildGameFromFolder(id, metadataById)))
+      : [];
+
+  const bySlug = new Map<string, GameView>();
+  for (const g of discoveredGames) {
+    bySlug.set(g.slug, g);
+  }
+  for (const g of orphanGames) {
+    if (!bySlug.has(g.slug)) {
+      bySlug.set(g.slug, g);
+    }
+  }
+
+  return [...bySlug.values()].sort((a, b) => a.title.localeCompare(b.title));
 }

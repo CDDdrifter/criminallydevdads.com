@@ -10,10 +10,10 @@
   },
   {
     "id": "fortfury",
-    "title": "fortfury",
+    "title": "Fort Fury",
     "type": "game",
-    "description": "",
-    "details": "",
+    "description": "Fort Fury web build — playable from this hub once export files are in games/fortfury/.",
+    "details": "Export your Godot HTML5 build into the games/fortfury folder (index.html, index.js, wasm, etc.). Until then you’ll see the setup page inside the player.",
     "thumbnail": "",
     "filename": "fortfury.zip"
   },
