@@ -1,4 +1,5 @@
 import type { GameView } from '../types';
+import { resolvePublicAssetUrl } from './paths';
 
 const REPO_OWNER = import.meta.env.VITE_GITHUB_REPO_OWNER ?? 'CDDdrifter';
 const REPO_NAME = import.meta.env.VITE_GITHUB_REPO_NAME ?? 'criminallydevdads.com';
@@ -27,8 +28,9 @@ function titleFromId(id = ''): string {
 }
 
 export async function pathExists(path: string): Promise<boolean> {
+  const url = /^https?:\/\//i.test(path) ? path : resolvePublicAssetUrl(path);
   try {
-    const response = await fetch(path, { cache: 'no-store' });
+    const response = await fetch(url, { cache: 'no-store' });
     return response.ok;
   } catch {
     return false;
