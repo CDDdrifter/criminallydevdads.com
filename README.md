@@ -11,7 +11,7 @@ The main site is a **Vite + React** app with the same neon / terminal look.
 **→ [`docs/WEBSITE_WORKFLOW.md`](docs/WEBSITE_WORKFLOW.md)** — two paths:
 
 - **Path A (default, no setup):** Edit **`games.json`**, put builds in **`games/<slug>/`**, change layout in **`src/`**, push. **Supabase is not required.** Omit `VITE_SUPABASE_*` GitHub secrets for a purely file-based deploy.
-- **Path B (optional):** Browser admin at **`/#/admin`** after Supabase + secrets — see **[`docs/SUPABASE_FIRST_TIME_SETUP.md`](docs/SUPABASE_FIRST_TIME_SETUP.md)**.
+- **Path B (optional):** Browser admin at **`/#/admin`** after Supabase + secrets — **[`docs/SUPABASE_FIRST_TIME_SETUP.md`](docs/SUPABASE_FIRST_TIME_SETUP.md)** and **[`docs/SUPABASE_COPY_THESE_TWO_VALUES.md`](docs/SUPABASE_COPY_THESE_TWO_VALUES.md)** (exact URL + anon key).
 
 **Catalog:** With **`VITE_GAME_CATALOG=auto`** (default), the hub uses the **database only if `site_games` has published rows**; otherwise it uses **`games.json`**. So a half-finished Supabase setup no longer hides your games. Use **`VITE_GAME_CATALOG=cms`** only when you want the DB exclusively.
 

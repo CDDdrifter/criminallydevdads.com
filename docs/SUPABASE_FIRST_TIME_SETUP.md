@@ -4,6 +4,8 @@
 
 You only do this **once per website** if you want **`/#/admin`**. I cannot run these steps for you (they use **your** Supabase and GitHub logins), but if you follow the order below, **Team login** / admin will work.
 
+**Ultra-literal “which two strings to copy”:** **[`SUPABASE_COPY_THESE_TWO_VALUES.md`](SUPABASE_COPY_THESE_TWO_VALUES.md)** (same as the hints on **`/#/admin`** after deploy).
+
 ---
 
 ## Part A — Create the database

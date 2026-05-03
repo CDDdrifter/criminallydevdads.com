@@ -17,7 +17,15 @@ import {
   upsertNav,
   upsertPage,
 } from '../lib/cmsData';
+import { getAuthRedirectBaseUrl } from '../lib/authRedirect';
 import { supabaseConfigured } from '../lib/supabase';
+import {
+  anonKeyLooksValid,
+  describeAnonKeyShape,
+  getBuildTimeAnonKey,
+  getBuildTimeSupabaseUrl,
+  supabaseUrlLooksValid,
+} from '../lib/supabaseHealth';
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
 import {
   deleteGameBuild,
@@ -74,6 +82,7 @@ export function AdminPage() {
   const [pageDraft, setPageDraft] = useState(emptyPageDraft());
   const [emailForOtp, setEmailForOtp] = useState('');
   const [otpMessage, setOtpMessage] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState<string | null>(null);
   const [gameZipFile, setGameZipFile] = useState<File | null>(null);
   const [navDraft, setNavDraft] = useState<Partial<NavItem> & { label: string; href: string }>({
     label: '',
@@ -351,6 +360,11 @@ export function AdminPage() {
   }
 
   if (!auth.user) {
+    const builtUrl = getBuildTimeSupabaseUrl();
+    const builtKey = getBuildTimeAnonKey();
+    const urlCheck = supabaseUrlLooksValid(builtUrl);
+    const keyCheck = anonKeyLooksValid(builtKey);
+    const redirectExact = getAuthRedirectBaseUrl();
     return (
       <div className="admin-shell">
         <div className="admin-panel">
@@ -361,15 +375,76 @@ export function AdminPage() {
             Bookmark <strong>/#/admin</strong> — the public header hides “Team login” unless you set{' '}
             <code>VITE_SHOW_ADMIN_NAV=true</code> (see <code>docs/SITE_MANUAL.md</code> §11).
           </p>
+          {(!urlCheck.ok || !keyCheck.ok) && (
+            <div className="admin-panel danger-zone" style={{ marginBottom: 16 }}>
+              <p className="admin-muted" style={{ margin: 0, fontWeight: 700 }}>
+                Supabase keys in this build look wrong (Google will 404 or auth will fail):
+              </p>
+              {!urlCheck.ok ? (
+                <p className="admin-muted" style={{ marginTop: 8 }}>
+                  <strong>Project URL:</strong> {urlCheck.message}
+                </p>
+              ) : (
+                <p className="admin-muted" style={{ marginTop: 8 }}>
+                  <strong>Project URL shape:</strong> OK — <code>{builtUrl}</code>
+                </p>
+              )}
+              {!keyCheck.ok ? (
+                <p className="admin-muted" style={{ marginTop: 8 }}>
+                  <strong>Anon key:</strong> {keyCheck.message}
+                </p>
+              ) : (
+                <p className="admin-muted" style={{ marginTop: 8 }}>
+                  <strong>Anon key shape:</strong> OK — <code>{describeAnonKeyShape(builtKey)}</code>
+                </p>
+              )}
+              <p className="admin-muted" style={{ marginTop: 12, marginBottom: 0 }}>
+                Exact copy steps: <code>docs/SUPABASE_COPY_THESE_TWO_VALUES.md</code>
+              </p>
+            </div>
+          )}
+          {urlCheck.ok && keyCheck.ok ? (
+            <div className="admin-panel" style={{ marginBottom: 16, borderColor: 'rgba(115, 248, 255, 0.35)' }}>
+              <p className="admin-muted" style={{ margin: 0, fontWeight: 700 }}>
+                If Google login shows 404, add this exact URL in Supabase:
+              </p>
+              <p style={{ marginTop: 8, marginBottom: 0 }}>
+                <code style={{ wordBreak: 'break-all' }}>{redirectExact}</code>
+              </p>
+              <p className="admin-muted" style={{ marginTop: 10, marginBottom: 0, fontSize: '0.85rem' }}>
+                Supabase dashboard → <strong>Authentication</strong> → <strong>URL Configuration</strong> →{' '}
+                <strong>Redirect URLs</strong> → paste the line above. Set <strong>Site URL</strong> to the same.
+                Google Cloud → OAuth client → Authorized redirect URI must be{' '}
+                <code>{`${builtUrl.replace(/\/$/, '')}/auth/v1/callback`}</code>
+              </p>
+            </div>
+          ) : null}
           <p className="admin-muted" style={{ margin: '16px 0' }}>
             Allowed editors match Supabase tables <code>site_admin_domains</code> (any address on that
             domain) and <code>site_admin_emails</code> (exact addresses, e.g. personal Gmail). Enable{' '}
             <strong>Email</strong> under Authentication → Providers for magic links, and{' '}
             <strong>Google</strong> if your team uses Google sign-in.
           </p>
-          <button type="button" disabled={busy} onClick={() => auth.signInWithGoogle().catch(console.error)}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setGoogleError(null);
+              auth
+                .signInWithGoogle()
+                .catch((e) => {
+                  console.error(e);
+                  setGoogleError(e instanceof Error ? e.message : 'Google sign-in failed');
+                });
+            }}
+          >
             Continue with Google
           </button>
+          {googleError ? (
+            <p className="admin-muted danger-zone" style={{ marginTop: 12, padding: 12, borderRadius: 8 }}>
+              {googleError}
+            </p>
+          ) : null}
           <div className="admin-field" style={{ marginTop: 20 }}>
             <label htmlFor="otp_email">Or sign in with email (magic link)</label>
             <input
