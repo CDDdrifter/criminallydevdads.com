@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { allowedEmailDomains } from '../lib/auth';
 import {
   deleteDevLogSlug,
   deleteGameBySlug,
@@ -359,10 +358,10 @@ export function AdminPage() {
             Team login
           </h1>
           <p className="admin-muted" style={{ margin: '16px 0' }}>
-            Editors must use an address on{' '}
-            <strong>{allowedEmailDomains().map((d) => `@${d}`).join(', ')}</strong> (or an email
-            listed in Supabase <code>site_admin_emails</code>). Enable <strong>Email</strong> under
-            Authentication → Providers in Supabase to use magic links.
+            Allowed editors match Supabase tables <code>site_admin_domains</code> (any address on that
+            domain) and <code>site_admin_emails</code> (exact addresses, e.g. personal Gmail). Enable{' '}
+            <strong>Email</strong> under Authentication → Providers for magic links, and{' '}
+            <strong>Google</strong> if your team uses Google sign-in.
           </p>
           <button type="button" disabled={busy} onClick={() => auth.signInWithGoogle().catch(console.error)}>
             Continue with Google

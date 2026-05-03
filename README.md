@@ -8,13 +8,14 @@ The main site is a **Vite + React** app with the same neon / terminal look.
 
 Once this is done **one time**, you add games, pages, and visuals only at **`/#/admin`** (ZIP upload like itch, or external play URL).
 
-1. **Supabase** — Create a project → SQL Editor → paste and run **`supabase/schema.sql`** once (includes tables, RLS, Storage bucket `game-builds`, page `sections`).
-2. **Auth** — Authentication → Providers: enable **Google** and **Email**. Under URL configuration, add your live site URL (and `http://localhost:5173` for local dev). For Google OAuth, add redirect `https://<project-ref>.supabase.co/auth/v1/callback`.
-3. **GitHub Secrets** — Repo → **Settings → Secrets and variables → Actions** → add:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - Optional: `VITE_ALLOWED_EMAIL_DOMAINS` (e.g. `criminallydevdads.com`)
-4. **GitHub Pages** — **Settings → Pages** → **Build and deployment → Source: GitHub Actions** (not “Deploy from branch”).  
+1. **Supabase** — Create a project → SQL Editor → paste and run **`supabase/schema.sql`** once (includes tables, RLS, Storage bucket `game-builds`, page `sections`, and admin RPCs). If the project already had an older schema, also run **`supabase/migrations/003_editor_login_rpc.sql`** so the site can verify admins.
+2. **Who can log in** — In Supabase → **SQL Editor**, allowlist editors (pick one or both):
+   - **Whole domain:** `insert into site_admin_domains (domain) values ('yourdomain.com') on conflict do nothing;`
+   - **One address:** `insert into site_admin_emails (email) values ('you@gmail.com') on conflict do nothing;`  
+   The starter schema already inserts `@criminallydevdads.com` via `site_admin_domains`.
+3. **Auth** — Authentication → Providers: enable **Google** and **Email**. Under **URL configuration**, add your live site URL and `http://localhost:5173` (and `https://<user>.github.io/<repo>/` if you use GitHub Pages). For Google OAuth, add redirect `https://<project-ref>.supabase.co/auth/v1/callback`.
+4. **GitHub Secrets** — Repo → **Settings → Secrets and variables → Actions** → add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+5. **GitHub Pages** — **Settings → Pages** → **Build and deployment → Source: GitHub Actions** (not “Deploy from branch”).  
    The workflow **[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)** builds on every push to **`main`** or **`fixing.fortfury`** and deploys **`dist/`** with those secrets baked in — you never commit `.env` or reconfigure per game.
 
 **Catalog behavior:** If `VITE_SUPABASE_*` is present at build time, the hub loads games **only from the database** (what you edit in Admin). It does **not** fall back to `games/` folders or `games.json`, so releases are not tied to Git file changes.
@@ -31,7 +32,7 @@ If the site is built **without** Supabase env vars, the hub falls back to **GitH
 ### Features
 
 - **Routing**: hash routes (e.g. `yoursite.com/#/admin`, `/#/play/my-game`).
-- **Admin**: Google or **email magic link** for `@criminallydevdads.com` (or rows in `site_admin_emails`).
+- **Admin**: Top nav **Team login** → `/#/admin`. **Google** or **email magic link**; allowlist is **`site_admin_domains`** + **`site_admin_emails`** in Supabase only.
 - **Pages & panels**: Admin → Pages — headings, text, panels, images; URL `/#/p/<slug>`.
 - **Games**: Admin → Games — **ZIP** → Supabase Storage, or **external play URL**, plus titles/thumbnails/copy.
 

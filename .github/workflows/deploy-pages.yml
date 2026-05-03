@@ -4,8 +4,6 @@
 # 1. Settings → Secrets and variables → Actions → New repository secret:
 #    - VITE_SUPABASE_URL   (Project Settings → API → Project URL)
 #    - VITE_SUPABASE_ANON_KEY (anon public key)
-#    Optional:
-#    - VITE_ALLOWED_EMAIL_DOMAINS (default criminallydevdads.com if unset — still set explicitly for clarity)
 # 2. Settings → Pages → Build and deployment → Source: GitHub Actions
 #
 # After that, every push to these branches redeploys; add games only via /#/admin (no repo edits).
@@ -45,7 +43,6 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_ALLOWED_EMAIL_DOMAINS: ${{ secrets.VITE_ALLOWED_EMAIL_DOMAINS }}
           VITE_GITHUB_REPO_OWNER: ${{ github.repository_owner }}
           VITE_GITHUB_REPO_NAME: ${{ github.event.repository.name }}
         run: npm ci && npm run build

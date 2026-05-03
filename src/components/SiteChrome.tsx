@@ -86,9 +86,7 @@ export function SiteChrome({
           ),
         )}
         {navExtra}
-        {supabaseConfigured && (
-          <Link to="/admin">{auth.isAdmin ? 'Admin' : 'Team login'}</Link>
-        )}
+        <Link to="/admin">{auth.isAdmin ? 'Admin' : 'Team login'}</Link>
       </nav>
       {children}
     </div>
