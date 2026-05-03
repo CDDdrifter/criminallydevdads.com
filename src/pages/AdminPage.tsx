@@ -420,10 +420,14 @@ export function AdminPage() {
             </div>
           ) : null}
           <p className="admin-muted" style={{ margin: '16px 0' }}>
-            Allowed editors match Supabase tables <code>site_admin_domains</code> (any address on that
-            domain) and <code>site_admin_emails</code> (exact addresses, e.g. personal Gmail). Enable{' '}
-            <strong>Email</strong> under Authentication → Providers for magic links, and{' '}
-            <strong>Google</strong> if your team uses Google sign-in.
+            <strong>Simplest path:</strong> get <strong>Send login link</strong> working first (use an
+            allowlisted email — <code>@criminallydevdads.com</code> is already allowed if you ran{' '}
+            <code>schema.sql</code>). Step list: <code>docs/SIMPLE_ADMIN_LOGIN.md</code>. Google is optional
+            after email works.
+          </p>
+          <p className="admin-muted" style={{ margin: '16px 0' }}>
+            Allowlist: Supabase tables <code>site_admin_domains</code> and <code>site_admin_emails</code>{' '}
+            (see simple doc). Enable <strong>Email</strong> under Authentication → Providers.
           </p>
           <button
             type="button"
