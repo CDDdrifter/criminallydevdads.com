@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { GamePlayerEmbed } from '../components/GamePlayerEmbed';
 import { SiteChrome } from '../components/SiteChrome';
 import { useGames } from '../hooks/useGames';
 import { resolveGameUrl } from '../lib/paths';
@@ -58,7 +59,7 @@ export function PlayPage() {
         Playing: <strong>{game.title}</strong>
       </div>
       <div className="game-embed-wrap">
-        <iframe title={game.title} src={src} allow="fullscreen; gamepad; autoplay" />
+        <GamePlayerEmbed title={game.title} src={src} />
       </div>
     </SiteChrome>
   );

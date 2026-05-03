@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchNavItems, fetchSitePages } from '../lib/cmsData';
+import { showAdminNavLink } from '../lib/envPublic';
 import { supabaseConfigured } from '../lib/supabase';
 import { useAsyncMemo } from '../hooks/useAsyncMemo';
 
@@ -86,7 +87,9 @@ export function SiteChrome({
           ),
         )}
         {navExtra}
-        <Link to="/admin">{auth.isAdmin ? 'Admin' : 'Team login'}</Link>
+        {showAdminNavLink() ? (
+          <Link to="/admin">{auth.isAdmin ? 'Admin' : 'Team login'}</Link>
+        ) : null}
       </nav>
       {children}
     </div>

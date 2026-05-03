@@ -1,7 +1,7 @@
 # Builds the React hub and deploys dist/ to GitHub Pages.
 #
 # Games catalog default (VITE_GAME_CATALOG unset = auto): uses games.json + games/ unless site_games has rows.
-# Optional secrets (browser admin only): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+# Optional: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_SHOW_ADMIN_NAV (true = show Team login in nav)
 #
 # Repo: Settings → Pages → Source: GitHub Actions
 

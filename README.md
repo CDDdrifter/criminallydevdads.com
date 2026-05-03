@@ -31,8 +31,10 @@ If the site is built **without** Supabase env vars, the hub falls back to **GitH
 ### Features
 
 - **Routing**: hash routes (e.g. `/#/admin`, `/#/play/my-game`).
+- **Play**: **Fullscreen** control (bottom-right of the player) on every game — see **`docs/SITE_MANUAL.md`** §10.
 - **Games (files)**: **`games.json`** + **`games/<slug>/`** — no cloud required.
 - **Games (optional CMS)**: **`/#/admin`** with Supabase — ZIP storage, external URLs, same allowlist as RLS.
+- **Admin link**: hidden from the header by default; open **`/#/admin`** or set **`VITE_SHOW_ADMIN_NAV=true`** (see **`docs/SITE_MANUAL.md`** §11).
 - **Pages & panels**: Custom pages from code, or from Admin when Supabase is on.
 
 ---

@@ -15,6 +15,8 @@ This hub is a **React (Vite)** app. You can ship it **without Supabase**. Supaba
 7. [Add a “custom” page from the database (optional)](#7-add-a-custom-page-from-the-database-optional)
 8. [Add a header link (extension to the nav)](#8-add-a-header-link-extension-to-the-nav)
 9. [Troubleshooting](#9-troubleshooting)
+10. [Fullscreen while playing](#10-fullscreen-while-playing)
+11. [Admin / “Team login” in the header](#11-admin--team-login-in-the-header)
 
 ---
 
@@ -168,10 +170,34 @@ Code path: `src/pages/StaticPage.tsx`, data from `src/lib/cmsData.ts`.
 |------|------|
 | Game list (files + JSON) | `src/lib/legacyGames.ts` |
 | CMS vs file catalog switch | `src/lib/gameCatalog.ts`, `src/hooks/useGames.ts` |
-| Play iframe | `src/pages/PlayPage.tsx` |
+| Play iframe + fullscreen | `src/pages/PlayPage.tsx`, `src/components/GamePlayerEmbed.tsx` |
 | Asset URLs / base path | `src/lib/paths.ts` |
 | Routes | `src/App.tsx` |
 | Top nav | `src/components/SiteChrome.tsx` |
+| Optional: show admin link in nav | `src/lib/envPublic.ts` (`VITE_SHOW_ADMIN_NAV`) |
+
+---
+
+## 10. Fullscreen while playing
+
+On **`/#/play/<slug>`**, each game shows a **Fullscreen** control at the **bottom-right** of the player frame.
+
+- The site requests fullscreen on the **player wrapper** (the area around the iframe). That works for **every** game URL (your `games/` folder or an external `url`), including cross-origin embeds where the game’s own fullscreen API is not available to the parent page.
+- Use **Exit fullscreen** (same button) or the browser’s usual escape / F11 behavior to leave.
+- Some mobile browsers limit fullscreen; the button hides if the browser reports no fullscreen support.
+
+---
+
+## 11. Admin / “Team login” in the header
+
+By default the **top nav does not show** “Team login” or “Admin”, so visitors don’t see operator links.
+
+- **Open the admin UI anytime:** go to **`/#/admin`** (bookmark it).
+- **Show the link in the header** (local or CI build): set  
+  **`VITE_SHOW_ADMIN_NAV=true`**  
+  in `.env.local` or add it as a variable to your GitHub Actions workflow `env` next to the other `VITE_*` keys.
+
+Supabase setup for signing in is still described in **`docs/SUPABASE_FIRST_TIME_SETUP.md`**.
 
 ---
 

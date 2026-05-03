@@ -357,6 +357,10 @@ export function AdminPage() {
           <h1 className="header-title" style={{ fontSize: '1.8rem' }}>
             Team login
           </h1>
+          <p className="admin-muted" style={{ marginBottom: 12, fontSize: '0.85rem' }}>
+            Bookmark <strong>/#/admin</strong> — the public header hides “Team login” unless you set{' '}
+            <code>VITE_SHOW_ADMIN_NAV=true</code> (see <code>docs/SITE_MANUAL.md</code> §11).
+          </p>
           <p className="admin-muted" style={{ margin: '16px 0' }}>
             Allowed editors match Supabase tables <code>site_admin_domains</code> (any address on that
             domain) and <code>site_admin_emails</code> (exact addresses, e.g. personal Gmail). Enable{' '}
