@@ -4,14 +4,31 @@ Use this page together with what **`/#/admin`** shows you after deploy (it print
 
 ---
 
+## These are NOT what you need (common mix-ups)
+
+| What people open by mistake | Why it’s wrong |
+|------------------------------|----------------|
+| **Database** password you chose when creating the project | That’s for Postgres tools, not the website. |
+| **Settings → Database** or connection strings | Wrong screen. |
+| **Project Settings → API Keys** on some UIs that only show “publishable” in a different layout | You still need the screen that shows **Project URL** + table with **anon** / **service_role**. |
+| **`service_role`** key (often labeled **secret**) | **Never** put this in the hub. It bypasses security. |
+| The link in your **browser address bar** (`supabase.com/dashboard/project/...`) | That is **not** the Project URL. |
+| Supabase **Vault** / unrelated “Secrets” features | Not used for this React app. |
+
+You need **only** the **Project URL** + **anon public** key from **Project Settings → API**.
+
+---
+
 ## Where in Supabase (same for both values)
 
 1. Open **[supabase.com](https://supabase.com)** and sign in.
-2. Click your **project** (not “Organization settings”).
-3. In the **left sidebar**, scroll down and click the **gear: Project Settings**.
-4. Click **API** in the submenu (under Project Settings).
+2. Click your **project** (the tile with your project name — not “Organization settings”).
+3. Look at the **left sidebar**. Scroll **down** to the **gear icon** **Project Settings** and click it.
+4. A **second** menu appears (still on the left). Click **API** — *not* “General”, *not* “Database”, *not* “Auth”.
 
-You stay on this **one** screen to copy both items below.
+You stay on this **API** screen to copy both items below.
+
+**If you don’t see “API”:** make sure you clicked **Project Settings** (gear) for **this project**, not your user profile.
 
 ---
 
@@ -46,14 +63,35 @@ On the **same API** page, scroll to **Project API keys** (or similar).
 
 ---
 
-## Where to paste them
+## Where to paste them (this “connects” the live site)
 
-| Where | Names (exact) |
-|--------|----------------|
-| **GitHub** → repo → **Settings** → **Secrets and variables** → **Actions** | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
-| **Local** | `.env.local` in the repo root, same names |
+The **website does not read Supabase by itself**. You must put the two strings into **GitHub** so the **build** bakes them in.
 
-Then **redeploy** (GitHub Actions) or restart `npm run dev`.
+### GitHub (production site)
+
+1. Open **your repo on github.com** (e.g. `criminallydevdads.com`).
+2. Click the **Settings** tab (**of the repository**, not your GitHub profile).
+3. Left sidebar: **Secrets and variables** → **Actions**.
+4. **New repository secret** (do this twice):
+   - Name: **`VITE_SUPABASE_URL`** → Value: paste the **Project URL** (`https://….supabase.co`).
+   - Name: **`VITE_SUPABASE_ANON_KEY`** → Value: paste the **anon public** long key.
+
+Names must match **exactly** (including `VITE_` at the start). No extra spaces.
+
+5. Trigger a new deploy: **Actions** tab → open the last workflow run → **Re-run all jobs**, or push an empty commit.
+
+Until this is done, **`/#/admin`** on the **live** site will act like Supabase isn’t connected.
+
+### Local (testing on your PC)
+
+In the repo folder, create **`.env.local`**:
+
+```env
+VITE_SUPABASE_URL=https://YOUR_REF.supabase.co
+VITE_SUPABASE_ANON_KEY=paste_anon_key_here
+```
+
+Then `npm run dev` and open `http://localhost:5173/#/admin`.
 
 ---
 
