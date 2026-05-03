@@ -77,3 +77,14 @@ Your email isn’t in **`site_admin_domains`** / **`site_admin_emails`**. Do ste
 ## If you still see “add VITE_SUPABASE…” on `/admin`
 
 The live build doesn’t have the secrets yet — redo step 2 and wait for deploy to finish.
+
+---
+
+## If the whole site looks “empty” (only background) after adding secrets
+
+Bad values (extra quotes, wrong URL, truncated key) used to crash the app. New builds are hardened, but quick recovery:
+
+1. GitHub → **Settings** → **Secrets and variables** → **Actions** → delete **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`**.
+2. **Actions** → re-run the **Deploy to GitHub Pages** workflow (or push an empty commit).
+
+The hub will run again **without** Supabase (games from `games.json` / `games/`). Then add the two secrets again — paste **only** the URL and key, no `"` quotes, no spaces before/after.

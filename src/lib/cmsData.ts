@@ -58,7 +58,8 @@ export async function fetchPublishedGames(): Promise<GameView[]> {
     console.error(error);
     return [];
   }
-  return (data as GameRecord[]).map(recordToView);
+  const rows = data ?? [];
+  return rows.map(recordToView);
 }
 
 export async function fetchAllGamesAdmin(): Promise<GameRecord[]> {
@@ -70,7 +71,7 @@ export async function fetchAllGamesAdmin(): Promise<GameRecord[]> {
     console.error(error);
     return [];
   }
-  return data as GameRecord[];
+  return data ?? [];
 }
 
 export async function upsertGame(row: Partial<GameRecord> & { slug: string; title: string }) {
@@ -121,7 +122,8 @@ export async function fetchSitePages(): Promise<SitePage[]> {
     console.error(error);
     return [];
   }
-  return (data as Record<string, unknown>[]).map(normalizeSitePage);
+  const rows = data ?? [];
+  return rows.map(normalizeSitePage);
 }
 
 export async function fetchNavItems(): Promise<NavItem[]> {
@@ -136,7 +138,7 @@ export async function fetchNavItems(): Promise<NavItem[]> {
     console.error(error);
     return [];
   }
-  return data as NavItem[];
+  return data ?? [];
 }
 
 export async function fetchDevLogBySlug(slug: string): Promise<DevLogPost | null> {
@@ -167,7 +169,7 @@ export async function fetchDevLogs(): Promise<DevLogPost[]> {
     console.error(error);
     return [];
   }
-  return data as DevLogPost[];
+  return data ?? [];
 }
 
 export async function fetchSiteSettings(): Promise<SiteSettings> {
@@ -248,7 +250,7 @@ export async function fetchAllNavAdmin(): Promise<NavItem[]> {
     console.error(error);
     return [];
   }
-  return data as NavItem[];
+  return data ?? [];
 }
 
 export async function upsertNav(row: Partial<NavItem> & { label: string; href: string }) {
@@ -289,7 +291,7 @@ export async function fetchAllDevLogsAdmin(): Promise<DevLogPost[]> {
     console.error(error);
     return [];
   }
-  return data as DevLogPost[];
+  return data ?? [];
 }
 
 export async function upsertDevLog(

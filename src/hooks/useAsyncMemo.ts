@@ -4,11 +4,15 @@ export function useAsyncMemo<T>(factory: () => Promise<T>, deps: unknown[]): T |
   const [value, setValue] = useState<T | null>(null);
   useEffect(() => {
     let cancelled = false;
-    factory().then((v) => {
-      if (!cancelled) {
-        setValue(v);
-      }
-    });
+    factory()
+      .then((v) => {
+        if (!cancelled) {
+          setValue(v);
+        }
+      })
+      .catch((e) => {
+        console.error('useAsyncMemo failed', e);
+      });
     return () => {
       cancelled = true;
     };
