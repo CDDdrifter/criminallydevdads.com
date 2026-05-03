@@ -1,5 +1,7 @@
 # Simple admin login (edit the website)
 
+**Shortest checklist:** **`docs/ADMIN_LOGIN_ONE_PAGE.md`**
+
 **What you want:** open **`/#/admin`**, sign in with **your team email**, change games/pages/settings.
 
 **Why it feels hard:** the hub does not run its own password server. **Supabase** (free tier is fine) handles “is this really your email?” via a **magic link**. You connect the hub to Supabase **once**; after that, logging in is just **email → click link**.

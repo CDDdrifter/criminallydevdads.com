@@ -384,11 +384,17 @@ export function AdminPage() {
       <div className="admin-shell">
         <div className="admin-panel">
           <h1 className="header-title" style={{ fontSize: '1.8rem' }}>
-            Team login
+            Log in to edit the site
           </h1>
+          <p className="admin-muted" style={{ marginBottom: 16, lineHeight: 1.5 }}>
+            <strong>Easiest:</strong> use <strong>Send login link</strong> below with an email that ends in{' '}
+            <code>@criminallydevdads.com</code> (already allowed), or a personal address you added in Supabase SQL.
+            You need <strong>Email</strong> turned on under Authentication → Providers. Full checklist:{' '}
+            <code>docs/ADMIN_LOGIN_ONE_PAGE.md</code>.
+          </p>
           <p className="admin-muted" style={{ marginBottom: 12, fontSize: '0.85rem' }}>
-            Bookmark <strong>/#/admin</strong> — the public header hides “Team login” unless you set{' '}
-            <code>VITE_SHOW_ADMIN_NAV=true</code> (see <code>docs/SITE_MANUAL.md</code> §11).
+            Bookmark <strong>/#/admin</strong>. Optional: show “Team login” in the header with{' '}
+            <code>VITE_SHOW_ADMIN_NAV=true</code> (<code>docs/SITE_MANUAL.md</code>).
           </p>
           {(!urlCheck.ok || !keyCheck.ok) && (
             <div className="admin-panel danger-zone" style={{ marginBottom: 16 }}>
@@ -434,15 +440,36 @@ export function AdminPage() {
               </p>
             </div>
           ) : null}
-          <p className="admin-muted" style={{ margin: '16px 0' }}>
-            <strong>Simplest path:</strong> get <strong>Send login link</strong> working first (use an
-            allowlisted email — <code>@criminallydevdads.com</code> is already allowed if you ran{' '}
-            <code>schema.sql</code>). Step list: <code>docs/SIMPLE_ADMIN_LOGIN.md</code>. Google is optional
-            after email works.
-          </p>
-          <p className="admin-muted" style={{ margin: '16px 0' }}>
-            Allowlist: Supabase tables <code>site_admin_domains</code> and <code>site_admin_emails</code>{' '}
-            (see simple doc). Enable <strong>Email</strong> under Authentication → Providers.
+          <div className="admin-field" style={{ marginTop: 8 }}>
+            <label htmlFor="otp_email">Your team email (magic link — try this first)</label>
+            <input
+              id="otp_email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@criminallydevdads.com"
+              value={emailForOtp}
+              onChange={(e) => setEmailForOtp(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            disabled={busy || !emailForOtp.trim()}
+            onClick={() => {
+              setBusy(true);
+              setOtpMessage(null);
+              auth
+                .signInWithEmail(emailForOtp)
+                .then(() => setOtpMessage('Check your inbox — click the link, then open /#/admin again if needed.'))
+                .catch((e) => setOtpMessage(e instanceof Error ? e.message : 'Could not send link'))
+                .finally(() => setBusy(false));
+            }}
+          >
+            Send login link
+          </button>
+          {otpMessage ? <p className="admin-muted" style={{ marginTop: 12 }}>{otpMessage}</p> : null}
+          <p className="admin-muted" style={{ marginTop: 20, marginBottom: 8, fontSize: '0.85rem' }}>
+            Optional: Google (extra setup — OAuth + redirect in Supabase). See{' '}
+            <code>docs/SUPABASE_FIRST_TIME_SETUP.md</code>.
           </p>
           <button
             type="button"
@@ -464,33 +491,6 @@ export function AdminPage() {
               {googleError}
             </p>
           ) : null}
-          <div className="admin-field" style={{ marginTop: 20 }}>
-            <label htmlFor="otp_email">Or sign in with email (magic link)</label>
-            <input
-              id="otp_email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@criminallydevdads.com"
-              value={emailForOtp}
-              onChange={(e) => setEmailForOtp(e.target.value)}
-            />
-          </div>
-          <button
-            type="button"
-            disabled={busy || !emailForOtp.trim()}
-            onClick={() => {
-              setBusy(true);
-              setOtpMessage(null);
-              auth
-                .signInWithEmail(emailForOtp)
-                .then(() => setOtpMessage('Check your inbox for the login link.'))
-                .catch((e) => setOtpMessage(e instanceof Error ? e.message : 'Could not send link'))
-                .finally(() => setBusy(false));
-            }}
-          >
-            Send login link
-          </button>
-          {otpMessage ? <p className="admin-muted" style={{ marginTop: 12 }}>{otpMessage}</p> : null}
           <p style={{ marginTop: 20 }}>
             <Link to="/">← Back to site</Link>
           </p>
@@ -500,6 +500,34 @@ export function AdminPage() {
   }
 
   if (!auth.isAdmin) {
+    if (auth.adminCheckError) {
+      return (
+        <div className="admin-shell">
+          <div className="admin-panel danger-zone">
+            <h1 className="header-title" style={{ fontSize: '1.8rem' }}>
+              Can’t verify editor access
+            </h1>
+            <p className="admin-muted" style={{ marginTop: 12 }}>
+              Signed in as <strong>{auth.user.email}</strong>, but the database check failed. This is usually{' '}
+              <strong>not</strong> your password — it means Supabase couldn’t run <code>is_site_admin</code>.
+            </p>
+            <p className="admin-muted" style={{ marginTop: 12 }}>
+              <strong>Fix:</strong> Supabase → <strong>SQL Editor</strong> → run the full{' '}
+              <code>supabase/schema.sql</code> from this repo (one paste, Run). Then sign out and sign in again.
+            </p>
+            <p className="admin-muted" style={{ marginTop: 12, fontSize: '0.85rem' }}>
+              Technical detail: {auth.adminCheckError}
+            </p>
+            <button type="button" style={{ marginTop: 16 }} onClick={() => auth.signOut()}>
+              Sign out
+            </button>
+            <p style={{ marginTop: 20 }}>
+              <Link to="/">← Back to site</Link>
+            </p>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="admin-shell">
         <div className="admin-panel danger-zone">
@@ -507,9 +535,12 @@ export function AdminPage() {
             Access denied
           </h1>
           <p className="admin-muted" style={{ marginTop: 12 }}>
-            Signed in as <strong>{auth.user.email}</strong>. This address is not authorized to edit the site.
-            Ask an owner to add your domain in <code>site_admin_domains</code> or your exact email in{' '}
-            <code>site_admin_emails</code> (Supabase SQL).
+            Signed in as <strong>{auth.user.email}</strong>. This address is not on the editor allow list.
+          </p>
+          <p className="admin-muted" style={{ marginTop: 12 }}>
+            In Supabase → <strong>SQL Editor</strong>, run:{' '}
+            <code>insert into site_admin_emails (email) values (&apos;your@email.com&apos;) on conflict do nothing;</code>
+            — or add your domain to <code>site_admin_domains</code>. See <code>docs/ADMIN_LOGIN_ONE_PAGE.md</code>.
           </p>
           <button type="button" style={{ marginTop: 16 }} onClick={() => auth.signOut()}>
             Sign out

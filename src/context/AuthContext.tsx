@@ -8,6 +8,8 @@ type AuthState = {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  /** Set when signed in but is_site_admin RPC failed (schema/network) — not the same as allowlist denial */
+  adminCheckError: string | null;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -19,9 +21,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [serverIsAdmin, setServerIsAdmin] = useState(false);
+  const [adminCheckError, setAdminCheckError] = useState<string | null>(null);
 
   const applySession = useCallback(async (next: Session | null) => {
     setSession(next);
+    setAdminCheckError(null);
     if (!supabase) {
       setServerIsAdmin(false);
       return;
@@ -34,6 +38,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       console.error('is_site_admin RPC failed', error);
       setServerIsAdmin(false);
+      setAdminCheckError(
+        error.message ||
+          'Could not verify editor access. Run supabase/schema.sql in the SQL Editor, then try again.',
+      );
       return;
     }
     setServerIsAdmin(data === true);
@@ -131,11 +139,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       loading,
       isAdmin,
+      adminCheckError,
       signInWithGoogle,
       signInWithEmail,
       signOut,
     }),
-    [session, user, loading, isAdmin, signInWithGoogle, signInWithEmail, signOut],
+    [session, user, loading, isAdmin, adminCheckError, signInWithGoogle, signInWithEmail, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

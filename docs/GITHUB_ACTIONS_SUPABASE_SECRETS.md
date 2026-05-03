@@ -36,6 +36,9 @@ Still on **Actions** → **Secrets** tab:
 
 Save each.
 
+**Optional 4th secret** (only if magic links open the wrong site or auth loops):  
+`VITE_AUTH_REDIRECT_URL` = your real public root, e.g. `https://criminallydevdads.com/` (same string in Supabase → Redirect URLs). Redeploy after adding.
+
 Where to copy from: **`docs/SUPABASE_COPY_THESE_TWO_VALUES.md`**.
 
 ---
