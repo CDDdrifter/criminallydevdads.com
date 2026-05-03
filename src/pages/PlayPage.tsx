@@ -32,8 +32,11 @@ export function PlayPage() {
       <SiteChrome navExtra={<Link to={`/game/${game.slug}`}>← Details</Link>}>
         <div className="admin-panel danger-zone">
           <p className="admin-muted">
-            This build is not reachable at <code>{game.launchPath}</code>. Upload the web export to{' '}
-            <code>games/{game.local_folder}/</code> or set an external URL in the admin.
+            This build is not reachable at <code>{game.launchPath}</code>. Fix it by: (1) adding{' '}
+            <code>&quot;url&quot;: &quot;https://…&quot;</code> in <code>games.json</code> for big games hosted on itch /
+            Netlify / etc., (2) putting <code>index.html</code> under <code>games/{game.local_folder}/</code> and
+            pushing (use Git CLI if files are over 25MB — see <code>docs/SITE_MANUAL.md</code>), or (3) using Admin +
+            Supabase if you use that setup.
           </p>
         </div>
       </SiteChrome>

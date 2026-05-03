@@ -1,19 +1,53 @@
+/**
+ * LEGACY GAME CATALOG (file-based, no Supabase required)
+ * =======================================================
+ *
+ * The hub builds its game list from:
+ *
+ * 1. `games.json` (repo root) — title, description, thumbnail, optional play URL (`url` or `external_url`).
+ * 2. Folders under `games/<slug>/` — especially `index.html` + Godot/Web export files, discovered via the
+ *    GitHub Contents API (so the live site knows which folders exist without bundling every file at build time).
+ *
+ * WHY `url` / `external_url` MATTERS
+ * ----------------------------------
+ * GitHub’s website caps uploads (~25 MB) and discourages huge repos. Godot HTML5 exports (WASM + pck) are often
+ * much larger. You do NOT have to commit those binaries: host the build on itch.io, Netlify Drop, Cloudflare Pages,
+ * or any static host, then paste the **https** link to the playable page in `games.json`. No giant Git upload.
+ *
+ * See: docs/SITE_MANUAL.md
+ */
+
 import type { GameView } from '../types';
 import { resolvePublicAssetUrl } from './paths';
 
 const REPO_OWNER = import.meta.env.VITE_GITHUB_REPO_OWNER ?? 'CDDdrifter';
 const REPO_NAME = import.meta.env.VITE_GITHUB_REPO_NAME ?? 'criminallydevdads.com';
 
+/** One row from root `games.json` (all fields optional except what deriveId() needs). */
 type LegacyMeta = {
   id?: string;
+  /** Alias for `id` — same string used in URLs: /#/play/my-game-slug */
+  slug?: string;
   title?: string;
   type?: string;
   description?: string;
   details?: string;
   thumbnail?: string;
+  /** Legacy zip name; used only to guess slug when `id` is missing: "my-game.zip" → "my-game" */
   filename?: string;
+  /**
+   * Full https URL where the game runs (itch.io HTML5, Netlify, your CDN…). If set, the hub does not need
+   * `games/<slug>/` in the repo for that title to be playable.
+   */
   url?: string;
+  /** Same as `url` — use whichever name you prefer in JSON. */
+  external_url?: string;
 };
+
+/** Prefer `url`, fall back to `external_url`. */
+function playUrl(meta: LegacyMeta): string {
+  return (meta.url ?? meta.external_url ?? '').trim();
+}
 
 function slugFromFilename(filename = ''): string {
   return filename.replace(/\.zip$/i, '');
@@ -25,6 +59,37 @@ function titleFromId(id = ''): string {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+/** URL-safe slug from title when user added `url` + `title` but forgot `id`. */
+function slugFromTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Stable slug for routing: prefer explicit `id` / `slug`, then filename stem, then title (if `url` exists).
+ */
+function deriveId(meta: LegacyMeta): string {
+  const explicit = (meta.id ?? meta.slug ?? '').trim();
+  if (explicit) {
+    return explicit;
+  }
+  const fromFile = slugFromFilename(meta.filename ?? '');
+  if (fromFile) {
+    return fromFile;
+  }
+  const u = playUrl(meta);
+  const t = (meta.title ?? '').trim();
+  if (u && t) {
+    const s = slugFromTitle(t);
+    if (s) {
+      return s;
+    }
+  }
+  return '';
 }
 
 export async function pathExists(path: string): Promise<boolean> {
@@ -42,7 +107,8 @@ async function resolveThumbnailFromIndexHtml(
   folderId: string,
 ): Promise<string> {
   try {
-    const response = await fetch(launchPath, { cache: 'no-store' });
+    const fetchUrl = /^https?:\/\//i.test(launchPath) ? launchPath : resolvePublicAssetUrl(launchPath);
+    const response = await fetch(fetchUrl, { cache: 'no-store' });
     if (!response.ok) {
       return '';
     }
@@ -80,25 +146,39 @@ async function loadOptionalMetadata(): Promise<LegacyMeta[]> {
   }
 }
 
+/**
+ * Lists subfolders of `games/` on the default branch via GitHub’s API.
+ * If this fails (rate limit, private repo, wrong owner/name), we return [] and rely on `games.json` + any
+ * folders you still sync at build time under `games/` locally — the live list may be incomplete until API works.
+ */
 async function discoverGameFolders(): Promise<string[]> {
-  const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/games`;
-  const response = await fetch(apiUrl, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`Could not load game folders (${response.status})`);
-  }
-  const items: unknown = await response.json();
-  if (!Array.isArray(items)) {
+  try {
+    const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/games`;
+    const response = await fetch(apiUrl, { cache: 'no-store' });
+    if (!response.ok) {
+      console.warn(
+        `[hub] Could not list repo games/ via GitHub API (${response.status}). ` +
+          `Catalog will use games.json and local games/ copy only. Check VITE_GITHUB_REPO_OWNER / VITE_GITHUB_REPO_NAME.`,
+      );
+      return [];
+    }
+    const items: unknown = await response.json();
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    return items
+      .filter(
+        (item): item is { type: string; name: string } =>
+          Boolean(item && typeof item === 'object' && 'type' in item && 'name' in item) &&
+          (item as { type: string }).type === 'dir' &&
+          typeof (item as { name: string }).name === 'string' &&
+          !(item as { name: string }).name.startsWith('.'),
+      )
+      .map((item) => item.name);
+  } catch (e) {
+    console.warn('[hub] GitHub games/ listing failed:', e);
     return [];
   }
-  return items
-    .filter(
-      (item): item is { type: string; name: string } =>
-        Boolean(item && typeof item === 'object' && 'type' in item && 'name' in item) &&
-        (item as { type: string }).type === 'dir' &&
-        typeof (item as { name: string }).name === 'string' &&
-        !(item as { name: string }).name.startsWith('.'),
-    )
-    .map((item) => item.name);
 }
 
 async function buildGameFromFolder(
@@ -106,8 +186,9 @@ async function buildGameFromFolder(
   metadataById: Record<string, LegacyMeta>,
 ): Promise<GameView> {
   const metadata = metadataById[folderId] ?? {};
-  const launchPath = `games/${folderId}/index.html`;
-  const isPlayable = await pathExists(launchPath);
+  const external = playUrl(metadata);
+  const localIndex = `games/${folderId}/index.html`;
+  const isLocalPlayable = await pathExists(localIndex);
   const thumbnailCandidates = [
     `games/${folderId}/index.png`,
     `games/${folderId}/index.icon.png`,
@@ -121,8 +202,8 @@ async function buildGameFromFolder(
       break;
     }
   }
-  if (!resolvedThumbnail && isPlayable) {
-    resolvedThumbnail = await resolveThumbnailFromIndexHtml(launchPath, folderId);
+  if (!resolvedThumbnail && isLocalPlayable) {
+    resolvedThumbnail = await resolveThumbnailFromIndexHtml(localIndex, folderId);
   }
   const id = metadata.id ?? folderId;
   return {
@@ -135,22 +216,24 @@ async function buildGameFromFolder(
       metadata.details ??
       'This game was auto-added because a web build was detected in the games directory.',
     thumbnail: resolvedThumbnail || metadata.thumbnail || '',
-    external_url: metadata.url ?? '',
+    external_url: external,
     local_folder: folderId,
-    launchPath: metadata.url || launchPath,
-    isPlayable: Boolean(metadata.url) || isPlayable,
+    launchPath: external || localIndex,
+    isPlayable: Boolean(external) || isLocalPlayable,
   };
 }
 
 export async function loadLegacyGames(): Promise<GameView[]> {
   const metadataList = await loadOptionalMetadata();
-  const metadataById = metadataList.reduce<Record<string, LegacyMeta>>((acc, game) => {
-    const id = game.id ?? slugFromFilename(game.filename ?? '');
+  const metadataById = metadataList.reduce<Record<string, LegacyMeta>>((acc, raw) => {
+    const merged: LegacyMeta = { ...raw, url: playUrl(raw) || undefined };
+    const id = deriveId(merged);
     if (id) {
-      acc[id] = game;
+      acc[id] = { ...merged, id };
     }
     return acc;
   }, {});
+
   const folderIds = await discoverGameFolders();
   const folderSet = new Set(folderIds);
 

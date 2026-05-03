@@ -1,5 +1,7 @@
 # How to actually run and change this website
 
+**Full step-by-step (games, pages, nav, GitHub size limits):** **[`SITE_MANUAL.md`](SITE_MANUAL.md)**
+
 There are **two valid ways** to work. You do **not** need Supabase to ship games or edit the site. Supabase is **optional** for a browser-based admin later.
 
 ---

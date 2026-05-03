@@ -1,3 +1,13 @@
+/**
+ * App routes (hash router: paths are really /#/play/..., /#/admin, …).
+ *
+ * To add a NEW top-level PAGE:
+ * 1. Create `src/pages/MyPage.tsx` (copy an existing page as a template).
+ * 2. Import it here and add `<Route path="/my-path" element={<MyPage />} />`.
+ * 3. Optional: add a nav link in `src/components/SiteChrome.tsx` (`coreNav`) or use a CMS nav item if Supabase on.
+ *
+ * Dynamic CMS-backed pages use `/p/:slug` → StaticPage (content from DB when configured).
+ */
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { FxBackdrop } from './components/FxBackdrop';
 import { AdminPage } from './pages/AdminPage';

@@ -6,6 +6,8 @@ The main site is a **Vite + React** app with the same neon / terminal look.
 
 ### How to change things (read this first)
 
+**→ [`docs/SITE_MANUAL.md`](docs/SITE_MANUAL.md)** — games (including **large builds** without uploading to GitHub’s website), pages, nav, troubleshooting.
+
 **→ [`docs/WEBSITE_WORKFLOW.md`](docs/WEBSITE_WORKFLOW.md)** — two paths:
 
 - **Path A (default, no setup):** Edit **`games.json`**, put builds in **`games/<slug>/`**, change layout in **`src/`**, push. **Supabase is not required.** Omit `VITE_SUPABASE_*` GitHub secrets for a purely file-based deploy.

@@ -1,3 +1,7 @@
+/**
+ * Loads the public game list (CMS and/or legacy file catalog).
+ * How to add games without huge Git uploads: docs/SITE_MANUAL.md
+ */
 import { useEffect, useState } from 'react';
 import type { GameView } from '../types';
 import { fetchPublishedGames } from '../lib/cmsData';
