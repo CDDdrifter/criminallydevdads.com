@@ -358,12 +358,13 @@ export function AdminPage() {
             <ul className="admin-muted" style={{ marginTop: 10, marginBottom: 0, paddingLeft: 20, lineHeight: 1.6 }}>
               <li>
                 <code>VITE_SUPABASE_URL</code> length: <strong>{diagUrl.length}</strong> — if 0, Actions did not
-                inject it (wrong repo, **Variables** instead of **Secrets**, typo in name <code>VITE_SUPABASE_URL</code>
-                , or deploy never re-ran).
+                inject it (wrong repo, <strong>Variables</strong> instead of <strong>Secrets</strong>, typo in name{' '}
+                <code>VITE_SUPABASE_URL</code>, or deploy never re-ran).
               </li>
               <li>
                 <code>VITE_SUPABASE_ANON_KEY</code> length: <strong>{diagKey.length}</strong> — if 0, same as above.
-                If &gt; 0 but still here, key may be truncated or wrong type (must be long **anon public** JWT).
+                If &gt; 0 but still here, key may be truncated or wrong type (must be the long <strong>anon public</strong>{' '}
+                JWT, usually 200+ characters).
               </li>
               {!diagUrlCheck.ok ? (
                 <li style={{ color: 'var(--accent)' }}>URL check: {diagUrlCheck.message}</li>
