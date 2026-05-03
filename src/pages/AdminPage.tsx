@@ -333,6 +333,10 @@ export function AdminPage() {
   };
 
   if (!supabaseConfigured) {
+    const diagUrl = getBuildTimeSupabaseUrl();
+    const diagKey = getBuildTimeAnonKey();
+    const diagUrlCheck = supabaseUrlLooksValid(diagUrl);
+    const diagKeyCheck = anonKeyLooksValid(diagKey);
     return (
       <div className="admin-shell">
         <div className="admin-panel">
@@ -340,23 +344,49 @@ export function AdminPage() {
             Admin
           </h1>
           <p className="admin-muted" style={{ marginTop: 12 }}>
-            This build doesn’t include Supabase keys, so admin can’t run yet. You already ran SQL in Supabase —
-            good. Now the keys must be in the **build**.
+            This exact JavaScript bundle was built <strong>without</strong> usable Supabase env vars, so admin is
+            off. Your secrets can be correct in GitHub and you can still see this until a <strong>new</strong> deploy
+            finishes that picked them up — or the values failed validation (wrong paste).
+          </p>
+          <div
+            className="admin-panel"
+            style={{ marginTop: 16, borderColor: 'rgba(255, 180, 100, 0.45)', background: 'rgba(255, 180, 100, 0.06)' }}
+          >
+            <p className="admin-muted" style={{ margin: 0, fontWeight: 700 }}>
+              What this build actually contains (no secret text shown)
+            </p>
+            <ul className="admin-muted" style={{ marginTop: 10, marginBottom: 0, paddingLeft: 20, lineHeight: 1.6 }}>
+              <li>
+                <code>VITE_SUPABASE_URL</code> length: <strong>{diagUrl.length}</strong> — if 0, Actions did not
+                inject it (wrong repo, **Variables** instead of **Secrets**, typo in name <code>VITE_SUPABASE_URL</code>
+                , or deploy never re-ran).
+              </li>
+              <li>
+                <code>VITE_SUPABASE_ANON_KEY</code> length: <strong>{diagKey.length}</strong> — if 0, same as above.
+                If &gt; 0 but still here, key may be truncated or wrong type (must be long **anon public** JWT).
+              </li>
+              {!diagUrlCheck.ok ? (
+                <li style={{ color: 'var(--accent)' }}>URL check: {diagUrlCheck.message}</li>
+              ) : null}
+              {!diagKeyCheck.ok ? (
+                <li style={{ color: 'var(--accent)' }}>Key check: {diagKeyCheck.message}</li>
+              ) : null}
+            </ul>
+            <p className="admin-muted" style={{ marginTop: 12, marginBottom: 0, fontSize: '0.85rem' }}>
+              Repo → <strong>Actions</strong> → latest <strong>Deploy to GitHub Pages</strong> → job <strong>deploy</strong>{' '}
+              → step <strong>Check Supabase secrets</strong>: warnings mean empty at build time. Then confirm{' '}
+              <strong>Settings → Pages</strong> shows a recent deployment from Actions (not an old branch upload).
+            </p>
+          </div>
+          <p className="admin-muted" style={{ marginTop: 16 }}>
+            <strong>Fix:</strong> Settings → <strong>Secrets and variables</strong> → <strong>Actions</strong> → tab{' '}
+            <strong>Secrets</strong> → names exactly <code>VITE_SUPABASE_URL</code> and{' '}
+            <code>VITE_SUPABASE_ANON_KEY</code> → <strong>Actions</strong> → re-run deploy. See{' '}
+            <code>docs/GITHUB_ACTIONS_SUPABASE_SECRETS.md</code> and <code>docs/SUPABASE_COPY_THESE_TWO_VALUES.md</code>.
           </p>
           <p className="admin-muted" style={{ marginTop: 12 }}>
-            <strong>Live website (GitHub Pages):</strong> Repo → <strong>Settings</strong> →{' '}
-            <strong>Secrets and variables</strong> → <strong>Actions</strong> → add{' '}
-            <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> (see{' '}
-            <code>docs/SUPABASE_COPY_THESE_TWO_VALUES.md</code> and{' '}
-            <code>docs/GITHUB_ACTIONS_SUPABASE_SECRETS.md</code>), then <strong>Actions</strong> → re-run deploy.
-            There is <strong>no</strong> <code>.env.local</code> on GitHub — that file is only on your computer.
-          </p>
-          <p className="admin-muted" style={{ marginTop: 12 }}>
-            <strong>Testing on your PC only:</strong> In the project folder (same level as <code>package.json</code>
-            ), create a new file named <code>.env.local</code> (exact name). Put two lines:{' '}
-            <code>VITE_SUPABASE_URL=…</code> and <code>VITE_SUPABASE_ANON_KEY=…</code> — copy from Supabase →
-            Project Settings → API. Then run <code>npm run dev</code> and open <code>http://localhost:5173/#/admin</code>
-            . Copy <code>.env.example</code> as a starter if you want.
+            <strong>Local only:</strong> <code>.env.local</code> next to <code>package.json</code>, same two variable
+            names, <code>npm run dev</code>, <code>http://localhost:5173/#/admin</code>.
           </p>
           <p style={{ marginTop: 16 }}>
             <Link to="/">← Back to site</Link>
