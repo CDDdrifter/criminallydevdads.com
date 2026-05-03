@@ -340,8 +340,23 @@ export function AdminPage() {
             Admin
           </h1>
           <p className="admin-muted" style={{ marginTop: 12 }}>
-            Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to{' '}
-            <code>.env.local</code>, run the SQL in <code>supabase/schema.sql</code>, then rebuild.
+            This build doesn’t include Supabase keys, so admin can’t run yet. You already ran SQL in Supabase —
+            good. Now the keys must be in the **build**.
+          </p>
+          <p className="admin-muted" style={{ marginTop: 12 }}>
+            <strong>Live website (GitHub Pages):</strong> Repo → <strong>Settings</strong> →{' '}
+            <strong>Secrets and variables</strong> → <strong>Actions</strong> → add{' '}
+            <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> (see{' '}
+            <code>docs/SUPABASE_COPY_THESE_TWO_VALUES.md</code> and{' '}
+            <code>docs/GITHUB_ACTIONS_SUPABASE_SECRETS.md</code>), then <strong>Actions</strong> → re-run deploy.
+            There is <strong>no</strong> <code>.env.local</code> on GitHub — that file is only on your computer.
+          </p>
+          <p className="admin-muted" style={{ marginTop: 12 }}>
+            <strong>Testing on your PC only:</strong> In the project folder (same level as <code>package.json</code>
+            ), create a new file named <code>.env.local</code> (exact name). Put two lines:{' '}
+            <code>VITE_SUPABASE_URL=…</code> and <code>VITE_SUPABASE_ANON_KEY=…</code> — copy from Supabase →
+            Project Settings → API. Then run <code>npm run dev</code> and open <code>http://localhost:5173/#/admin</code>
+            . Copy <code>.env.example</code> as a starter if you want.
           </p>
           <p style={{ marginTop: 16 }}>
             <Link to="/">← Back to site</Link>

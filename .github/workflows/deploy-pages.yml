@@ -36,6 +36,25 @@ jobs:
           node-version: '20'
           cache: npm
 
+      # Does not print secret values — only warns if Actions *Secrets* (not Variables) are missing/empty.
+      - name: Check Supabase secrets visible to this workflow
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          ok=1
+          if [ -z "${VITE_SUPABASE_URL:-}" ]; then
+            echo "::warning::VITE_SUPABASE_URL is empty. Add it under Settings → Secrets and variables → Actions → Secrets (not Variables). Name must match exactly."
+            ok=0
+          fi
+          if [ -z "${VITE_SUPABASE_ANON_KEY:-}" ]; then
+            echo "::warning::VITE_SUPABASE_ANON_KEY is empty. Same place: Repository secrets."
+            ok=0
+          fi
+          if [ "$ok" -eq 1 ]; then
+            echo "Supabase env vars are non-empty for this build (values not shown)."
+          fi
+
       - name: Install and build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
