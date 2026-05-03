@@ -6,7 +6,7 @@ The main site is a **Vite + React** app with the same neon / terminal look.
 
 ### How to change things (read this first)
 
-**→ [`docs/SITE_MANUAL.md`](docs/SITE_MANUAL.md)** — games (including **large builds** without uploading to GitHub’s website), pages, nav, troubleshooting.
+**→ [`docs/SITE_MANUAL.md`](docs/SITE_MANUAL.md)** — games, **§12 updating a build** (e.g. Fort Fury: overwrite `games/fortfury/` → `git add` / `commit` / `push`), pages, nav, troubleshooting, **§13** (hub login vs in-game saves).
 
 **→ [`docs/WEBSITE_WORKFLOW.md`](docs/WEBSITE_WORKFLOW.md)** — two paths:
 

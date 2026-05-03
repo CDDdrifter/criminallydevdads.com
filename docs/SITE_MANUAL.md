@@ -2,6 +2,11 @@
 
 This hub is a **React (Vite)** app. You can ship it **without Supabase**. Supabase only adds a browser admin (`/#/admin`); it is optional.
 
+### If this feels like too much
+
+- **Updating a game you already added:** jump to **[§12 — Update an existing game](#12-update-an-existing-game-fort-fury-etc)**. You do **not** need anyone else to run Git for you — it’s “replace files → three commands.”
+- **Google login + cloud saves in every game:** that’s **not** automatic. See **[§13](#13-google-sign-in-on-the-hub-vs-save-progress-inside-a-game)** so expectations match how browsers and Godot work.
+
 ---
 
 ## Table of contents
@@ -17,6 +22,8 @@ This hub is a **React (Vite)** app. You can ship it **without Supabase**. Supaba
 9. [Troubleshooting](#9-troubleshooting)
 10. [Fullscreen while playing](#10-fullscreen-while-playing)
 11. [Admin / “Team login” in the header](#11-admin--team-login-in-the-header)
+12. [Update an existing game (Fort Fury, etc.)](#12-update-an-existing-game-fort-fury-etc)
+13. [Google sign-in on the hub vs. save progress inside a game](#13-google-sign-in-on-the-hub-vs-save-progress-inside-a-game)
 
 ---
 
@@ -216,3 +223,57 @@ Supabase setup for signing in is still described in **`docs/SUPABASE_FIRST_TIME_
 ```
 
 Replace the `url` with the exact page that runs your HTML5 build in the browser.
+
+---
+
+## 12. Update an existing game (Fort Fury, etc.)
+
+You have **three** sane options. Pick the one that matches how that game is hosted today.
+
+### A) Game files live in this repo (`games/<slug>/` — e.g. Fort Fury)
+
+This is what you have for **Fort Fury** today: the web export sits under **`games/fortfury/`** (`index.html`, `.wasm`, `.pck`, …).
+
+1. In Godot, export **Web** again.
+2. On your PC, **overwrite** the old files inside **`games/fortfury/`** with the new export (same filenames are fine).
+3. Open a terminal **in the repo folder** and run (you can copy-paste):
+
+```bash
+git add games/fortfury
+git commit -m "Update Fort Fury web build"
+git push
+```
+
+4. Wait for GitHub Actions to finish; refresh the live site.
+
+You do **not** need another person or an AI to do that — those three Git lines are the whole routine. If `games.json` didn’t change, you don’t need to commit it.
+
+### B) Game is hosted elsewhere (`url` / `external_url` in `games.json`)
+
+1. Upload the new build to **itch.io**, **Netlify**, or wherever you already use.
+2. If the **play URL stayed the same**, you’re done — no repo change.
+3. If the URL **changed**, edit **`games.json`** for that `id`, update **`url`**, commit and push.
+
+### C) You use Supabase Admin + ZIP (optional)
+
+If **`/#/admin`** and ZIP upload work for you, upload a new ZIP there for the same slug. That path is optional and separate from the folder-in-Git workflow.
+
+---
+
+## 13. Google sign-in on the hub vs. save progress inside a game
+
+**What the hub’s Google login is for (today):**  
+It’s meant for **people who edit the website** (admin), not for every player. It does **not** automatically log someone into **Fort Fury** or any other Godot export.
+
+**Why:**  
+The hub is a **wrapper** (React). Each game in the iframe is its **own** origin/app. Your Supabase session on `yoursite.github.io` does not magically appear inside the Godot game unless **you write game code** to talk to an API and pass tokens (that’s a full feature per game).
+
+**Realistic options for player progress:**
+
+| Approach | Difficulty | Notes |
+|----------|------------|--------|
+| **Save in the browser only** (Godot local storage / config) | Easiest | Progress stays on that device/browser. |
+| **Host on itch.io** | Easy | itch handles accounts and some cloud patterns for HTML5; still game-specific. |
+| **Custom backend** (Supabase, Firebase, your API) **inside the Godot project** | Hard | You add HTTP requests, auth, and data model **in each game** that needs it. |
+
+So: **hub Google sign-in ≠ automatic cross-game cloud saves.** If you want that later, plan it as **game development + backend**, not as a checkbox on the hub alone.
