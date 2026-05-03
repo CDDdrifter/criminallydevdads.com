@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) {
       throw new Error('Supabase is not configured');
     }
-    const redirectTo = `${window.location.origin}${window.location.pathname}#/admin`;
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'This email is not on the editor allow list. In Supabase → SQL, add the domain to site_admin_domains or your exact address to site_admin_emails.',
       );
     }
-    const redirectTo = `${window.location.origin}${window.location.pathname}#/admin`;
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
     const { error } = await supabase.auth.signInWithOtp({
       email: trimmed,
       options: { emailRedirectTo: redirectTo },
