@@ -1,6 +1,8 @@
 # Supabase setup (first time, click by click)
 
-You only do this **once per website**. I cannot run these steps for you (they use **your** Supabase and GitHub logins), but if you follow the order below, the site’s **Team login** / admin will work.
+**You can skip this entire document** if you only want to edit the site in Git: use **`docs/WEBSITE_WORKFLOW.md` Path A** (`games.json`, `games/<slug>/`, `src/`). Supabase is optional.
+
+You only do this **once per website** if you want **`/#/admin`**. I cannot run these steps for you (they use **your** Supabase and GitHub logins), but if you follow the order below, **Team login** / admin will work.
 
 ---
 

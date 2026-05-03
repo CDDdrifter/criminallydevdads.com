@@ -1,26 +1,21 @@
 # CRIMINALLYDEV DADS - Game Distribution Hub
 
-## Site v2 (React hub + Supabase CMS)
+## Site v2 (React hub)
 
 The main site is a **Vite + React** app with the same neon / terminal look.
 
-### Website-only editing (recommended — no repo edits per game)
+### How to change things (read this first)
 
-Once this is done **one time**, you add games, pages, and visuals only at **`/#/admin`** (ZIP upload like itch, or external play URL).
+**→ [`docs/WEBSITE_WORKFLOW.md`](docs/WEBSITE_WORKFLOW.md)** — two paths:
 
-**New to Supabase?** Follow the click-by-click guide: **[`docs/SUPABASE_FIRST_TIME_SETUP.md`](docs/SUPABASE_FIRST_TIME_SETUP.md)** (no one else can log in to your accounts to do this for you).
+- **Path A (default, no setup):** Edit **`games.json`**, put builds in **`games/<slug>/`**, change layout in **`src/`**, push. **Supabase is not required.** Omit `VITE_SUPABASE_*` GitHub secrets for a purely file-based deploy.
+- **Path B (optional):** Browser admin at **`/#/admin`** after Supabase + secrets — see **[`docs/SUPABASE_FIRST_TIME_SETUP.md`](docs/SUPABASE_FIRST_TIME_SETUP.md)**.
 
-1. **Supabase** — Create a project → SQL Editor → paste and run **`supabase/schema.sql`** once (includes tables, RLS, Storage bucket `game-builds`, page `sections`, and admin RPCs). If the project already had an older schema, also run **`supabase/migrations/003_editor_login_rpc.sql`** so the site can verify admins.
-2. **Who can log in** — In Supabase → **SQL Editor**, allowlist editors (pick one or both):
-   - **Whole domain:** `insert into site_admin_domains (domain) values ('yourdomain.com') on conflict do nothing;`
-   - **One address:** `insert into site_admin_emails (email) values ('you@gmail.com') on conflict do nothing;`  
-   The starter schema already inserts `@criminallydevdads.com` via `site_admin_domains`.
-3. **Auth** — Authentication → Providers: enable **Google** and **Email**. Under **URL configuration**, add your live site URL and `http://localhost:5173` (and `https://<user>.github.io/<repo>/` if you use GitHub Pages). For Google OAuth, add redirect `https://<project-ref>.supabase.co/auth/v1/callback`.
-4. **GitHub Secrets** — Repo → **Settings → Secrets and variables → Actions** → add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-5. **GitHub Pages** — **Settings → Pages** → **Build and deployment → Source: GitHub Actions** (not “Deploy from branch”).  
-   The workflow **[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)** builds on every push to **`main`** or **`fixing.fortfury`** and deploys **`dist/`** with those secrets baked in — you never commit `.env` or reconfigure per game.
+**Catalog:** With **`VITE_GAME_CATALOG=auto`** (default), the hub uses the **database only if `site_games` has published rows**; otherwise it uses **`games.json`**. So a half-finished Supabase setup no longer hides your games. Use **`VITE_GAME_CATALOG=cms`** only when you want the DB exclusively.
 
-**Catalog behavior:** If `VITE_SUPABASE_*` is present at build time, the hub loads games **only from the database** (what you edit in Admin). It does **not** fall back to `games/` folders or `games.json`, so releases are not tied to Git file changes.
+### Deploy
+
+**Settings → Pages → Source: GitHub Actions.** Workflow: **[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)** on push to **`main`** or **`fixing.fortfury`**.
 
 ### Local dev
 
@@ -33,10 +28,10 @@ If the site is built **without** Supabase env vars, the hub falls back to **GitH
 
 ### Features
 
-- **Routing**: hash routes (e.g. `yoursite.com/#/admin`, `/#/play/my-game`).
-- **Admin**: Top nav **Team login** → `/#/admin`. **Google** or **email magic link**; allowlist is **`site_admin_domains`** + **`site_admin_emails`** in Supabase only.
-- **Pages & panels**: Admin → Pages — headings, text, panels, images; URL `/#/p/<slug>`.
-- **Games**: Admin → Games — **ZIP** → Supabase Storage, or **external play URL**, plus titles/thumbnails/copy.
+- **Routing**: hash routes (e.g. `/#/admin`, `/#/play/my-game`).
+- **Games (files)**: **`games.json`** + **`games/<slug>/`** — no cloud required.
+- **Games (optional CMS)**: **`/#/admin`** with Supabase — ZIP storage, external URLs, same allowlist as RLS.
+- **Pages & panels**: Custom pages from code, or from Admin when Supabase is on.
 
 ---
 

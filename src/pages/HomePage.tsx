@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteChrome } from '../components/SiteChrome';
 import { useGames } from '../hooks/useGames';
+import { gameCatalogMode } from '../lib/gameCatalog';
 import { supabaseConfigured } from '../lib/supabase';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import type { GameView } from '../types';
@@ -56,9 +57,25 @@ export function HomePage() {
       {!loading && !error && filtered.length === 0 && (
         <div className="empty-state">
           <p>No games found in this category.</p>
-          {supabaseConfigured && games.length === 0 && filter === 'all' ? (
-            <p style={{ marginTop: 16 }}>
-              <Link to="/admin">Open Admin</Link> to add games (ZIP upload, external link, or details).
+          {games.length === 0 && filter === 'all' ? (
+            <p style={{ marginTop: 16 }} className="admin-muted">
+              {supabaseConfigured && gameCatalogMode() === 'cms' ? (
+                <>
+                  <Link to="/admin">Open Admin</Link> to add games, or set{' '}
+                  <code>VITE_GAME_CATALOG=auto</code> in the build to use <code>games.json</code> again.
+                </>
+              ) : (
+                <>
+                  Edit <code>games.json</code> and put builds in <code>games/&lt;slug&gt;/</code>, then push.
+                  {supabaseConfigured ? (
+                    <>
+                      {' '}
+                      Or <Link to="/admin">Admin</Link> once your team login works.
+                    </>
+                  ) : null}{' '}
+                  See <code>docs/WEBSITE_WORKFLOW.md</code>.
+                </>
+              )}
             </p>
           ) : null}
         </div>

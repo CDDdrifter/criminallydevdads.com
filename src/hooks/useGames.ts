@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { GameView } from '../types';
 import { fetchPublishedGames } from '../lib/cmsData';
+import { gameCatalogMode } from '../lib/gameCatalog';
 import { supabaseConfigured } from '../lib/supabase';
 import { loadLegacyGames, pathExists } from '../lib/legacyGames';
 
@@ -25,10 +26,35 @@ export function useGames() {
     let cancelled = false;
     (async () => {
       try {
-        // Website-only catalog: when Supabase env is present, games come only from Admin/CMS + ZIP storage.
-        // No fallback to GitHub folders / games.json (avoids repo edits per release).
-        if (supabaseConfigured) {
+        const mode = gameCatalogMode();
+
+        if (mode === 'legacy' || !supabaseConfigured) {
+          const legacy = await loadLegacyGames();
+          if (!cancelled) {
+            setGames(legacy);
+          }
+          return;
+        }
+
+        if (mode === 'cms') {
           const cms = await fetchPublishedGames();
+          const verified = await verifyPlayability(cms);
+          if (!cancelled) {
+            setGames(verified);
+          }
+          return;
+        }
+
+        // auto: prefer CMS when it returns games; otherwise games.json + games/ (never brick the hub).
+        let cms: GameView[] = [];
+        if (supabaseConfigured) {
+          try {
+            cms = await fetchPublishedGames();
+          } catch (cmsErr) {
+            console.warn('Game catalog: CMS fetch failed, using games.json', cmsErr);
+          }
+        }
+        if (cms.length > 0) {
           const verified = await verifyPlayability(cms);
           if (!cancelled) {
             setGames(verified);

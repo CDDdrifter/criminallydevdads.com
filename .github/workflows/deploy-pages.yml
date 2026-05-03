@@ -1,12 +1,9 @@
-# Builds the React hub with Supabase env vars and deploys dist/ to GitHub Pages.
+# Builds the React hub and deploys dist/ to GitHub Pages.
 #
-# One-time repo settings:
-# 1. Settings → Secrets and variables → Actions → New repository secret:
-#    - VITE_SUPABASE_URL   (Project Settings → API → Project URL)
-#    - VITE_SUPABASE_ANON_KEY (anon public key)
-# 2. Settings → Pages → Build and deployment → Source: GitHub Actions
+# Games catalog default (VITE_GAME_CATALOG unset = auto): uses games.json + games/ unless site_games has rows.
+# Optional secrets (browser admin only): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
 #
-# After that, every push to these branches redeploys; add games only via /#/admin (no repo edits).
+# Repo: Settings → Pages → Source: GitHub Actions
 
 name: Deploy to GitHub Pages
 
