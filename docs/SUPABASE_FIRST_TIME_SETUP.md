@@ -100,10 +100,77 @@ Run those in **SQL Editor** → **New query** → **Run**.
 
 ---
 
+## Part G — Google & email don’t work (troubleshooting)
+
+Work through these in order. Most failures are **Supabase dashboard** settings, not the React code.
+
+### 1. Confirm the site actually uses Supabase
+
+- Open **`/#/admin`**. If you see a message about adding `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`, the **build has no keys**.  
+  - **Local:** create `.env.local` with both variables (Project Settings → API in Supabase) and run `npm run dev` again.  
+  - **GitHub Pages:** add the same two names as **Actions secrets** and redeploy (see Part E).
+
+### 2. Redirect URLs (fixes “redirect URL mismatch” / OAuth loop / magic link dead end)
+
+Supabase only allows redirects you list explicitly.
+
+1. **Authentication** → **URL Configuration**.
+2. **Site URL** — set to the URL you actually open (examples below).
+3. **Redirect URLs** — add **every** variant you use, one per line. Common GitHub Pages patterns:
+
+   - `https://YOUR_USER.github.io/YOUR_REPO/`
+   - `https://YOUR_USER.github.io/YOUR_REPO/index.html`
+
+   Local dev:
+
+   - `http://localhost:5173`
+   - `http://127.0.0.1:5173`
+
+4. Save, wait a minute, try again.
+
+If the error mentions **redirect**, copy the **exact** URL from the error (or from the address bar right before it fails) and add it here.
+
+### 3. Email magic link
+
+1. **Authentication** → **Providers** → **Email** → **enabled**.
+2. For testing, set **Confirm email** to **OFF** (fewer steps; turn ON later for production).
+3. **Allow-listed email:** magic link only sends if your address passes **`can_request_editor_login`**. That means either:
+   - your domain is in **`site_admin_domains`**, or  
+   - your exact address is in **`site_admin_emails`** (Part F).  
+   If not allow-listed, the app shows an error *before* sending — that is expected.
+4. If the RPC is missing, SQL never ran: run **`supabase/schema.sql`** (or at least migration **`003_editor_login_rpc.sql`**).
+5. Check **spam** for the message. Supabase’s default mail can be slow or filtered.
+
+### 4. Google sign-in
+
+1. **Authentication** → **Providers** → **Google** → **enabled**.
+2. **Client ID** and **Client Secret** must come from [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials** → **OAuth 2.0 Client ID** (type **Web application**).
+3. Under that OAuth client, **Authorized redirect URIs** must include **exactly**:
+
+   `https://<YOUR_PROJECT_REF>.supabase.co/auth/v1/callback`
+
+   (`YOUR_PROJECT_REF` is the subdomain of your Supabase URL, e.g. `abcdxyzcompany` from `https://abcdxyzcompany.supabase.co`.)
+
+4. Google **OAuth consent screen** must be configured (app name, your email as test user if the app is in **Testing** mode — only listed test users can sign in).
+5. Browser error **redirect_uri_mismatch** → the Supabase callback URL is missing or wrong in Google Cloud (step 3).
+
+### 5. After login: “Access denied”
+
+That means auth **worked** but the email is not an editor in the database. Add your domain or exact email (Part F).
+
+### 6. Browser console
+
+On **`/#/admin`**, press **F12** → **Console**. Try Google or email again.
+
+- **`can_request_editor_login`** / **`is_site_admin`** errors → run full **`supabase/schema.sql`** (or migration **003**) in the SQL Editor.
+- **Invalid API key** → wrong `VITE_SUPABASE_ANON_KEY` in env or an old deploy.
+
+---
+
 ## Check that it worked
 
 1. Open your deployed site (or `http://localhost:5173` with `.env.local` containing the same two `VITE_*` values).
-2. Click **Team login** in the header.
+2. Go to **`/#/admin`** (the header link is optional unless you set `VITE_SHOW_ADMIN_NAV=true` — see **`docs/SITE_MANUAL.md`** §11).
 3. Use **Continue with Google** or **Send login link** with an allowlisted email.
 4. You should see **Site admin** with tabs (overview, games, pages, etc.).
 
