@@ -8,3 +8,5 @@ dist/
 # Godot (local export noise — do not commit keys)
 games/export_credentials.cfg
 **/.godot/
+# Redundant itch-style zip if export files are already unpacked next to index.html
+games/**/index.html.zip
