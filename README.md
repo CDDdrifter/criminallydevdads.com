@@ -8,6 +8,8 @@ The main site is a **Vite + React** app with the same neon / terminal look.
 
 Once this is done **one time**, you add games, pages, and visuals only at **`/#/admin`** (ZIP upload like itch, or external play URL).
 
+**New to Supabase?** Follow the click-by-click guide: **[`docs/SUPABASE_FIRST_TIME_SETUP.md`](docs/SUPABASE_FIRST_TIME_SETUP.md)** (no one else can log in to your accounts to do this for you).
+
 1. **Supabase** — Create a project → SQL Editor → paste and run **`supabase/schema.sql`** once (includes tables, RLS, Storage bucket `game-builds`, page `sections`, and admin RPCs). If the project already had an older schema, also run **`supabase/migrations/003_editor_login_rpc.sql`** so the site can verify admins.
 2. **Who can log in** — In Supabase → **SQL Editor**, allowlist editors (pick one or both):
    - **Whole domain:** `insert into site_admin_domains (domain) values ('yourdomain.com') on conflict do nothing;`
