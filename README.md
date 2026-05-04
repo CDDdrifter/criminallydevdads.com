@@ -6,7 +6,7 @@ The main site is a **Vite + React** app with the same neon / terminal look.
 
 ### How to change things (read this first)
 
-**→ [`docs/ADMIN_LOGIN_ONE_PAGE.md`](docs/ADMIN_LOGIN_ONE_PAGE.md)** — **checklist** · [`docs/SIMPLE_ADMIN_LOGIN.md`](docs/SIMPLE_ADMIN_LOGIN.md) — **`/#/admin`** with email (edit the site).  
+**→ [`docs/ADMIN_LOGIN_ONE_PAGE.md`](docs/ADMIN_LOGIN_ONE_PAGE.md)** — **checklist** · [`docs/SIMPLE_ADMIN_LOGIN.md`](docs/SIMPLE_ADMIN_LOGIN.md) — **`/#/admin`** with email (edit the site). Optional: **[`docs/SYNC_CMS_TO_GITHUB.md`](docs/SYNC_CMS_TO_GITHUB.md)** — push **`games.json`** from the CMS to the repo (Edge Function + GitHub token).  
 **→ [`docs/SITE_MANUAL.md`](docs/SITE_MANUAL.md)** — games, **§12 updating a build** (e.g. Fort Fury: overwrite `games/fortfury/` → `git add` / `commit` / `push`), pages, nav, troubleshooting, **§13** (hub login vs in-game saves).
 
 **→ [`docs/WEBSITE_WORKFLOW.md`](docs/WEBSITE_WORKFLOW.md)** — two paths:

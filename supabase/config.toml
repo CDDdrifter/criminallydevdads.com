@@ -1,0 +1,5 @@
+# Supabase CLI — https://supabase.com/docs/guides/cli
+# Deploy Edge Function: supabase functions deploy sync-repo-to-github
+
+[functions.sync-repo-to-github]
+verify_jwt = true

@@ -33,6 +33,7 @@ import {
   sanitizeGameStorageSlug,
   uploadGameZip,
 } from '../lib/gameStorageUpload';
+import { invokeSyncGamesJsonToGitHub } from '../lib/syncRepoGitHub';
 import type { DevLogPost, GameRecord, NavItem, PageSection, SitePage, SiteSettings } from '../types';
 import { defaultSiteSettings } from '../types';
 
@@ -84,6 +85,7 @@ export function AdminPage() {
   const [emailForOtp, setEmailForOtp] = useState('');
   const [otpMessage, setOtpMessage] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const [syncRepoMessage, setSyncRepoMessage] = useState<string | null>(null);
   const [gameZipFile, setGameZipFile] = useState<File | null>(null);
   const [navDraft, setNavDraft] = useState<Partial<NavItem> & { label: string; href: string }>({
     label: '',
@@ -641,6 +643,7 @@ export function AdminPage() {
       </div>
 
       {tab === 'overview' && (
+        <>
         <div
           className="admin-grid"
           style={{
@@ -672,6 +675,48 @@ export function AdminPage() {
             </button>
           ))}
         </div>
+        <div className="admin-panel" style={{ marginTop: 20, borderColor: 'rgba(115, 248, 255, 0.25)' }}>
+          <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>
+            Sync catalog to GitHub
+          </h2>
+          <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.5 }}>
+            Edits here save to <strong>Supabase</strong>. To also update the repo’s root{' '}
+            <code>games.json</code> (published games only), run the Edge Function once per batch. Requires a one-time
+            deploy and GitHub token — <code>docs/SYNC_CMS_TO_GITHUB.md</code>. Does <strong>not</strong> upload{' '}
+            <code>games/*/binary</code> files; those stay as they are in git or on Storage.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            style={{ marginTop: 12 }}
+            onClick={() => {
+              setBusy(true);
+              setSyncRepoMessage(null);
+              invokeSyncGamesJsonToGitHub()
+                .then((r) => {
+                  if (r.error) {
+                    setSyncRepoMessage(r.error);
+                  } else {
+                    setSyncRepoMessage(
+                      `Synced ${r.games ?? 0} published game(s) to games.json.${r.commit_url ? ` ${r.commit_url}` : ''}`,
+                    );
+                  }
+                })
+                .catch((e) =>
+                  setSyncRepoMessage(e instanceof Error ? e.message : 'Sync failed'),
+                )
+                .finally(() => setBusy(false));
+            }}
+          >
+            Push games.json to GitHub
+          </button>
+          {syncRepoMessage ? (
+            <p className="admin-muted" style={{ marginTop: 12, whiteSpace: 'pre-wrap' }}>
+              {syncRepoMessage}
+            </p>
+          ) : null}
+        </div>
+        </>
       )}
 
       {tab === 'settings' && (
