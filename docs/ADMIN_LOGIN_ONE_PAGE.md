@@ -39,6 +39,6 @@ Do these **in order**. Skip Google until email works.
 | “not on the editor allow list” | Step 5 — add your **exact** email (or domain) in SQL. |
 | “Can’t verify editor access” + technical error | Step 2 — run full `schema.sql` again; or wrong Supabase project. |
 | Magic link doesn’t arrive | Spam folder; or Supabase **Email** provider / project mail limits. |
-| Error when clicking link | Step 4 — **Redirect URLs** must match the green box **exactly** (https, path, trailing slash). |
+| Error when clicking link | **Redirect URLs** (step 4) must include the **exact** URL your app sends as `emailRedirectTo` (green box on `/#/admin`). Add **both** `https://yoursite.com/` and `https://www.yoursite.com/` if you use both. Optional: set GitHub secret `VITE_AUTH_REDIRECT_URL` to your one true public URL and redeploy. Open the link in a **normal browser tab** (not only the Gmail in-app browser), ideally the **same browser** where you clicked “Send login link”. If the error page is on **supabase.co**, read the message — often “redirect URL not allowed”. |
 
 Google sign-in is optional and needs extra OAuth setup — use email first.

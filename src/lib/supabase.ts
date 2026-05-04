@@ -26,6 +26,9 @@ function initSupabase(): { client: SupabaseClient | null; configured: boolean } 
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        // Magic links: PKCE requires opening the email link in the *same* browser that clicked “Send”.
+        // Implicit works when the link is opened on another device or in the mail app’s browser.
+        flowType: 'implicit',
       },
     });
     return { client, configured: true };

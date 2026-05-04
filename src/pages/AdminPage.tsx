@@ -515,6 +515,14 @@ export function AdminPage() {
             Send login link
           </button>
           {otpMessage ? <p className="admin-muted" style={{ marginTop: 12 }}>{otpMessage}</p> : null}
+          <p className="admin-muted" style={{ marginTop: 12, fontSize: '0.82rem', lineHeight: 1.5 }}>
+            <strong>Link shows an error?</strong> Supabase → <strong>Authentication</strong> →{' '}
+            <strong>URL Configuration</strong>: <strong>Site URL</strong> and <strong>Redirect URLs</strong> must
+            include the green-box URL above (same https host, same path, trailing slash). Add <code>www</code> and
+            non-<code>www</code> if needed. Open the email link in your real browser; if it still fails, set GitHub
+            secret <code>VITE_AUTH_REDIRECT_URL</code> to that URL and redeploy — see{' '}
+            <code>docs/ADMIN_LOGIN_ONE_PAGE.md</code>.
+          </p>
           <p className="admin-muted" style={{ marginTop: 20, marginBottom: 8, fontSize: '0.85rem' }}>
             Optional: Google (extra setup — OAuth + redirect in Supabase). See{' '}
             <code>docs/SUPABASE_FIRST_TIME_SETUP.md</code>.
