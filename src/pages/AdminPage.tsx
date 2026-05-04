@@ -24,6 +24,7 @@ import {
   describeAnonKeyShape,
   getBuildTimeAnonKey,
   getBuildTimeSupabaseUrl,
+  getRawBuildTimeSupabaseUrl,
   supabaseUrlLooksValid,
 } from '../lib/supabaseHealth';
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
@@ -333,9 +334,10 @@ export function AdminPage() {
   };
 
   if (!supabaseConfigured) {
+    const diagUrlRaw = getRawBuildTimeSupabaseUrl();
     const diagUrl = getBuildTimeSupabaseUrl();
     const diagKey = getBuildTimeAnonKey();
-    const diagUrlCheck = supabaseUrlLooksValid(diagUrl);
+    const diagUrlCheck = supabaseUrlLooksValid(diagUrlRaw);
     const diagKeyCheck = anonKeyLooksValid(diagKey);
     return (
       <div className="admin-shell">
@@ -357,9 +359,16 @@ export function AdminPage() {
             </p>
             <ul className="admin-muted" style={{ marginTop: 10, marginBottom: 0, paddingLeft: 20, lineHeight: 1.6 }}>
               <li>
-                <code>VITE_SUPABASE_URL</code> length: <strong>{diagUrl.length}</strong> — if 0, Actions did not
-                inject it (wrong repo, <strong>Variables</strong> instead of <strong>Secrets</strong>, typo in name{' '}
-                <code>VITE_SUPABASE_URL</code>, or deploy never re-ran).
+                <code>VITE_SUPABASE_URL</code> length in build: <strong>{diagUrlRaw.length}</strong>
+                {diagUrlRaw !== diagUrl ? (
+                  <>
+                    {' '}
+                    (client uses <strong>{diagUrl.length}</strong> chars — extra path after{' '}
+                    <code>.supabase.co</code> is ignored)
+                  </>
+                ) : null}{' '}
+                — if 0, Actions did not inject it (wrong repo, <strong>Variables</strong> instead of{' '}
+                <strong>Secrets</strong>, typo in name <code>VITE_SUPABASE_URL</code>, or deploy never re-ran).
               </li>
               <li>
                 <code>VITE_SUPABASE_ANON_KEY</code> length: <strong>{diagKey.length}</strong> — if 0, same as above.

@@ -2,8 +2,34 @@
  * Validates build-time Supabase env so mis-copied dashboard URLs fail visibly on /admin.
  */
 
-export function getBuildTimeSupabaseUrl(): string {
+/**
+ * API base URL must be https://REF.supabase.co only. Dashboard / docs sometimes paste a path
+ * after the host (e.g. /project/default) — strip it so the JS client matches PostgREST.
+ */
+export function normalizeSupabaseProjectUrl(raw: string): string {
+  const t = raw.trim();
+  if (!t) {
+    return t;
+  }
+  try {
+    const u = new URL(t);
+    if (u.protocol === 'https:' && u.hostname.endsWith('.supabase.co')) {
+      return `https://${u.hostname}`;
+    }
+  } catch {
+    return t;
+  }
+  return t;
+}
+
+/** Value from the build env before normalization (for diagnostics only). */
+export function getRawBuildTimeSupabaseUrl(): string {
   return (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
+}
+
+/** Same base URL the live client uses (paths after *.supabase.co are stripped). */
+export function getBuildTimeSupabaseUrl(): string {
+  return normalizeSupabaseProjectUrl(getRawBuildTimeSupabaseUrl());
 }
 
 export function getBuildTimeAnonKey(): string {
@@ -11,17 +37,18 @@ export function getBuildTimeAnonKey(): string {
 }
 
 export function supabaseUrlLooksValid(url: string): { ok: boolean; message: string } {
-  const t = url.trim();
-  if (!t) {
+  const raw = url.trim();
+  if (!raw) {
     return { ok: false, message: 'VITE_SUPABASE_URL is empty in this build.' };
   }
-  if (t.includes('/project/') || t.includes('app.supabase.com')) {
+  if (raw.includes('app.supabase.com')) {
     return {
       ok: false,
       message:
         'This looks like a dashboard link, not the API URL. In Supabase use the left sidebar gear → Project Settings → API → copy “Project URL” only (https://xxxx.supabase.co).',
     };
   }
+  const t = normalizeSupabaseProjectUrl(raw);
   let u: URL;
   try {
     u = new URL(t);

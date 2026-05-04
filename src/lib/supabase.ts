@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { normalizeSupabaseProjectUrl } from './supabaseHealth';
 
-const url = (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
+const urlRaw = (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
+const url = normalizeSupabaseProjectUrl(urlRaw);
 const anon = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
 
 function initSupabase(): { client: SupabaseClient | null; configured: boolean } {
@@ -13,10 +15,6 @@ function initSupabase(): { client: SupabaseClient | null; configured: boolean } 
       console.warn(
         '[hub] VITE_SUPABASE_URL should be https://YOUR_REF.supabase.co — Supabase disabled for this build.',
       );
-      return { client: null, configured: false };
-    }
-    if (u.pathname !== '/' && u.pathname !== '') {
-      console.warn('[hub] VITE_SUPABASE_URL should have no path after the host — Supabase disabled.');
       return { client: null, configured: false };
     }
     if (anon.length < 80) {
