@@ -23,11 +23,12 @@ function recordToView(g: GameRecord): GameView {
   const storageSlug = g.storage_slug?.trim();
   const storageUrl = storageSlug ? publicGameIndexUrl(storageSlug) : '';
 
+  /** ZIP / Storage build must win over External URL, or a stale itch/JS link hijacks Play and shows raw code. */
   let launchPath = localPath;
-  if (ext) {
-    launchPath = ext;
-  } else if (storageUrl) {
+  if (storageUrl) {
     launchPath = storageUrl;
+  } else if (ext) {
+    launchPath = ext;
   }
 
   return {

@@ -12,9 +12,7 @@ import { loadLegacyGames, pathExists } from '../lib/legacyGames';
 async function verifyPlayability(games: GameView[]): Promise<GameView[]> {
   return Promise.all(
     games.map(async (g) => {
-      if (g.external_url) {
-        return { ...g, isPlayable: true, launchPath: g.external_url };
-      }
+      /** Always trust `launchPath` from the catalog (Storage vs external is already decided there). */
       const ok = await pathExists(g.launchPath);
       return { ...g, isPlayable: ok };
     }),

@@ -1086,6 +1086,10 @@ export function AdminPage() {
             </div>
             <div className="admin-field">
               <label htmlFor="g_ext">External play URL (optional)</label>
+              <p className="admin-muted" style={{ margin: '0 0 6px', textTransform: 'none', fontSize: '0.82rem' }}>
+                Only used when <strong>no cloud ZIP</strong> is linked below. If both are set, Play uses your uploaded
+                ZIP. Clear this field if you pasted a bad link (wrong links here used to make Play show raw JS/code).
+              </p>
               <input
                 id="g_ext"
                 value={gameDraft.external_url ?? ''}
