@@ -117,6 +117,41 @@ function detectHtmlRoot(paths: string[]): string {
     throw new Error('ZIP must contain index.html (Godot Web export root).');
   }
 
+  /** `.wasm` in the same folder as this HTML file (typical Godot export). */
+  function wasmBesideIndex(htmlPath: string): boolean {
+    const dir = dirPrefixOf(htmlPath);
+    return paths.some((p) => {
+      if (!/\.wasm$/i.test(p)) {
+        return false;
+      }
+      if (!dir) {
+        return !p.includes('/');
+      }
+      if (!p.startsWith(dir)) {
+        return false;
+      }
+      const rest = p.slice(dir.length);
+      return !rest.includes('/');
+    });
+  }
+
+  /** `.wasm` anywhere under this HTML’s folder (nested layouts). */
+  function wasmUnderExport(htmlPath: string): boolean {
+    const dir = dirPrefixOf(htmlPath);
+    if (!dir) {
+      return paths.some((q) => !q.includes('/') && /\.wasm$/i.test(q));
+    }
+    return paths.some((q) => q.startsWith(dir) && /\.wasm$/i.test(q));
+  }
+
+  let pool = htmlPaths.filter(wasmBesideIndex);
+  if (pool.length === 0) {
+    pool = htmlPaths.filter(wasmUnderExport);
+  }
+  if (pool.length === 0) {
+    pool = [...htmlPaths];
+  }
+
   function godotExportScore(dir: string): number {
     /** Root export: only top-level paths; nested: under `dir/` (avoids `''.startsWith` matching everything). */
     function inExportDir(p: string): boolean {
@@ -138,7 +173,7 @@ function detectHtmlRoot(paths: string[]): string {
     return score;
   }
 
-  const scored = htmlPaths.map((p) => {
+  const scored = pool.map((p) => {
     const dir = dirPrefixOf(p);
     return {
       p,
@@ -168,7 +203,10 @@ function detectHtmlRoot(paths: string[]): string {
 /**
  * Zip entries → relative paths under storage slug (no leading slash).
  */
-async function zipToRelativeFiles(zipFile: File): Promise<{ path: string; blob: Blob }[]> {
+async function zipToRelativeFiles(zipFile: File): Promise<{
+  files: { path: string; blob: Blob }[];
+  exportRootLabel: string;
+}> {
   const buf = await zipFile.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
   const paths: string[] = [];
@@ -178,6 +216,7 @@ async function zipToRelativeFiles(zipFile: File): Promise<{ path: string; blob: 
     }
   });
   const root = detectHtmlRoot(paths);
+  const exportRootLabel = root.replace(/\/$/, '') || 'zip root';
   const out: { path: string; blob: Blob }[] = [];
   for (const p of paths) {
     if (root && !p.startsWith(root)) {
@@ -207,12 +246,12 @@ async function zipToRelativeFiles(zipFile: File): Promise<{ path: string; blob: 
   if (!hasIndex) {
     throw new Error('Missing index.html next to export assets.');
   }
-  return out;
+  return { files: out, exportRootLabel };
 }
 
 const STORAGE_LIST_PAGE = 1000;
-/** Parallel uploads reduce total time for large Godot exports (hundreds of files). */
-const UPLOAD_CONCURRENCY = 10;
+/** Parallel uploads — large blobs (.wasm/.pck) are queued first so they don’t stall at the end. */
+const UPLOAD_CONCURRENCY = 12;
 const UPLOAD_RETRIES = 6;
 
 function sleep(ms: number): Promise<void> {
@@ -320,6 +359,7 @@ async function uploadExtractedFilesParallel(
 /** Progress callbacks while processing a Web export ZIP (optional UI wiring). */
 export type ZipUploadProgress =
   | { phase: 'parse' }
+  | { phase: 'packaged'; exportRootLabel: string; fileCount: number }
   | { phase: 'clearing' }
   | { phase: 'upload'; done: number; total: number };
 
@@ -354,7 +394,7 @@ export async function uploadGameZip(
   zipFile: File,
   wipeFirst = true,
   onProgress?: (p: ZipUploadProgress) => void,
-): Promise<number> {
+): Promise<{ fileCount: number; exportRootLabel: string }> {
   if (!supabase) {
     throw new Error('Supabase not configured');
   }
@@ -363,7 +403,10 @@ export async function uploadGameZip(
     throw new Error('Invalid game slug for upload.');
   }
   onProgress?.({ phase: 'parse' });
-  const files = await zipToRelativeFiles(zipFile);
+  const { files, exportRootLabel } = await zipToRelativeFiles(zipFile);
+  /** Start big binaries first so parallel workers aren’t idle while the last .wasm/.pck trickles in. */
+  files.sort((a, b) => b.blob.size - a.blob.size);
+  onProgress?.({ phase: 'packaged', exportRootLabel, fileCount: files.length });
   if (wipeFirst) {
     onProgress?.({ phase: 'clearing' });
     await deleteGameBuild(slug);
@@ -372,7 +415,7 @@ export async function uploadGameZip(
   await uploadExtractedFilesParallel(slug, files, (done, total) => {
     onProgress?.({ phase: 'upload', done, total });
   });
-  return files.length;
+  return { fileCount: files.length, exportRootLabel };
 }
 
 export async function uploadGameThumbnail(gameSlug: string, file: File): Promise<string> {

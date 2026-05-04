@@ -207,9 +207,13 @@ export function AdminPage() {
     setBusy(true);
     setZipUploadHint('Reading ZIP…');
     try {
-      const count = await uploadGameZip(gameDraft.slug, gameZipFile, true, (p) => {
+      const { fileCount, exportRootLabel } = await uploadGameZip(gameDraft.slug, gameZipFile, true, (p) => {
         if (p.phase === 'parse') {
           setZipUploadHint('Reading ZIP…');
+        } else if (p.phase === 'packaged') {
+          setZipUploadHint(
+            `${p.fileCount} files from "${p.exportRootLabel}" — uploading (large files first)…`,
+          );
         } else if (p.phase === 'clearing') {
           setZipUploadHint('Removing previous build from server…');
         } else {
@@ -230,7 +234,7 @@ export function AdminPage() {
       } catch (dbErr) {
         console.error(dbErr);
         flash(
-          `Uploaded ${count} files to cloud storage, but saving the game row failed: ${
+          `Uploaded ${fileCount} files (from ZIP folder "${exportRootLabel}") to cloud storage, but saving the game row failed: ${
             dbErr instanceof Error ? dbErr.message : 'unknown error'
           }. Files are already on Storage — click **Save game** to retry.`,
           14000,
@@ -240,7 +244,7 @@ export function AdminPage() {
       }
       await reload();
       flash(
-        `✓ Uploaded ${count} files to cloud storage. Play uses index.html from folder "${storageKey}".`,
+        `✓ Uploaded ${fileCount} files. Packaged from ZIP folder "${exportRootLabel}" → Storage "${storageKey}". If play fails, open the sanity-check link and compare paths.`,
         9000,
       );
     } catch (e) {
