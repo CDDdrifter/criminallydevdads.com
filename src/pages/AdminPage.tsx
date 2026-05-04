@@ -108,6 +108,8 @@ export function AdminPage() {
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [syncRepoMessage, setSyncRepoMessage] = useState<string | null>(null);
   const [gameZipFile, setGameZipFile] = useState<File | null>(null);
+  /** Live status line during ZIP upload (parse → delete → parallel file uploads). */
+  const [zipUploadHint, setZipUploadHint] = useState<string | null>(null);
   const thumbFileRef = useRef<HTMLInputElement>(null);
   const previewVideoFileRef = useRef<HTMLInputElement>(null);
   const [navDraft, setNavDraft] = useState<Partial<NavItem> & { label: string; href: string }>({
@@ -147,9 +149,9 @@ export function AdminPage() {
     reload().catch(console.error);
   }, [reload]);
 
-  const flash = (msg: string) => {
+  const flash = (msg: string, durationMs = 3500) => {
     setMessage(msg);
-    setTimeout(() => setMessage(null), 3500);
+    setTimeout(() => setMessage(null), durationMs);
   };
 
   const onSaveSettings = async () => {
@@ -203,24 +205,49 @@ export function AdminPage() {
     }
     const title = gameDraft.title.trim() || slug;
     setBusy(true);
+    setZipUploadHint('Reading ZIP…');
     try {
-      const count = await uploadGameZip(gameDraft.slug, gameZipFile);
-      await upsertGame({
-        ...gameUpsertPayload({ ...gameDraft, title }),
-        storage_slug: storageKey,
+      const count = await uploadGameZip(gameDraft.slug, gameZipFile, true, (p) => {
+        if (p.phase === 'parse') {
+          setZipUploadHint('Reading ZIP…');
+        } else if (p.phase === 'clearing') {
+          setZipUploadHint('Removing previous build from server…');
+        } else {
+          setZipUploadHint(`Uploading ${p.done}/${p.total} files…`);
+        }
       });
+      setGameZipFile(null);
       setGameDraft((prev) => ({
         ...prev,
         storage_slug: storageKey,
         title: prev.title?.trim() ? prev.title : title,
       }));
-      setGameZipFile(null);
+      try {
+        await upsertGame({
+          ...gameUpsertPayload({ ...gameDraft, title }),
+          storage_slug: storageKey,
+        });
+      } catch (dbErr) {
+        console.error(dbErr);
+        flash(
+          `Uploaded ${count} files to cloud storage, but saving the game row failed: ${
+            dbErr instanceof Error ? dbErr.message : 'unknown error'
+          }. Files are already on Storage — click **Save game** to retry.`,
+          14000,
+        );
+        await reload();
+        return;
+      }
       await reload();
-      flash(`Uploaded ${count} files to cloud storage. Play opens your index.html like itch.io.`);
+      flash(
+        `✓ Uploaded ${count} files to cloud storage. Play uses index.html from folder "${storageKey}".`,
+        9000,
+      );
     } catch (e) {
       console.error(e);
-      flash(e instanceof Error ? e.message : 'ZIP upload failed');
+      flash(e instanceof Error ? e.message : 'ZIP upload failed', 9000);
     } finally {
+      setZipUploadHint(null);
       setBusy(false);
     }
   };
@@ -1043,6 +1070,15 @@ export function AdminPage() {
                   </a>
                 </p>
               ) : null}
+              {zipCloudConfirmed ? (
+                <div className="admin-cloud-build-ok" role="status" aria-live="polite">
+                  <strong>✓ Cloud build linked</strong>
+                  <span className="admin-muted" style={{ display: 'block', marginTop: 6, lineHeight: 1.5 }}>
+                    Folder <code>{gameDraft.storage_slug}</code> is on Storage and tied to this game. Pick another ZIP
+                    only when you want to replace it.
+                  </span>
+                </div>
+              ) : null}
               <div className="admin-field">
                 <div
                   className="admin-row"
@@ -1052,8 +1088,8 @@ export function AdminPage() {
                     Web export .zip
                   </label>
                   {zipCloudConfirmed ? (
-                    <span className="admin-upload-ok" role="status">
-                      ✓ Uploaded to cloud
+                    <span className="admin-upload-ok admin-upload-ok--inline" role="status">
+                      ✓ Ready
                     </span>
                   ) : null}
                 </div>
@@ -1062,8 +1098,14 @@ export function AdminPage() {
                   type="file"
                   accept=".zip,application/zip"
                   disabled={busy || !gameDraft.slug.trim()}
-                  onChange={(e) => setGameZipFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => {
+                    setGameZipFile(e.target.files?.[0] ?? null);
+                    setZipUploadHint(null);
+                  }}
                 />
+                {zipUploadHint ? (
+                  <p className="admin-upload-progress">{zipUploadHint}</p>
+                ) : null}
               </div>
               <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
                 <button type="button" disabled={busy || !gameZipFile || !gameDraft.slug.trim()} onClick={onUploadGameZip}>

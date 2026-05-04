@@ -118,14 +118,21 @@ function detectHtmlRoot(paths: string[]): string {
   }
 
   function godotExportScore(dir: string): number {
+    /** Root export: only top-level paths; nested: under `dir/` (avoids `''.startsWith` matching everything). */
+    function inExportDir(p: string): boolean {
+      if (!dir) {
+        return !p.includes('/');
+      }
+      return p.startsWith(dir);
+    }
     let score = 0;
-    if (paths.some((p) => p.startsWith(dir) && /\.wasm$/i.test(p))) {
+    if (paths.some((p) => inExportDir(p) && /\.wasm$/i.test(p))) {
       score += 100;
     }
-    if (paths.some((p) => p.startsWith(dir) && /\.pck$/i.test(p))) {
+    if (paths.some((p) => inExportDir(p) && /\.pck$/i.test(p))) {
       score += 50;
     }
-    if (paths.some((p) => p.startsWith(dir) && /(^|\/)index\.js$/i.test(p))) {
+    if (paths.some((p) => inExportDir(p) && /(^|\/)index\.js$/i.test(p))) {
       score += 25;
     }
     return score;
@@ -176,9 +183,15 @@ async function zipToRelativeFiles(zipFile: File): Promise<{ path: string; blob: 
     if (root && !p.startsWith(root)) {
       continue;
     }
-    const rel = root ? p.slice(root.length) : p;
+    let rel = root ? p.slice(root.length) : p;
     if (!rel || rel.endsWith('/')) {
       continue;
+    }
+    const parts = rel.split('/');
+    const leaf = parts[parts.length - 1];
+    if (leaf && leaf.toLowerCase() === 'index.html') {
+      parts[parts.length - 1] = 'index.html';
+      rel = parts.join('/');
     }
     const entry = zip.file(p);
     if (!entry) {
@@ -197,6 +210,42 @@ async function zipToRelativeFiles(zipFile: File): Promise<{ path: string; blob: 
   return out;
 }
 
+const STORAGE_LIST_PAGE = 1000;
+/** Parallel uploads reduce total time for large Godot exports (hundreds of files). */
+const UPLOAD_CONCURRENCY = 10;
+const UPLOAD_RETRIES = 6;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function listFolderPaginated(bucketRelPath: string): Promise<
+  Array<{ name: string; metadata?: Record<string, unknown> | null }>
+> {
+  if (!supabase) {
+    return [];
+  }
+  const collected: Array<{ name: string; metadata?: Record<string, unknown> | null }> = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabase.storage.from(GAME_BUILDS_BUCKET).list(bucketRelPath, {
+      limit: STORAGE_LIST_PAGE,
+      offset,
+      sortBy: { column: 'name', order: 'asc' },
+    });
+    if (error) {
+      throw error;
+    }
+    const batch = data ?? [];
+    collected.push(...batch);
+    if (batch.length < STORAGE_LIST_PAGE) {
+      break;
+    }
+    offset += STORAGE_LIST_PAGE;
+  }
+  return collected;
+}
+
 async function listStorageFilesRecursive(prefix: string): Promise<string[]> {
   if (!supabase) {
     return [];
@@ -204,14 +253,8 @@ async function listStorageFilesRecursive(prefix: string): Promise<string[]> {
   const collected: string[] = [];
 
   async function walk(p: string): Promise<void> {
-    const { data, error } = await supabase!.storage.from(GAME_BUILDS_BUCKET).list(p, {
-      limit: 1000,
-      sortBy: { column: 'name', order: 'asc' },
-    });
-    if (error) {
-      throw error;
-    }
-    for (const item of data ?? []) {
+    const items = await listFolderPaginated(p);
+    for (const item of items) {
       const key = p ? `${p}/${item.name}` : item.name;
       const meta = item.metadata as { size?: number } | null | undefined;
       const isFile = meta != null && typeof meta.size === 'number';
@@ -226,6 +269,59 @@ async function listStorageFilesRecursive(prefix: string): Promise<string[]> {
   await walk(prefix);
   return collected;
 }
+
+async function uploadStorageObjectWithRetries(objectPath: string, blob: Blob, contentType: string): Promise<void> {
+  if (!supabase) {
+    throw new Error('Supabase not configured');
+  }
+  let lastMsg = 'Upload failed';
+  for (let attempt = 0; attempt < UPLOAD_RETRIES; attempt++) {
+    const { error } = await supabase.storage.from(GAME_BUILDS_BUCKET).upload(objectPath, blob, {
+      upsert: true,
+      contentType,
+      cacheControl: '3600',
+    });
+    if (!error) {
+      return;
+    }
+    lastMsg = error.message;
+    await sleep(350 * 2 ** attempt);
+  }
+  throw new Error(`${objectPath}: ${lastMsg}`);
+}
+
+async function uploadExtractedFilesParallel(
+  slug: string,
+  files: { path: string; blob: Blob }[],
+  onChunk?: (done: number, total: number) => void,
+): Promise<number> {
+  const total = files.length;
+  let done = 0;
+  const queue = [...files];
+
+  async function worker(): Promise<void> {
+    while (queue.length > 0) {
+      const item = queue.shift();
+      if (!item) {
+        break;
+      }
+      const objectPath = `${slug}/${item.path}`;
+      await uploadStorageObjectWithRetries(objectPath, item.blob, guessContentType(item.path));
+      done += 1;
+      onChunk?.(done, total);
+    }
+  }
+
+  const n = Math.min(UPLOAD_CONCURRENCY, Math.max(1, total));
+  await Promise.all(Array.from({ length: n }, () => worker()));
+  return total;
+}
+
+/** Progress callbacks while processing a Web export ZIP (optional UI wiring). */
+export type ZipUploadProgress =
+  | { phase: 'parse' }
+  | { phase: 'clearing' }
+  | { phase: 'upload'; done: number; total: number };
 
 /** Remove all objects under game-builds/<storageSlug>/ */
 export async function deleteGameBuild(storageSlug: string): Promise<void> {
@@ -253,7 +349,12 @@ export async function deleteGameBuild(storageSlug: string): Promise<void> {
  * Upload a Godot/HTML5 ZIP to public storage at game-builds/<storageSlug>/...
  * Overwrites paths that appear in the ZIP; optional wipe first removes orphans.
  */
-export async function uploadGameZip(storageSlug: string, zipFile: File, wipeFirst = true): Promise<number> {
+export async function uploadGameZip(
+  storageSlug: string,
+  zipFile: File,
+  wipeFirst = true,
+  onProgress?: (p: ZipUploadProgress) => void,
+): Promise<number> {
   if (!supabase) {
     throw new Error('Supabase not configured');
   }
@@ -261,24 +362,17 @@ export async function uploadGameZip(storageSlug: string, zipFile: File, wipeFirs
   if (!slug) {
     throw new Error('Invalid game slug for upload.');
   }
+  onProgress?.({ phase: 'parse' });
   const files = await zipToRelativeFiles(zipFile);
   if (wipeFirst) {
+    onProgress?.({ phase: 'clearing' });
     await deleteGameBuild(slug);
   }
-  let uploaded = 0;
-  for (const { path: rel, blob } of files) {
-    const objectPath = `${slug}/${rel}`;
-    const { error } = await supabase.storage.from(GAME_BUILDS_BUCKET).upload(objectPath, blob, {
-      upsert: true,
-      contentType: guessContentType(rel),
-      cacheControl: '3600',
-    });
-    if (error) {
-      throw new Error(`${objectPath}: ${error.message}`);
-    }
-    uploaded += 1;
-  }
-  return uploaded;
+  onProgress?.({ phase: 'upload', done: 0, total: files.length });
+  await uploadExtractedFilesParallel(slug, files, (done, total) => {
+    onProgress?.({ phase: 'upload', done, total });
+  });
+  return files.length;
 }
 
 export async function uploadGameThumbnail(gameSlug: string, file: File): Promise<string> {
