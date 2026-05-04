@@ -11,6 +11,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main, fixing.fortfury]
+  # Lets you run a deploy without a commit: Actions → Deploy to GitHub Pages → Run workflow → pick branch.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -55,6 +57,10 @@ jobs:
           if [ "$ok" -eq 1 ]; then
             echo "Supabase env vars are non-empty for this build (values not shown)."
           fi
+          # Compare these numbers to /#/admin “length” lines. If CI shows long anon (~180+) but the site still shows ~41,
+          # you are not loading this deployment (wrong URL, cache, or different GitHub repo).
+          echo "CI VITE_SUPABASE_URL length: ${#VITE_SUPABASE_URL}"
+          echo "CI VITE_SUPABASE_ANON_KEY length: ${#VITE_SUPABASE_ANON_KEY}"
 
       - name: Install and build
         env:

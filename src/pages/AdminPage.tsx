@@ -374,9 +374,17 @@ export function AdminPage() {
               ) : null}
             </ul>
             <p className="admin-muted" style={{ marginTop: 12, marginBottom: 0, fontSize: '0.85rem' }}>
-              Repo → <strong>Actions</strong> → latest <strong>Deploy to GitHub Pages</strong> → job <strong>deploy</strong>{' '}
-              → step <strong>Check Supabase secrets</strong>: warnings mean empty at build time. Then confirm{' '}
-              <strong>Settings → Pages</strong> shows a recent deployment from Actions (not an old branch upload).
+              <strong>If you already fixed GitHub secrets but lengths here never change:</strong> this page is still an{' '}
+              <strong>old build</strong>. Open <strong>Actions</strong> → <strong>Deploy to GitHub Pages</strong> → pick a
+              run <em>after</em> you saved secrets → expand <strong>Check Supabase secrets</strong> and compare{' '}
+              <code>CI … length</code> lines to the numbers above. They must match. If CI shows a long anon key (~180+) but
+              this page still shows ~41, you are on the wrong site, wrong repo, or a cached bundle — try incognito / another
+              network. Use <strong>Run workflow</strong> (manual dispatch) on the branch you use for deploy, then wait for
+              the green checkmark and hard-refresh.
+            </p>
+            <p className="admin-muted" style={{ marginTop: 10, marginBottom: 0, fontSize: '0.85rem' }}>
+              Also confirm <strong>Settings → Pages</strong> shows a deployment from <strong>Actions</strong> that matches
+              that run (not an old “Deploy from branch” upload).
             </p>
           </div>
           <p className="admin-muted" style={{ marginTop: 16 }}>
