@@ -686,6 +686,10 @@ export function AdminPage() {
     );
   }
 
+  /** Cloud ZIP is saved on Storage and no replacement file is queued — show confirmation without refresh. */
+  const zipCloudConfirmed =
+    Boolean(gameDraft.storage_slug?.trim()) && gameZipFile === null;
+
   return (
     <div className="admin-shell">
       <div className="admin-row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
@@ -1040,7 +1044,19 @@ export function AdminPage() {
                 </p>
               ) : null}
               <div className="admin-field">
-                <label htmlFor="g_zip">Web export .zip</label>
+                <div
+                  className="admin-row"
+                  style={{ alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: '8px 12px' }}
+                >
+                  <label htmlFor="g_zip" style={{ marginBottom: 0 }}>
+                    Web export .zip
+                  </label>
+                  {zipCloudConfirmed ? (
+                    <span className="admin-upload-ok" role="status">
+                      ✓ Uploaded to cloud
+                    </span>
+                  ) : null}
+                </div>
                 <input
                   id="g_zip"
                   type="file"

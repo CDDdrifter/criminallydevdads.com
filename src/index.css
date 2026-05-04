@@ -636,6 +636,13 @@ body.scrolling .container {
   line-height: 1.5;
 }
 
+.admin-upload-ok {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6fcf97;
+  letter-spacing: 0.02em;
+}
+
 .danger-zone {
   border-color: rgba(255, 95, 191, 0.5);
 }
