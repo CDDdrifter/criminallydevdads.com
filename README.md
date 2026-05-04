@@ -1,6 +1,46 @@
 # CRIMINALLYDEV DADS - Game Distribution Hub
 
-## Quick Start
+## Site v2 (React hub)
+
+The main site is a **Vite + React** app with the same neon / terminal look.
+
+### How to change things (read this first)
+
+**→ [`docs/ADMIN_LOGIN_ONE_PAGE.md`](docs/ADMIN_LOGIN_ONE_PAGE.md)** — **checklist** · [`docs/SIMPLE_ADMIN_LOGIN.md`](docs/SIMPLE_ADMIN_LOGIN.md) — **`/#/admin`** with email (edit the site).  
+**→ [`docs/SITE_MANUAL.md`](docs/SITE_MANUAL.md)** — games, **§12 updating a build** (e.g. Fort Fury: overwrite `games/fortfury/` → `git add` / `commit` / `push`), pages, nav, troubleshooting, **§13** (hub login vs in-game saves).
+
+**→ [`docs/WEBSITE_WORKFLOW.md`](docs/WEBSITE_WORKFLOW.md)** — two paths:
+
+- **Path A (default, no setup):** Edit **`games.json`**, put builds in **`games/<slug>/`**, change layout in **`src/`**, push. **Supabase is not required.** Omit `VITE_SUPABASE_*` GitHub secrets for a purely file-based deploy.
+- **Path B (optional):** Browser admin at **`/#/admin`** after Supabase + secrets — **[`docs/SUPABASE_FIRST_TIME_SETUP.md`](docs/SUPABASE_FIRST_TIME_SETUP.md)**, **[`docs/SUPABASE_COPY_THESE_TWO_VALUES.md`](docs/SUPABASE_COPY_THESE_TWO_VALUES.md)**, **[`docs/GITHUB_ACTIONS_SUPABASE_SECRETS.md`](docs/GITHUB_ACTIONS_SUPABASE_SECRETS.md)** (Secrets **not** Variables on GitHub).
+
+**Catalog:** With **`VITE_GAME_CATALOG=auto`** (default), the hub uses the **database only if `site_games` has published rows**; otherwise it uses **`games.json`**. So a half-finished Supabase setup no longer hides your games. Use **`VITE_GAME_CATALOG=cms`** only when you want the DB exclusively.
+
+### Deploy
+
+**Settings → Pages → Source: GitHub Actions.** Workflow: **[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)** on push to **`main`** or **`fixing.fortfury`**.
+
+### Local dev
+
+- Copy `.env.example` → `.env.local` with the same `VITE_*` keys.
+- `npm run dev`
+
+### Legacy mode (no Supabase)
+
+If the site is built **without** Supabase env vars, the hub falls back to **GitHub API + `games.json` + `games/`** (old workflow).
+
+### Features
+
+- **Routing**: hash routes (e.g. `/#/admin`, `/#/play/my-game`).
+- **Play**: **Fullscreen** control (bottom-right of the player) on every game — see **`docs/SITE_MANUAL.md`** §10.
+- **Games (files)**: **`games.json`** + **`games/<slug>/`** — no cloud required.
+- **Games (optional CMS)**: **`/#/admin`** with Supabase — ZIP storage, external URLs, same allowlist as RLS.
+- **Admin link**: hidden from the header by default; open **`/#/admin`** or set **`VITE_SHOW_ADMIN_NAV=true`** (see **`docs/SITE_MANUAL.md`** §11).
+- **Pages & panels**: Custom pages from code, or from Admin when Supabase is on.
+
+---
+
+## Quick Start (content)
 
 Your website is now a fully functional game distribution platform. Here's how to manage it:
 

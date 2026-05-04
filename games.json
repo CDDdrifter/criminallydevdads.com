@@ -9,6 +9,15 @@
     "filename": "terracraft.zip"
   },
   {
+    "id": "fortfury",
+    "title": "Fort Fury",
+    "type": "game",
+    "description": "Fort Fury — physics castle vs. AI. Web export lives in games/fortfury/ (Godot HTML5).",
+    "details": "Playable in the hub via games/fortfury/index.html. Godot source and Web export live under games/fortfury/ (.godot not in git).",
+    "thumbnail": "",
+    "filename": "fortfury.zip"
+  },
+  {
     "id": "infinit-orbit",
     "title": "Infinit Orbit",
     "type": "game",

@@ -1,0 +1,81 @@
+# Builds the React hub and deploys dist/ to GitHub Pages.
+#
+# Games catalog default (VITE_GAME_CATALOG unset = auto): uses games.json + games/ unless site_games has rows.
+# Optional: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_AUTH_REDIRECT_URL (canonical site URL for auth),
+# VITE_SHOW_ADMIN_NAV (true = show Team login in nav)
+#
+# Repo: Settings → Pages → Source: GitHub Actions
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, fixing.fortfury]
+  # Lets you run a deploy without a commit: Actions → Deploy to GitHub Pages → Run workflow → pick branch.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # Does not print secret values — only warns if Actions *Secrets* (not Variables) are missing/empty.
+      - name: Check Supabase secrets visible to this workflow
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          ok=1
+          if [ -z "${VITE_SUPABASE_URL:-}" ]; then
+            echo "::warning::VITE_SUPABASE_URL is empty. Add it under Settings → Secrets and variables → Actions → Secrets (not Variables). Name must match exactly."
+            ok=0
+          fi
+          if [ -z "${VITE_SUPABASE_ANON_KEY:-}" ]; then
+            echo "::warning::VITE_SUPABASE_ANON_KEY is empty. Same place: Repository secrets."
+            ok=0
+          fi
+          if [ "$ok" -eq 1 ]; then
+            echo "Supabase env vars are non-empty for this build (values not shown)."
+          fi
+          # Compare these numbers to /#/admin “length” lines. If CI shows long anon (~180+) but the site still shows ~41,
+          # you are not loading this deployment (wrong URL, cache, or different GitHub repo).
+          echo "CI VITE_SUPABASE_URL length: ${#VITE_SUPABASE_URL}"
+          echo "CI VITE_SUPABASE_ANON_KEY length: ${#VITE_SUPABASE_ANON_KEY}"
+
+      - name: Install and build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_AUTH_REDIRECT_URL: ${{ secrets.VITE_AUTH_REDIRECT_URL }}
+          VITE_GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          VITE_GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+        run: npm ci && npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "my-big-game",
+    "title": "My Big Game",
+    "type": "game",
+    "description": "Short blurb on the hub card.",
+    "details": "Longer text for the info modal.",
+    "thumbnail": "https://example.com/cover.png",
+    "url": "https://your-name.itch.io/my-big-game"
+  },
+  {
+    "id": "tiny-demo",
+    "title": "Tiny Demo",
+    "type": "game",
+    "description": "Small enough to live in the repo under games/tiny-demo/.",
+    "details": "No url field — play uses games/tiny-demo/index.html after you commit that folder.",
+    "thumbnail": "",
+    "filename": "tiny-demo.zip"
+  }
+]

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+
+# Godot (local export noise — do not commit keys)
+games/export_credentials.cfg
+games/export_presets.cfg
+games/.gdignore
+**/.godot/
+# Redundant itch-style zip if export files are already unpacked next to index.html
+games/**/index.html.zip
