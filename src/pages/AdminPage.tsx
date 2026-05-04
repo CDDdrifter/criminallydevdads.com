@@ -30,6 +30,7 @@ import {
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
 import {
   deleteGameBuild,
+  listIndexHtmlCandidatesInZip,
   publicGameIndexUrl,
   sanitizeGameStorageSlug,
   uploadGamePreviewVideo,
@@ -68,6 +69,7 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
   external_url: '',
   local_folder: '',
   storage_slug: null,
+  storage_entry_in_zip: null,
   sort_order: 0,
   published: true,
 });
@@ -84,6 +86,7 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     external_url: draft.external_url ?? '',
     local_folder: draft.local_folder?.trim() || draft.slug.trim(),
     storage_slug: draft.storage_slug ?? null,
+    storage_entry_in_zip: draft.storage_entry_in_zip?.trim() || null,
     sort_order: Number(draft.sort_order ?? 0),
     published: draft.published ?? true,
   };
@@ -110,6 +113,10 @@ export function AdminPage() {
   const [gameZipFile, setGameZipFile] = useState<File | null>(null);
   /** Live status line during ZIP upload (parse → delete → parallel file uploads). */
   const [zipUploadHint, setZipUploadHint] = useState<string | null>(null);
+  /** Paths to index.html inside the chosen ZIP; empty until ZIP is parsed. */
+  const [zipEntryCandidates, setZipEntryCandidates] = useState<string[]>([]);
+  /** '' = auto-detect; otherwise exact path inside ZIP (e.g. Build/index.html). */
+  const [zipEntryPick, setZipEntryPick] = useState('');
   const thumbFileRef = useRef<HTMLInputElement>(null);
   const previewVideoFileRef = useRef<HTMLInputElement>(null);
   const [navDraft, setNavDraft] = useState<Partial<NavItem> & { label: string; href: string }>({
@@ -149,6 +156,37 @@ export function AdminPage() {
     reload().catch(console.error);
   }, [reload]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!gameZipFile) {
+      setZipEntryCandidates([]);
+      return;
+    }
+    listIndexHtmlCandidatesInZip(gameZipFile)
+      .then((cands) => {
+        if (cancelled) {
+          return;
+        }
+        setZipEntryCandidates(cands);
+        setZipEntryPick((prev) => {
+          if (!prev.trim()) {
+            return '';
+          }
+          const hit = cands.find((c) => c.toLowerCase() === prev.toLowerCase());
+          return hit ?? '';
+        });
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) {
+          setZipEntryCandidates([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [gameZipFile]);
+
   const flash = (msg: string, durationMs = 3500) => {
     setMessage(msg);
     setTimeout(() => setMessage(null), durationMs);
@@ -178,6 +216,9 @@ export function AdminPage() {
     try {
       await upsertGame(gameUpsertPayload({ ...gameDraft, title }));
       setGameDraft(emptyGame());
+      setZipEntryPick('');
+      setZipEntryCandidates([]);
+      setGameZipFile(null);
       await reload();
       flash('Game saved.');
     } catch (e) {
@@ -204,31 +245,43 @@ export function AdminPage() {
       return;
     }
     const title = gameDraft.title.trim() || slug;
+    const entryForUpload = zipEntryPick.trim() || null;
     setBusy(true);
     setZipUploadHint('Reading ZIP…');
     try {
-      const { fileCount, exportRootLabel } = await uploadGameZip(gameDraft.slug, gameZipFile, true, (p) => {
-        if (p.phase === 'parse') {
-          setZipUploadHint('Reading ZIP…');
-        } else if (p.phase === 'packaged') {
-          setZipUploadHint(
-            `${p.fileCount} files from "${p.exportRootLabel}" — uploading (large files first)…`,
-          );
-        } else if (p.phase === 'clearing') {
-          setZipUploadHint('Removing previous build from server…');
-        } else {
-          setZipUploadHint(`Uploading ${p.done}/${p.total} files…`);
-        }
-      });
+      const { fileCount, exportRootLabel } = await uploadGameZip(
+        gameDraft.slug,
+        gameZipFile,
+        true,
+        (p) => {
+          if (p.phase === 'parse') {
+            setZipUploadHint('Reading ZIP…');
+          } else if (p.phase === 'packaged') {
+            setZipUploadHint(
+              `${p.fileCount} files from "${p.exportRootLabel}" — uploading (large files first)…`,
+            );
+          } else if (p.phase === 'clearing') {
+            setZipUploadHint('Removing previous build from server…');
+          } else {
+            setZipUploadHint(`Uploading ${p.done}/${p.total} files…`);
+          }
+        },
+        entryForUpload,
+      );
       setGameZipFile(null);
       setGameDraft((prev) => ({
         ...prev,
         storage_slug: storageKey,
+        storage_entry_in_zip: entryForUpload,
         title: prev.title?.trim() ? prev.title : title,
       }));
       try {
         await upsertGame({
-          ...gameUpsertPayload({ ...gameDraft, title }),
+          ...gameUpsertPayload({
+            ...gameDraft,
+            title,
+            storage_entry_in_zip: entryForUpload,
+          }),
           storage_slug: storageKey,
         });
       } catch (dbErr) {
@@ -271,8 +324,10 @@ export function AdminPage() {
       await upsertGame({
         ...gameUpsertPayload(gameDraft),
         storage_slug: null,
+        storage_entry_in_zip: null,
       });
-      setGameDraft((prev) => ({ ...prev, storage_slug: null }));
+      setGameDraft((prev) => ({ ...prev, storage_slug: null, storage_entry_in_zip: null }));
+      setZipEntryPick('');
       await reload();
       flash('Cloud build removed.');
     } catch (e) {
@@ -1110,6 +1165,36 @@ export function AdminPage() {
                 {zipUploadHint ? (
                   <p className="admin-upload-progress">{zipUploadHint}</p>
                 ) : null}
+                {zipEntryCandidates.length > 0 ? (
+                  <div className="admin-field" style={{ marginTop: 14, marginBottom: 0 }}>
+                    <label htmlFor="g_zip_entry">Which index.html is the game?</label>
+                    <select
+                      id="g_zip_entry"
+                      value={zipEntryPick}
+                      disabled={busy}
+                      onChange={(e) => setZipEntryPick(e.target.value)}
+                    >
+                      <option value="">Auto-detect (recommended first try)</option>
+                      {zipEntryCandidates.map((rel) => (
+                        <option key={rel} value={rel}>
+                          {rel}
+                        </option>
+                      ))}
+                    </select>
+                    <p
+                      className="admin-muted"
+                      style={{ marginTop: 8, textTransform: 'none', fontSize: '0.82rem', lineHeight: 1.5 }}
+                    >
+                      If Play shows raw code or a blank screen, pick the same <code>index.html</code> you open when
+                      testing the Web export on your PC (often one folder deep in the ZIP).
+                    </p>
+                  </div>
+                ) : gameDraft.storage_entry_in_zip?.trim() && !gameZipFile ? (
+                  <p className="admin-muted" style={{ marginTop: 10 }}>
+                    Last upload used entry: <code>{gameDraft.storage_entry_in_zip}</code> — choose a ZIP again to change
+                    it.
+                  </p>
+                ) : null}
               </div>
               <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
                 <button type="button" disabled={busy || !gameZipFile || !gameDraft.slug.trim()} onClick={onUploadGameZip}>
@@ -1153,7 +1238,15 @@ export function AdminPage() {
                     <strong>{g.title}</strong> <span className="admin-muted">({g.slug})</span>
                   </span>
                   <span className="admin-row">
-                    <button type="button" onClick={() => setGameDraft({ ...g })}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGameDraft({ ...g });
+                        setZipEntryPick(g.storage_entry_in_zip?.trim() ?? '');
+                        setGameZipFile(null);
+                        setZipEntryCandidates([]);
+                      }}
+                    >
                       Edit
                     </button>
                     <Link to={`/game/${g.slug}`}>View</Link>

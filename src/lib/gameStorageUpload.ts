@@ -105,6 +105,48 @@ function dirPrefixOf(filePath: string): string {
   return idx >= 0 ? filePath.slice(0, idx + 1) : '';
 }
 
+/** List playable entry files in a ZIP for the admin picker (paths use `/`). */
+export async function listIndexHtmlCandidatesInZip(zipFile: File): Promise<string[]> {
+  const buf = await zipFile.arrayBuffer();
+  const zip = await JSZip.loadAsync(buf);
+  const paths: string[] = [];
+  zip.forEach((relPath, entry) => {
+    if (!entry.dir) {
+      paths.push(norm(relPath));
+    }
+  });
+  const hits = paths.filter((p) => /(^|\/)index\.html$/i.test(p));
+  hits.sort((a, b) => {
+    const da = a.split('/').filter(Boolean).length;
+    const db = b.split('/').filter(Boolean).length;
+    if (da !== db) {
+      return da - db;
+    }
+    return a.localeCompare(b);
+  });
+  return hits;
+}
+
+/**
+ * Use the folder that contains the user-selected index.html (exact path inside the ZIP).
+ */
+function rootFromUserEntryZip(paths: string[], userEntry: string): string {
+  const want = norm(userEntry.trim());
+  if (!want) {
+    return detectHtmlRoot(paths);
+  }
+  if (!/(^|\/)index\.html$/i.test(want)) {
+    throw new Error('Entry must be an index.html path inside the ZIP (e.g. MyExport/index.html).');
+  }
+  const match = paths.find((p) => p.toLowerCase() === want.toLowerCase());
+  if (!match) {
+    throw new Error(
+      `No "${userEntry}" in this ZIP. Pick a path from the list or re-export and zip again.`,
+    );
+  }
+  return dirPrefixOf(match);
+}
+
 /**
  * Finds the folder that contains the playable `index.html`.
  * Prefers directories that contain Godot/WebAssembly files (`.wasm`, `.pck`, `index.js`) so we
@@ -203,7 +245,10 @@ function detectHtmlRoot(paths: string[]): string {
 /**
  * Zip entries → relative paths under storage slug (no leading slash).
  */
-async function zipToRelativeFiles(zipFile: File): Promise<{
+async function zipToRelativeFiles(
+  zipFile: File,
+  entryPathInZip?: string | null,
+): Promise<{
   files: { path: string; blob: Blob }[];
   exportRootLabel: string;
 }> {
@@ -215,7 +260,9 @@ async function zipToRelativeFiles(zipFile: File): Promise<{
       paths.push(norm(relPath));
     }
   });
-  const root = detectHtmlRoot(paths);
+  const root = entryPathInZip?.trim()
+    ? rootFromUserEntryZip(paths, entryPathInZip)
+    : detectHtmlRoot(paths);
   const exportRootLabel = root.replace(/\/$/, '') || 'zip root';
   const out: { path: string; blob: Blob }[] = [];
   for (const p of paths) {
@@ -394,6 +441,8 @@ export async function uploadGameZip(
   zipFile: File,
   wipeFirst = true,
   onProgress?: (p: ZipUploadProgress) => void,
+  /** Exact path inside the ZIP to the game’s index.html (from picker); omit for auto-detect. */
+  entryPathInZip?: string | null,
 ): Promise<{ fileCount: number; exportRootLabel: string }> {
   if (!supabase) {
     throw new Error('Supabase not configured');
@@ -403,7 +452,7 @@ export async function uploadGameZip(
     throw new Error('Invalid game slug for upload.');
   }
   onProgress?.({ phase: 'parse' });
-  const { files, exportRootLabel } = await zipToRelativeFiles(zipFile);
+  const { files, exportRootLabel } = await zipToRelativeFiles(zipFile, entryPathInZip);
   /** Start big binaries first so parallel workers aren’t idle while the last .wasm/.pck trickles in. */
   files.sort((a, b) => b.blob.size - a.blob.size);
   onProgress?.({ phase: 'packaged', exportRootLabel, fileCount: files.length });

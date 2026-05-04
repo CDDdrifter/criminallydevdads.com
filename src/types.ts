@@ -13,6 +13,8 @@ export type GameRecord = {
   local_folder: string | null;
   /** Supabase Storage folder under bucket game-builds/ — itch-style uploaded HTML5 build */
   storage_slug?: string | null;
+  /** Path inside the uploaded ZIP to the real index.html when auto-detect is wrong (e.g. `Release/index.html`). */
+  storage_entry_in_zip?: string | null;
   sort_order: number;
   published: boolean;
 };

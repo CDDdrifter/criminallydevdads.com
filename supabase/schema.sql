@@ -28,6 +28,8 @@ create table if not exists site_games (
   external_url text,
   local_folder text,
   storage_slug text,
+  /** Path inside the last uploaded ZIP to the playable index.html (e.g. Build/index.html); null = auto-detect. */
+  storage_entry_in_zip text,
   sort_order int not null default 0,
   published boolean not null default true,
   created_at timestamptz not null default now(),
@@ -268,3 +270,5 @@ using (bucket_id = 'game-videos' and public.is_site_admin());
 
 -- If site_games already existed without this column:
 alter table site_games add column if not exists preview_video_url text;
+
+alter table site_games add column if not exists storage_entry_in_zip text;
