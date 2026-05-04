@@ -37,7 +37,9 @@ export function PlayPage() {
             <code>&quot;url&quot;: &quot;https://…&quot;</code> in <code>games.json</code> for big games hosted on itch /
             Netlify / etc., (2) putting <code>index.html</code> under <code>games/{game.local_folder}/</code> and
             pushing (use Git CLI if files are over 25MB — see <code>docs/SITE_MANUAL.md</code>), or (3) using Admin +
-            Supabase if you use that setup.
+            Supabase if you use that setup. If the link opens fine in a new tab but the hub still says this, trigger
+            a refresh; for Godot 4 HTML5 with threads enabled, upload may not be enough — use an external host and{' '}
+            <strong>External play URL</strong>.
           </p>
         </div>
       </SiteChrome>

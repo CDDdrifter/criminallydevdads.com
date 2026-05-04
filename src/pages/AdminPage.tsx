@@ -30,6 +30,7 @@ import {
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
 import {
   deleteGameBuild,
+  publicGameIndexUrl,
   sanitizeGameStorageSlug,
   uploadGamePreviewVideo,
   uploadGameThumbnail,
@@ -1013,13 +1014,29 @@ export function AdminPage() {
               <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--accent)' }}>
                 Cloud HTML5 (itch-style ZIP)
               </h3>
-              <p className="admin-muted" style={{ margin: 0 }}>
-                ZIP must contain <code>index.html</code> (and <code>.js</code> / <code>.wasm</code> /{' '}
-                <code>.pck</code> next to it). Godot often zips one folder — we strip the wrapper automatically.
+              <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
+                Zip the <strong>whole Web export folder</strong> from Godot (every file — not only{' '}
+                <code>index.html</code>). The playable page must live next to{' '}
+                <code>.wasm</code> / <code>.pck</code> / loader <code>.js</code>. If your ZIP contains several{' '}
+                <code>index.html</code> files, we pick the folder that looks like the real export (wasm/pck).
+              </p>
+              <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
+                <strong>Godot 4 — blank screen or SharedArrayBuffer / cross-origin errors?</strong> Supabase
+                Storage does not send the special isolation headers some threaded Web builds need. Fix: export with{' '}
+                <strong>threads disabled</strong> for HTML5, <em>or</em> host the build on itch.io / Netlify /
+                Cloudflare Pages and paste that URL in <strong>External play URL</strong> instead of ZIP upload.
               </p>
               {gameDraft.storage_slug ? (
-                <p className="admin-muted" style={{ margin: 0 }}>
+                <p className="admin-muted" style={{ margin: '0 0 10px' }}>
                   Cloud folder: <code>{gameDraft.storage_slug}</code>
+                  {' · '}
+                  <a
+                    href={publicGameIndexUrl(gameDraft.storage_slug)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open hosted index.html (sanity check)
+                  </a>
                 </p>
               ) : null}
               <div className="admin-field">

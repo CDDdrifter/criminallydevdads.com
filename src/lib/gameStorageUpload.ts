@@ -62,6 +62,11 @@ function guessContentType(filename: string): string {
     js: 'application/javascript',
     mjs: 'application/javascript',
     wasm: 'application/wasm',
+    /** Emscripten / Godot memory file next to wasm */
+    data: 'application/octet-stream',
+    mem: 'application/octet-stream',
+    symbols: 'application/octet-stream',
+    bin: 'application/octet-stream',
     pck: 'application/octet-stream',
     png: 'image/png',
     jpg: 'image/jpeg',
@@ -82,6 +87,10 @@ function guessContentType(filename: string): string {
     mp3: 'audio/mpeg',
     ogg: 'audio/ogg',
     wav: 'audio/wav',
+    ico: 'image/x-icon',
+    icns: 'image/icns',
+    /** Source maps optional but harmless if uploaded */
+    map: 'application/json',
   };
   return map[ext] ?? 'application/octet-stream';
 }
@@ -91,21 +100,62 @@ function norm(p: string): string {
   return p.replace(/\\/g, '/').replace(/^\//, '');
 }
 
+function dirPrefixOf(filePath: string): string {
+  const idx = filePath.lastIndexOf('/');
+  return idx >= 0 ? filePath.slice(0, idx + 1) : '';
+}
+
 /**
- * Finds the folder prefix that contains the shallowest index.html (Godot export in a subfolder).
+ * Finds the folder that contains the playable `index.html`.
+ * Prefers directories that contain Godot/WebAssembly files (`.wasm`, `.pck`, `index.js`) so we
+ * do not upload a stray top-level `index.html` while the real export lives in a subfolder, and
+ * we avoid grabbing an unrelated HTML file when multiple `index.html` entries exist.
  */
 function detectHtmlRoot(paths: string[]): string {
-  const htmlPaths = paths.filter((p) => p.endsWith('index.html'));
+  const htmlPaths = paths.filter((p) => /(^|\/)index\.html$/i.test(p));
   if (htmlPaths.length === 0) {
     throw new Error('ZIP must contain index.html (Godot Web export root).');
   }
-  htmlPaths.sort((a, b) => a.split('/').length - b.split('/').length);
-  const shallow = htmlPaths[0];
-  if (!shallow) {
+
+  function godotExportScore(dir: string): number {
+    let score = 0;
+    if (paths.some((p) => p.startsWith(dir) && /\.wasm$/i.test(p))) {
+      score += 100;
+    }
+    if (paths.some((p) => p.startsWith(dir) && /\.pck$/i.test(p))) {
+      score += 50;
+    }
+    if (paths.some((p) => p.startsWith(dir) && /(^|\/)index\.js$/i.test(p))) {
+      score += 25;
+    }
+    return score;
+  }
+
+  const scored = htmlPaths.map((p) => {
+    const dir = dirPrefixOf(p);
+    return {
+      p,
+      dir,
+      score: godotExportScore(dir),
+      depth: p.split('/').filter(Boolean).length,
+    };
+  });
+
+  scored.sort((a, b) => {
+    if (a.score !== b.score) {
+      return b.score - a.score;
+    }
+    if (a.depth !== b.depth) {
+      return a.depth - b.depth;
+    }
+    return a.p.localeCompare(b.p);
+  });
+
+  const picked = scored[0]?.p;
+  if (!picked) {
     return '';
   }
-  const idx = shallow.lastIndexOf('/');
-  return idx >= 0 ? shallow.slice(0, idx + 1) : '';
+  return dirPrefixOf(picked);
 }
 
 /**
