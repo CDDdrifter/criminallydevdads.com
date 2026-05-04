@@ -165,13 +165,15 @@ export function AdminPage() {
   };
 
   const onSaveGame = async () => {
-    if (!gameDraft.slug.trim() || !gameDraft.title.trim()) {
-      flash('Slug and title are required.');
+    const slug = gameDraft.slug.trim();
+    if (!slug) {
+      flash('Slug is required.');
       return;
     }
+    const title = gameDraft.title.trim() || slug;
     setBusy(true);
     try {
-      await upsertGame(gameUpsertPayload(gameDraft));
+      await upsertGame(gameUpsertPayload({ ...gameDraft, title }));
       setGameDraft(emptyGame());
       await reload();
       flash('Game saved.');
@@ -184,8 +186,9 @@ export function AdminPage() {
   };
 
   const onUploadGameZip = async () => {
-    if (!gameDraft.slug.trim() || !gameDraft.title.trim()) {
-      flash('Fill slug and title before uploading a ZIP.');
+    const slug = gameDraft.slug.trim();
+    if (!slug) {
+      flash('Fill slug before uploading a ZIP.');
       return;
     }
     if (!gameZipFile) {
@@ -197,14 +200,19 @@ export function AdminPage() {
       flash('Slug must include letters or numbers for cloud hosting.');
       return;
     }
+    const title = gameDraft.title.trim() || slug;
     setBusy(true);
     try {
       const count = await uploadGameZip(gameDraft.slug, gameZipFile);
       await upsertGame({
-        ...gameUpsertPayload(gameDraft),
+        ...gameUpsertPayload({ ...gameDraft, title }),
         storage_slug: storageKey,
       });
-      setGameDraft((prev) => ({ ...prev, storage_slug: storageKey }));
+      setGameDraft((prev) => ({
+        ...prev,
+        storage_slug: storageKey,
+        title: prev.title?.trim() ? prev.title : title,
+      }));
       setGameZipFile(null);
       await reload();
       flash(`Uploaded ${count} files to cloud storage. Play opens your index.html like itch.io.`);
@@ -245,19 +253,28 @@ export function AdminPage() {
 
   const onUploadGameThumbnailFile = async (picked?: File) => {
     const file = picked ?? thumbFileRef.current?.files?.[0];
-    if (!gameDraft.slug.trim() || !gameDraft.title.trim()) {
-      flash('Fill slug and title before uploading a thumbnail.');
+    const slug = gameDraft.slug.trim();
+    if (!slug) {
+      flash('Enter a game slug first (URL id).');
       return;
     }
     if (!file) {
       flash('Choose an image file.');
       return;
     }
+    const titleForRow = gameDraft.title.trim() || slug;
     setBusy(true);
     try {
       const url = await uploadGameThumbnail(gameDraft.slug, file);
-      await upsertGame({ ...gameUpsertPayload(gameDraft), thumbnail_url: url });
-      setGameDraft((prev) => ({ ...prev, thumbnail_url: url }));
+      await upsertGame({
+        ...gameUpsertPayload({ ...gameDraft, title: titleForRow }),
+        thumbnail_url: url,
+      });
+      setGameDraft((prev) => ({
+        ...prev,
+        thumbnail_url: url,
+        title: prev.title?.trim() ? prev.title : titleForRow,
+      }));
       if (thumbFileRef.current) {
         thumbFileRef.current.value = '';
       }
@@ -273,19 +290,28 @@ export function AdminPage() {
 
   const onUploadGamePreviewVideoFile = async () => {
     const file = previewVideoFileRef.current?.files?.[0];
-    if (!gameDraft.slug.trim() || !gameDraft.title.trim()) {
-      flash('Fill slug and title before uploading a preview video.');
+    const slug = gameDraft.slug.trim();
+    if (!slug) {
+      flash('Enter a game slug first (URL id).');
       return;
     }
     if (!file) {
       flash('Choose a video file.');
       return;
     }
+    const titleForRow = gameDraft.title.trim() || slug;
     setBusy(true);
     try {
       const url = await uploadGamePreviewVideo(gameDraft.slug, file);
-      await upsertGame({ ...gameUpsertPayload(gameDraft), preview_video_url: url });
-      setGameDraft((prev) => ({ ...prev, preview_video_url: url }));
+      await upsertGame({
+        ...gameUpsertPayload({ ...gameDraft, title: titleForRow }),
+        preview_video_url: url,
+      });
+      setGameDraft((prev) => ({
+        ...prev,
+        preview_video_url: url,
+        title: prev.title?.trim() ? prev.title : titleForRow,
+      }));
       if (previewVideoFileRef.current) {
         previewVideoFileRef.current.value = '';
       }
@@ -838,6 +864,9 @@ export function AdminPage() {
             </div>
             <div className="admin-field">
               <label htmlFor="g_title">Title</label>
+              <p className="admin-muted" style={{ margin: '0 0 6px', textTransform: 'none', fontSize: '0.8rem' }}>
+                If empty, we use the slug as the display name when you save or upload files.
+              </p>
               <input
                 id="g_title"
                 value={gameDraft.title}
@@ -911,14 +940,15 @@ export function AdminPage() {
               <button
                 type="button"
                 id="g_thumb_add_file"
-                disabled={busy || !gameDraft.slug.trim() || !gameDraft.title.trim()}
+                disabled={busy || !gameDraft.slug.trim()}
                 onClick={() => thumbFileRef.current?.click()}
               >
                 Add file
               </button>
-              {!gameDraft.slug.trim() || !gameDraft.title.trim() ? (
+              {!gameDraft.slug.trim() ? (
                 <p className="admin-muted" style={{ margin: '8px 0 0' }}>
-                  Enter slug and title above, then use Add file.
+                  Enter the game slug above first, then Add file. (Title can be filled in later; we use the slug as a
+                  temporary title if needed.)
                 </p>
               ) : null}
               <div className="admin-field" style={{ marginTop: 16, marginBottom: 0 }}>
@@ -956,7 +986,7 @@ export function AdminPage() {
               <div style={{ marginTop: 8 }}>
                 <button
                   type="button"
-                  disabled={busy || !gameDraft.slug.trim() || !gameDraft.title.trim()}
+                  disabled={busy || !gameDraft.slug.trim()}
                   onClick={() => void onUploadGamePreviewVideoFile()}
                 >
                   Upload preview video & save
@@ -1028,7 +1058,7 @@ export function AdminPage() {
               />
               Published (visible on hub)
             </label>
-            <button type="button" disabled={busy} onClick={onSaveGame}>
+            <button type="button" disabled={busy || !gameDraft.slug.trim()} onClick={onSaveGame}>
               Save game
             </button>
           </div>
