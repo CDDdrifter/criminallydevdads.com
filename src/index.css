@@ -824,6 +824,14 @@ body.scrolling .container {
   border-radius: 8px;
 }
 
+.page-section-video {
+  width: 100%;
+  max-height: min(70vh, 520px);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #070b12;
+}
+
 .page-section-caption {
   margin-top: 0.5rem;
   font-size: 0.85rem;

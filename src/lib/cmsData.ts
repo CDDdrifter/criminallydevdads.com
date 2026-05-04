@@ -38,6 +38,7 @@ function recordToView(g: GameRecord): GameView {
     description: g.description ?? '',
     details: g.details ?? '',
     thumbnail: g.thumbnail_url ?? '',
+    preview_video: g.preview_video_url ?? '',
     external_url: g.external_url ?? '',
     local_folder: folder,
     launchPath,

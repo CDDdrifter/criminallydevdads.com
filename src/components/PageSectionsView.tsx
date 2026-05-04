@@ -45,6 +45,17 @@ export function PageSectionsView({ sections }: { sections: PageSection[] }) {
                 {s.caption ? <figcaption className="page-section-caption">{s.caption}</figcaption> : null}
               </figure>
             );
+          case 'video':
+            return (
+              <figure key={s.id} className="page-section-figure page-section-video-wrap">
+                {s.url ? (
+                  <video src={s.url} controls playsInline className="page-section-video" />
+                ) : (
+                  <div className="page-section-img-placeholder">Video URL missing</div>
+                )}
+                {s.caption ? <figcaption className="page-section-caption">{s.caption}</figcaption> : null}
+              </figure>
+            );
           case 'divider':
             return <hr key={s.id} className="page-section-divider" />;
           default:

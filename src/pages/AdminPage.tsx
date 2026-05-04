@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -31,6 +31,8 @@ import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSect
 import {
   deleteGameBuild,
   sanitizeGameStorageSlug,
+  uploadGamePreviewVideo,
+  uploadGameThumbnail,
   uploadGameZip,
 } from '../lib/gameStorageUpload';
 import { invokeSyncGamesJsonToGitHub } from '../lib/syncRepoGitHub';
@@ -61,12 +63,30 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
   description: '',
   details: '',
   thumbnail_url: '',
+  preview_video_url: '',
   external_url: '',
   local_folder: '',
   storage_slug: null,
   sort_order: 0,
   published: true,
 });
+
+function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: string }) {
+  return {
+    slug: draft.slug.trim(),
+    title: draft.title.trim(),
+    type: draft.type ?? 'game',
+    description: draft.description ?? '',
+    details: draft.details ?? '',
+    thumbnail_url: draft.thumbnail_url ?? '',
+    preview_video_url: draft.preview_video_url ?? '',
+    external_url: draft.external_url ?? '',
+    local_folder: draft.local_folder?.trim() || draft.slug.trim(),
+    storage_slug: draft.storage_slug ?? null,
+    sort_order: Number(draft.sort_order ?? 0),
+    published: draft.published ?? true,
+  };
+}
 
 export function AdminPage() {
   const auth = useAuth();
@@ -87,6 +107,8 @@ export function AdminPage() {
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [syncRepoMessage, setSyncRepoMessage] = useState<string | null>(null);
   const [gameZipFile, setGameZipFile] = useState<File | null>(null);
+  const thumbFileRef = useRef<HTMLInputElement>(null);
+  const previewVideoFileRef = useRef<HTMLInputElement>(null);
   const [navDraft, setNavDraft] = useState<Partial<NavItem> & { label: string; href: string }>({
     label: '',
     href: '',
@@ -149,19 +171,7 @@ export function AdminPage() {
     }
     setBusy(true);
     try {
-      await upsertGame({
-        slug: gameDraft.slug.trim(),
-        title: gameDraft.title.trim(),
-        type: gameDraft.type ?? 'game',
-        description: gameDraft.description ?? '',
-        details: gameDraft.details ?? '',
-        thumbnail_url: gameDraft.thumbnail_url ?? '',
-        external_url: gameDraft.external_url ?? '',
-        local_folder: gameDraft.local_folder?.trim() || gameDraft.slug.trim(),
-        storage_slug: gameDraft.storage_slug ?? null,
-        sort_order: Number(gameDraft.sort_order ?? 0),
-        published: gameDraft.published ?? true,
-      });
+      await upsertGame(gameUpsertPayload(gameDraft));
       setGameDraft(emptyGame());
       await reload();
       flash('Game saved.');
@@ -191,17 +201,8 @@ export function AdminPage() {
     try {
       const count = await uploadGameZip(gameDraft.slug, gameZipFile);
       await upsertGame({
-        slug: gameDraft.slug.trim(),
-        title: gameDraft.title.trim(),
-        type: gameDraft.type ?? 'game',
-        description: gameDraft.description ?? '',
-        details: gameDraft.details ?? '',
-        thumbnail_url: gameDraft.thumbnail_url ?? '',
-        external_url: gameDraft.external_url ?? '',
-        local_folder: gameDraft.local_folder?.trim() || gameDraft.slug.trim(),
+        ...gameUpsertPayload(gameDraft),
         storage_slug: storageKey,
-        sort_order: Number(gameDraft.sort_order ?? 0),
-        published: gameDraft.published ?? true,
       });
       setGameDraft((prev) => ({ ...prev, storage_slug: storageKey }));
       setGameZipFile(null);
@@ -228,17 +229,8 @@ export function AdminPage() {
     try {
       await deleteGameBuild(key);
       await upsertGame({
-        slug: gameDraft.slug.trim(),
-        title: gameDraft.title.trim(),
-        type: gameDraft.type ?? 'game',
-        description: gameDraft.description ?? '',
-        details: gameDraft.details ?? '',
-        thumbnail_url: gameDraft.thumbnail_url ?? '',
-        external_url: gameDraft.external_url ?? '',
-        local_folder: gameDraft.local_folder?.trim() || gameDraft.slug.trim(),
+        ...gameUpsertPayload(gameDraft),
         storage_slug: null,
-        sort_order: Number(gameDraft.sort_order ?? 0),
-        published: gameDraft.published ?? true,
       });
       setGameDraft((prev) => ({ ...prev, storage_slug: null }));
       await reload();
@@ -246,6 +238,62 @@ export function AdminPage() {
     } catch (e) {
       console.error(e);
       flash(e instanceof Error ? e.message : 'Could not remove cloud build');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onUploadGameThumbnailFile = async (picked?: File) => {
+    const file = picked ?? thumbFileRef.current?.files?.[0];
+    if (!gameDraft.slug.trim() || !gameDraft.title.trim()) {
+      flash('Fill slug and title before uploading a thumbnail.');
+      return;
+    }
+    if (!file) {
+      flash('Choose an image file.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const url = await uploadGameThumbnail(gameDraft.slug, file);
+      await upsertGame({ ...gameUpsertPayload(gameDraft), thumbnail_url: url });
+      setGameDraft((prev) => ({ ...prev, thumbnail_url: url }));
+      if (thumbFileRef.current) {
+        thumbFileRef.current.value = '';
+      }
+      await reload();
+      flash('Thumbnail uploaded and saved.');
+    } catch (e) {
+      console.error(e);
+      flash(e instanceof Error ? e.message : 'Thumbnail upload failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onUploadGamePreviewVideoFile = async () => {
+    const file = previewVideoFileRef.current?.files?.[0];
+    if (!gameDraft.slug.trim() || !gameDraft.title.trim()) {
+      flash('Fill slug and title before uploading a preview video.');
+      return;
+    }
+    if (!file) {
+      flash('Choose a video file.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const url = await uploadGamePreviewVideo(gameDraft.slug, file);
+      await upsertGame({ ...gameUpsertPayload(gameDraft), preview_video_url: url });
+      setGameDraft((prev) => ({ ...prev, preview_video_url: url }));
+      if (previewVideoFileRef.current) {
+        previewVideoFileRef.current.value = '';
+      }
+      await reload();
+      flash('Preview video uploaded and saved.');
+    } catch (e) {
+      console.error(e);
+      flash(e instanceof Error ? e.message : 'Video upload failed');
     } finally {
       setBusy(false);
     }
@@ -824,12 +872,96 @@ export function AdminPage() {
               />
             </div>
             <div className="admin-field">
-              <label htmlFor="g_thumb">Thumbnail URL</label>
+              <label htmlFor="g_thumb_file">Thumbnail</label>
+              <p className="admin-muted" style={{ margin: '0 0 10px' }}>
+                Cover image for the hub card and game page. PNG, JPG, GIF, WebP, or SVG — max 5 MB.
+              </p>
+              {gameDraft.thumbnail_url?.trim() ? (
+                <div style={{ marginBottom: 12 }}>
+                  <img
+                    src={gameDraft.thumbnail_url}
+                    alt=""
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: 140,
+                      objectFit: 'contain',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: '#070b12',
+                    }}
+                  />
+                </div>
+              ) : null}
               <input
-                id="g_thumb"
-                value={gameDraft.thumbnail_url ?? ''}
-                onChange={(e) => setGameDraft({ ...gameDraft, thumbnail_url: e.target.value })}
+                id="g_thumb_file"
+                ref={thumbFileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg"
+                disabled={busy || !gameDraft.slug.trim()}
+                style={{ display: 'none' }}
+                aria-hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    void onUploadGameThumbnailFile(f);
+                  }
+                  e.target.value = '';
+                }}
               />
+              <button
+                type="button"
+                id="g_thumb_add_file"
+                disabled={busy || !gameDraft.slug.trim() || !gameDraft.title.trim()}
+                onClick={() => thumbFileRef.current?.click()}
+              >
+                Add file
+              </button>
+              {!gameDraft.slug.trim() || !gameDraft.title.trim() ? (
+                <p className="admin-muted" style={{ margin: '8px 0 0' }}>
+                  Enter slug and title above, then use Add file.
+                </p>
+              ) : null}
+              <div className="admin-field" style={{ marginTop: 16, marginBottom: 0 }}>
+                <label htmlFor="g_thumb" className="admin-muted" style={{ fontSize: '0.85rem' }}>
+                  Or paste an image link (optional)
+                </label>
+                <input
+                  id="g_thumb"
+                  placeholder="https://…"
+                  value={gameDraft.thumbnail_url ?? ''}
+                  onChange={(e) => setGameDraft({ ...gameDraft, thumbnail_url: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="admin-field">
+              <label htmlFor="g_preview_video">Preview video URL (optional)</label>
+              <input
+                id="g_preview_video"
+                value={gameDraft.preview_video_url ?? ''}
+                onChange={(e) => setGameDraft({ ...gameDraft, preview_video_url: e.target.value })}
+              />
+            </div>
+            <div className="admin-field">
+              <label htmlFor="g_preview_video_file">Upload preview video</label>
+              <p className="admin-muted" style={{ margin: '0 0 8px' }}>
+                MP4, WebM, or MOV — max 100 MB. Shown on the game page and hub Info modal.
+              </p>
+              <input
+                id="g_preview_video_file"
+                ref={previewVideoFileRef}
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                disabled={busy || !gameDraft.slug.trim()}
+              />
+              <div style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  disabled={busy || !gameDraft.slug.trim() || !gameDraft.title.trim()}
+                  onClick={() => void onUploadGamePreviewVideoFile()}
+                >
+                  Upload preview video & save
+                </button>
+              </div>
             </div>
             <div className="admin-field">
               <label htmlFor="g_ext">External play URL (optional)</label>
@@ -977,6 +1109,9 @@ export function AdminPage() {
             <PageSectionsForm
               sections={pageDraft.sections ?? []}
               onChange={(sections) => setPageDraft({ ...pageDraft, sections })}
+              pageSlug={pageDraft.slug}
+              formDisabled={busy}
+              onNotify={flash}
             />
             <div className="admin-field">
               <label htmlFor="p_body">Legacy body (only if no blocks above)</label>

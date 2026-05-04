@@ -3,6 +3,38 @@ import { supabase } from './supabase';
 
 export const GAME_BUILDS_BUCKET = 'game-builds';
 
+/** Cover images for hub cards / game pages (Admin upload). */
+export const GAME_THUMBNAILS_BUCKET = 'game-thumbnails';
+
+/** Preview clips on game detail / hub modal (Admin upload). */
+export const GAME_VIDEOS_BUCKET = 'game-videos';
+
+export const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
+
+export const MAX_PREVIEW_VIDEO_BYTES = 100 * 1024 * 1024;
+
+const THUMB_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']);
+
+const VIDEO_EXT = new Set(['mp4', 'webm', 'mov']);
+
+function extFromFilename(name: string): string {
+  return name.split('.').pop()?.toLowerCase() ?? '';
+}
+
+/** Public object URL for a file in a public Storage bucket. */
+export function publicStorageObjectUrl(bucket: string, objectPath: string): string {
+  const base = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
+  if (!base || !objectPath.trim()) {
+    return '';
+  }
+  const encoded = objectPath
+    .split('/')
+    .filter(Boolean)
+    .map((seg) => encodeURIComponent(seg))
+    .join('/');
+  return `${base}/storage/v1/object/public/${bucket}/${encoded}`;
+}
+
 /** Folder-safe slug for Storage paths (matches recommended game slug pattern). */
 export function sanitizeGameStorageSlug(raw: string): string {
   return raw
@@ -34,8 +66,12 @@ function guessContentType(filename: string): string {
     png: 'image/png',
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
+    gif: 'image/gif',
     webp: 'image/webp',
     svg: 'image/svg+xml',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
     json: 'application/json',
     xml: 'application/xml',
     txt: 'text/plain; charset=utf-8',
@@ -193,4 +229,122 @@ export async function uploadGameZip(storageSlug: string, zipFile: File, wipeFirs
     uploaded += 1;
   }
   return uploaded;
+}
+
+export async function uploadGameThumbnail(gameSlug: string, file: File): Promise<string> {
+  if (!supabase) {
+    throw new Error('Supabase not configured');
+  }
+  const slug = sanitizeGameStorageSlug(gameSlug);
+  if (!slug) {
+    throw new Error('Invalid game slug for thumbnail upload.');
+  }
+  const ext = extFromFilename(file.name);
+  if (!THUMB_EXT.has(ext)) {
+    throw new Error('Thumbnail must be PNG, JPG, GIF, WebP, or SVG.');
+  }
+  if (file.size > MAX_THUMBNAIL_BYTES) {
+    throw new Error(`Thumbnail must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
+  }
+  const objectPath = `${slug}/cover.${ext}`;
+  const { error } = await supabase.storage.from(GAME_THUMBNAILS_BUCKET).upload(objectPath, file, {
+    upsert: true,
+    contentType: guessContentType(`x.${ext}`),
+    cacheControl: '3600',
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return publicStorageObjectUrl(GAME_THUMBNAILS_BUCKET, objectPath);
+}
+
+export async function uploadGamePreviewVideo(gameSlug: string, file: File): Promise<string> {
+  if (!supabase) {
+    throw new Error('Supabase not configured');
+  }
+  const slug = sanitizeGameStorageSlug(gameSlug);
+  if (!slug) {
+    throw new Error('Invalid game slug for video upload.');
+  }
+  const ext = extFromFilename(file.name);
+  if (!VIDEO_EXT.has(ext)) {
+    throw new Error('Preview video must be MP4, WebM, or MOV.');
+  }
+  if (file.size > MAX_PREVIEW_VIDEO_BYTES) {
+    throw new Error(`Video must be ≤ ${MAX_PREVIEW_VIDEO_BYTES / 1024 / 1024} MB.`);
+  }
+  const objectPath = `${slug}/preview.${ext}`;
+  const { error } = await supabase.storage.from(GAME_VIDEOS_BUCKET).upload(objectPath, file, {
+    upsert: true,
+    contentType: guessContentType(`x.${ext}`),
+    cacheControl: '3600',
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return publicStorageObjectUrl(GAME_VIDEOS_BUCKET, objectPath);
+}
+
+/** Image block on a custom page (≤ thumbnail bucket limit). */
+export async function uploadPageSectionImage(pageSlug: string, sectionId: string, file: File): Promise<string> {
+  if (!supabase) {
+    throw new Error('Supabase not configured');
+  }
+  const pslug = sanitizeGameStorageSlug(pageSlug);
+  if (!pslug) {
+    throw new Error('Set a valid page slug before uploading.');
+  }
+  const sid = sectionId.replace(/[^a-zA-Z0-9-]/g, '');
+  if (!sid) {
+    throw new Error('Invalid block id.');
+  }
+  const ext = extFromFilename(file.name);
+  if (!THUMB_EXT.has(ext)) {
+    throw new Error('Image must be PNG, JPG, GIF, WebP, or SVG.');
+  }
+  if (file.size > MAX_THUMBNAIL_BYTES) {
+    throw new Error(`Image must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
+  }
+  const objectPath = `pages/${pslug}/${sid}.${ext}`;
+  const { error } = await supabase.storage.from(GAME_THUMBNAILS_BUCKET).upload(objectPath, file, {
+    upsert: true,
+    contentType: guessContentType(`x.${ext}`),
+    cacheControl: '3600',
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return publicStorageObjectUrl(GAME_THUMBNAILS_BUCKET, objectPath);
+}
+
+/** Video block on a custom page. */
+export async function uploadPageSectionVideo(pageSlug: string, sectionId: string, file: File): Promise<string> {
+  if (!supabase) {
+    throw new Error('Supabase not configured');
+  }
+  const pslug = sanitizeGameStorageSlug(pageSlug);
+  if (!pslug) {
+    throw new Error('Set a valid page slug before uploading.');
+  }
+  const sid = sectionId.replace(/[^a-zA-Z0-9-]/g, '');
+  if (!sid) {
+    throw new Error('Invalid block id.');
+  }
+  const ext = extFromFilename(file.name);
+  if (!VIDEO_EXT.has(ext)) {
+    throw new Error('Video must be MP4, WebM, or MOV.');
+  }
+  if (file.size > MAX_PREVIEW_VIDEO_BYTES) {
+    throw new Error(`Video must be ≤ ${MAX_PREVIEW_VIDEO_BYTES / 1024 / 1024} MB.`);
+  }
+  const objectPath = `pages/${pslug}/${sid}.${ext}`;
+  const { error } = await supabase.storage.from(GAME_VIDEOS_BUCKET).upload(objectPath, file, {
+    upsert: true,
+    contentType: guessContentType(`x.${ext}`),
+    cacheControl: '3600',
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return publicStorageObjectUrl(GAME_VIDEOS_BUCKET, objectPath);
 }

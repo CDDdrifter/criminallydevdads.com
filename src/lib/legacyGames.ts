@@ -33,6 +33,8 @@ type LegacyMeta = {
   description?: string;
   details?: string;
   thumbnail?: string;
+  /** Optional promo clip URL or repo-relative path under site root. */
+  preview_video?: string;
   /** Legacy zip name; used only to guess slug when `id` is missing: "my-game.zip" → "my-game" */
   filename?: string;
   /**
@@ -206,6 +208,7 @@ async function buildGameFromFolder(
     resolvedThumbnail = await resolveThumbnailFromIndexHtml(localIndex, folderId);
   }
   const id = metadata.id ?? folderId;
+  const previewRaw = (metadata.preview_video ?? '').trim();
   return {
     id,
     slug: folderId,
@@ -216,6 +219,7 @@ async function buildGameFromFolder(
       metadata.details ??
       'This game was auto-added because a web build was detected in the games directory.',
     thumbnail: resolvedThumbnail || metadata.thumbnail || '',
+    preview_video: previewRaw ? resolvePublicAssetUrl(previewRaw) : '',
     external_url: external,
     local_folder: folderId,
     launchPath: external || localIndex,

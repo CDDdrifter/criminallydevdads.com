@@ -43,6 +43,14 @@ export function GamePage() {
             style={{ width: '100%', maxHeight: 360, objectFit: 'cover', borderRadius: 8, marginBottom: 16 }}
           />
         ) : null}
+        {game.preview_video ? (
+          <video
+            src={game.preview_video}
+            controls
+            playsInline
+            style={{ width: '100%', maxHeight: 420, borderRadius: 8, marginBottom: 16, background: '#070b12' }}
+          />
+        ) : null}
         <div className="prose" style={{ marginBottom: 20 }}>
           {game.details || game.description}
         </div>

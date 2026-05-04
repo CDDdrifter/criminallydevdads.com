@@ -164,6 +164,20 @@ export function HomePage() {
                 }}
               />
             ) : null}
+            {modalGame.preview_video ? (
+              <video
+                src={modalGame.preview_video}
+                controls
+                playsInline
+                style={{
+                  width: '100%',
+                  maxHeight: 280,
+                  borderRadius: 6,
+                  marginBottom: 20,
+                  background: '#070b12',
+                }}
+              />
+            ) : null}
             <p style={{ marginBottom: 15, lineHeight: 1.6 }}>{modalGame.details || modalGame.description}</p>
             <div style={{ marginTop: 30, paddingTop: 20, borderTop: '1px solid var(--accent)' }}>
               <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: 20 }}>

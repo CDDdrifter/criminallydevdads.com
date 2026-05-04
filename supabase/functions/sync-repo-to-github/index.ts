@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     const { data: rows, error: gamesErr } = await userClient
       .from('site_games')
       .select(
-        'slug,title,type,description,details,thumbnail_url,external_url,local_folder,storage_slug,sort_order,published',
+        'slug,title,type,description,details,thumbnail_url,preview_video_url,external_url,local_folder,storage_slug,sort_order,published',
       )
       .eq('published', true)
       .order('sort_order', { ascending: true });
@@ -106,6 +106,10 @@ Deno.serve(async (req) => {
         thumbnail: row.thumbnail_url ?? '',
         filename: `${slug}.zip`,
       };
+      const pv = String(row.preview_video_url ?? '').trim();
+      if (pv) {
+        entry.preview_video = pv;
+      }
       if (external_url) {
         entry.external_url = external_url;
       }

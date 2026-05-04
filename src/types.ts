@@ -6,6 +6,8 @@ export type GameRecord = {
   description: string | null;
   details: string | null;
   thumbnail_url: string | null;
+  /** Optional preview clip (Storage URL or any https URL). */
+  preview_video_url?: string | null;
   external_url: string | null;
   /** Folder under /games/<folder>/index.html when hosted with static files */
   local_folder: string | null;
@@ -23,6 +25,7 @@ export type GameView = {
   description: string;
   details: string;
   thumbnail: string;
+  preview_video: string;
   external_url: string;
   local_folder: string;
   launchPath: string;
@@ -34,6 +37,7 @@ export type PageSection =
   | { id: string; kind: 'text'; body: string }
   | { id: string; kind: 'panel'; title: string; body: string; variant?: 'default' | 'accent' | 'muted' }
   | { id: string; kind: 'image'; url: string; alt?: string; caption?: string }
+  | { id: string; kind: 'video'; url: string; caption?: string }
   | { id: string; kind: 'divider' };
 
 export type SitePage = {

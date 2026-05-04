@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { PageSection } from '../../types';
 import { createEmptySection, newSectionId } from '../../lib/pageSections';
+import { uploadPageSectionImage, uploadPageSectionVideo } from '../../lib/gameStorageUpload';
 
 function updateSectionAt(
   sections: PageSection[],
@@ -18,10 +20,21 @@ function updateSectionAt(
 export function PageSectionsForm({
   sections,
   onChange,
+  pageSlug = '',
+  formDisabled = false,
+  onNotify,
 }: {
   sections: PageSection[];
   onChange: (s: PageSection[]) => void;
+  /** Required before media upload — path uses <code>pages/&lt;slug&gt;/…</code> in Storage. */
+  pageSlug?: string;
+  formDisabled?: boolean;
+  onNotify?: (msg: string) => void;
 }) {
+  const [mediaBusy, setMediaBusy] = useState(false);
+  const slugOk = Boolean(pageSlug.trim());
+  const disableUploads = formDisabled || mediaBusy;
+
   const move = (from: number, to: number) => {
     if (to < 0 || to >= sections.length) {
       return;
@@ -42,6 +55,54 @@ export function PageSectionsForm({
     onChange([...sections, createEmptySection(kind)]);
   };
 
+  async function handleImageFile(i: number, file: File | undefined) {
+    if (!file) {
+      return;
+    }
+    const sec = sections[i];
+    if (!sec || sec.kind !== 'image') {
+      return;
+    }
+    if (!slugOk) {
+      onNotify?.('Set the page slug before uploading an image.');
+      return;
+    }
+    setMediaBusy(true);
+    try {
+      const url = await uploadPageSectionImage(pageSlug, sec.id, file);
+      onChange(updateSectionAt(sections, i, { url }));
+      onNotify?.('Image uploaded.');
+    } catch (e) {
+      onNotify?.(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setMediaBusy(false);
+    }
+  }
+
+  async function handleVideoFile(i: number, file: File | undefined) {
+    if (!file) {
+      return;
+    }
+    const sec = sections[i];
+    if (!sec || sec.kind !== 'video') {
+      return;
+    }
+    if (!slugOk) {
+      onNotify?.('Set the page slug before uploading a video.');
+      return;
+    }
+    setMediaBusy(true);
+    try {
+      const url = await uploadPageSectionVideo(pageSlug, sec.id, file);
+      onChange(updateSectionAt(sections, i, { url }));
+      onNotify?.('Video uploaded.');
+    } catch (e) {
+      onNotify?.(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setMediaBusy(false);
+    }
+  }
+
   return (
     <div className="admin-grid" style={{ gap: 16 }}>
       <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
@@ -59,6 +120,9 @@ export function PageSectionsForm({
         </button>
         <button type="button" onClick={() => addKind('image')}>
           Image
+        </button>
+        <button type="button" onClick={() => addKind('video')}>
+          Video
         </button>
         <button type="button" onClick={() => addKind('divider')}>
           Divider
@@ -161,11 +225,66 @@ export function PageSectionsForm({
                 />
               </div>
               <div className="admin-field">
+                <label>Upload image</label>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg"
+                  disabled={disableUploads || !slugOk}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    void handleImageFile(i, f);
+                    e.target.value = '';
+                  }}
+                />
+                {!slugOk ? (
+                  <p className="admin-muted" style={{ margin: '8px 0 0' }}>
+                    Save a page slug first — uploads go to <code>pages/&lt;slug&gt;/…</code>.
+                  </p>
+                ) : null}
+              </div>
+              <div className="admin-field">
                 <label>Alt text</label>
                 <input
                   value={sec.alt ?? ''}
                   onChange={(e) => onChange(updateSectionAt(sections, i, { alt: e.target.value }))}
                 />
+              </div>
+              <div className="admin-field">
+                <label>Caption (optional)</label>
+                <input
+                  value={sec.caption ?? ''}
+                  onChange={(e) => onChange(updateSectionAt(sections, i, { caption: e.target.value }))}
+                />
+              </div>
+            </>
+          )}
+
+          {sec.kind === 'video' && (
+            <>
+              <div className="admin-field">
+                <label>Video URL</label>
+                <input
+                  value={sec.url}
+                  onChange={(e) => onChange(updateSectionAt(sections, i, { url: e.target.value }))}
+                />
+              </div>
+              <div className="admin-field">
+                <label>Upload video (MP4 / WebM / MOV)</label>
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                  disabled={disableUploads || !slugOk}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    void handleVideoFile(i, f);
+                    e.target.value = '';
+                  }}
+                />
+                {!slugOk ? (
+                  <p className="admin-muted" style={{ margin: '8px 0 0' }}>
+                    Save a page slug first — uploads go to <code>pages/&lt;slug&gt;/…</code>.
+                  </p>
+                ) : null}
               </div>
               <div className="admin-field">
                 <label>Caption (optional)</label>
@@ -187,7 +306,7 @@ export function PageSectionsForm({
 
       {sections.length === 0 && (
         <p className="admin-muted">
-          No blocks yet. Add headings, text, panels, or images. You can still use the legacy{' '}
+          No blocks yet. Add headings, text, panels, images, or videos. You can still use the legacy{' '}
           <strong>Body</strong> field below for a single text block when sections are empty.
         </p>
       )}

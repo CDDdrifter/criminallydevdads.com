@@ -24,6 +24,7 @@ create table if not exists site_games (
   description text,
   details text,
   thumbnail_url text,
+  preview_video_url text,
   external_url text,
   local_folder text,
   storage_slug text,
@@ -206,3 +207,64 @@ create policy "game_builds_admin_delete"
 on storage.objects for delete
 to authenticated
 using (bucket_id = 'game-builds' and public.is_site_admin());
+
+-- Public bucket for game cover images (Admin → Games → upload thumbnail).
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('game-thumbnails', 'game-thumbnails', true, 5242880)
+on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit;
+
+drop policy if exists "game_thumbnails_public_read" on storage.objects;
+drop policy if exists "game_thumbnails_admin_insert" on storage.objects;
+drop policy if exists "game_thumbnails_admin_update" on storage.objects;
+drop policy if exists "game_thumbnails_admin_delete" on storage.objects;
+
+create policy "game_thumbnails_public_read"
+on storage.objects for select
+using (bucket_id = 'game-thumbnails');
+
+create policy "game_thumbnails_admin_insert"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'game-thumbnails' and public.is_site_admin());
+
+create policy "game_thumbnails_admin_update"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'game-thumbnails' and public.is_site_admin());
+
+create policy "game_thumbnails_admin_delete"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'game-thumbnails' and public.is_site_admin());
+
+-- Preview / page section videos (MP4 WebM MOV, up to ~100 MB).
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('game-videos', 'game-videos', true, 104857600)
+on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit;
+
+drop policy if exists "game_videos_public_read" on storage.objects;
+drop policy if exists "game_videos_admin_insert" on storage.objects;
+drop policy if exists "game_videos_admin_update" on storage.objects;
+drop policy if exists "game_videos_admin_delete" on storage.objects;
+
+create policy "game_videos_public_read"
+on storage.objects for select
+using (bucket_id = 'game-videos');
+
+create policy "game_videos_admin_insert"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'game-videos' and public.is_site_admin());
+
+create policy "game_videos_admin_update"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'game-videos' and public.is_site_admin());
+
+create policy "game_videos_admin_delete"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'game-videos' and public.is_site_admin());
+
+-- If site_games already existed without this column:
+alter table site_games add column if not exists preview_video_url text;

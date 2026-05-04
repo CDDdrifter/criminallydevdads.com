@@ -49,6 +49,16 @@ export function normalizePageSections(raw: unknown): PageSection[] {
           });
         }
         break;
+      case 'video':
+        if (typeof item.url === 'string') {
+          out.push({
+            id,
+            kind: 'video',
+            url: item.url,
+            caption: typeof item.caption === 'string' ? item.caption : undefined,
+          });
+        }
+        break;
       case 'divider':
         out.push({ id, kind: 'divider' });
         break;
@@ -74,6 +84,8 @@ export function createEmptySection(kind: PageSection['kind']): PageSection {
       return { id, kind: 'panel', title: 'Panel title', body: 'Panel content…', variant: 'default' };
     case 'image':
       return { id, kind: 'image', url: '', alt: '', caption: '' };
+    case 'video':
+      return { id, kind: 'video', url: '', caption: '' };
     case 'divider':
       return { id, kind: 'divider' };
   }
