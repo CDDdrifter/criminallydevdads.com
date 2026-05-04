@@ -53,10 +53,9 @@ func setup(type: String, side: String, wind: float) -> void:
 	if type == "ghost":
 		collision_mask = 1  # only ground
 
-	# No bounce on any bomb by default; only bouncer is designed to bounce
 	physics_material_override = PhysicsMaterial.new()
 	physics_material_override.friction = 0.6
-	physics_material_override.bounce = 0.85 if type == "bouncer" else 0.0
+	physics_material_override.bounce = 0.0
 
 	contact_monitor = true
 	max_contacts_reported = 5
@@ -119,10 +118,6 @@ func _on_body_entered(body: Node) -> void:
 		return
 	var s: String = data.get("special", "")
 	match s:
-		"bounce":
-			bounce_count += 1
-			if bounce_count >= 6:
-				_detonate()
 		"drill":
 			if body.has_method("take_damage"):
 				body.take_damage(data["damage"] * 0.5)
@@ -284,13 +279,13 @@ func _draw() -> void:
 
 	# Special activation burst — expanding rings + core flash
 	if _special_flash > 0.0:
-		var frac := _special_flash
+		var sf := _special_flash
 		for i in 3:
-			var ring_r := sz + 6.0 + (1.0 - frac) * (30.0 + i * 22.0)
-			var ring_a := frac * (0.85 - i * 0.22)
+			var ring_r := sz + 6.0 + (1.0 - sf) * (30.0 + i * 22.0)
+			var ring_a := sf * (0.85 - i * 0.22)
 			draw_circle(Vector2.ZERO, ring_r, Color(1.0, 0.92, 0.28, ring_a), false, 3.5 - i * 0.8)
-		draw_circle(Vector2.ZERO, sz * 1.7, Color(col.r * 1.4, col.g * 1.4, col.b * 1.4, frac * 0.45))
-		draw_circle(Vector2.ZERO, sz * 0.9, Color(1.0, 1.0, 0.8, frac * 0.55))
+		draw_circle(Vector2.ZERO, sz * 1.7, Color(col.r * 1.4, col.g * 1.4, col.b * 1.4, sf * 0.45))
+		draw_circle(Vector2.ZERO, sz * 0.9, Color(1.0, 1.0, 0.8, sf * 0.55))
 
 	# Vortex swirl
 	if vortex_active:

@@ -235,7 +235,9 @@ func _build_world_map() -> void:
 		container.add_child(card)
 
 func _on_zone_clicked(event: InputEvent, zone_id: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+	var tapped: bool = ((event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
+		or (event is InputEventScreenTouch and event.pressed))
+	if tapped:
 		_selected_zone = zone_id
 		_show_screen(Screen.LEVEL_SELECT)
 
@@ -401,7 +403,9 @@ func _level_card(level_id: int, name: String, unlocked: bool, stars: int, comple
 	return panel
 
 func _on_level_clicked(event: InputEvent, level_id: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+	var tapped: bool = ((event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
+		or (event is InputEventScreenTouch and event.pressed))
+	if tapped:
 		GameState.current_level = level_id
 		get_tree().change_scene_to_file("res://scenes/Game.tscn")
 
@@ -1026,7 +1030,6 @@ func _build_how_to_play() -> void:
 		"Freeze          — Encases blocks in ice, stopping them briefly.",
 		"Fire               — Leaves a burning zone that ignites wood blocks.",
 		"Laser            — Fires a horizontal beam piercing multiple blocks.",
-		"Bouncer       — Bounces up to 6 times before exploding.",
 		"Driller          — Drills through up to 8 blocks before detonating.",
 		"Lightning       — Chains electric damage to nearby blocks.",
 		"Magnet        — Pulls all nearby blocks toward the blast point.",

@@ -51,6 +51,7 @@ var _used_bomb_types: Array = []
 var _current_bomb_type: String = "standard"
 var _level_start_time: float = 0.0
 var _special_used_this_level: bool = false
+var _desired_time_scale: float = 1.0
 
 func _ready() -> void:
 	level_cfg = LevelData.get_level(GameState.current_level)
@@ -178,6 +179,9 @@ func _setup_scene() -> void:
 	_hud.restart_pressed.connect(_on_restart)
 	_hud.quit_to_menu_pressed.connect(_quit_to_menu)
 	_hud.special_pressed.connect(_on_special_pressed)
+	_hud.detonate_pressed.connect(_on_detonate_pressed)
+	_hud.speed_changed.connect(_on_speed_changed)
+	GameState.challenge_completed.connect(_on_challenge_completed)
 	add_child(_hud)
 	_hud.build_bomb_selector(_available_bombs, _selected_bomb_idx)
 	_hud.set_wind(_wind)
@@ -254,11 +258,21 @@ func _on_player_launched(launch_vel: Vector2, launch_pos: Vector2) -> void:
 	_active_bomb.launched = true
 	_active_bomb.freeze = false
 	_active_bomb.linear_velocity = launch_vel
-	_fallback_timer = 8.0  # if bomb doesn't explode in 8s, advance turn
+	_fallback_timer = 7.0
+	_hud.set_detonate_visible(true)
 
 func _on_bomb_selected(idx: int) -> void:
 	_selected_bomb_idx = clamp(idx, 0, _available_bombs.size() - 1)
 	_hud.build_bomb_selector(_available_bombs, _selected_bomb_idx)
+	if state == State.PLAYER_AIM and _active_bomb != null and is_instance_valid(_active_bomb):
+		_active_bomb.queue_free()
+		_active_bomb = null
+		_current_bomb_type = _available_bombs[_selected_bomb_idx]
+		var bomb := _spawn_bomb(_current_bomb_type, "player", Vector2(SLING_X, GROUND_Y - 80))
+		bomb.freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
+		bomb.freeze = true
+		_active_bomb = bomb
+		_slingshot.place_bomb(bomb)
 
 func _on_special_pressed() -> void:
 	if _special_used_this_level:
@@ -279,7 +293,9 @@ func _on_bomb_exploded(pos: Vector2, radius: float, force: float, damage: float,
 	_do_explosion(pos, radius, force, damage, special)
 
 func _do_explosion(pos: Vector2, radius: float, force: float, damage: float, special: String) -> void:
-	_fallback_timer = 0.0  # explosion happened, cancel fallback
+	_fallback_timer = 0.0
+	if state == State.PLAYER_RESOLVE:
+		_hud.set_detonate_visible(false)
 	# Save player shot trail only
 	if state == State.PLAYER_RESOLVE and _ghost_trail_enabled:
 		_recording_trail.append(pos)
@@ -458,16 +474,17 @@ func _process(delta: float) -> void:
 		if _ai_think_timer <= 0:
 			_ai_fire()
 
-	# Fallback: advance turn if bomb never lands
+	# Fallback: force-detonate if bomb never lands
 	if _fallback_timer > 0 and (state == State.PLAYER_RESOLVE or state == State.AI_RESOLVE):
 		_fallback_timer -= delta
 		if _fallback_timer <= 0:
-			if state == State.PLAYER_RESOLVE and _ghost_trail_enabled and _recording_trail.size() > 2:
-				_ghost_trail_node.call("set_trail", _recording_trail.duplicate())
 			_recording_trail.clear()
 			_trail_tick = 0.0
-			var s := state
-			_after_resolve(s)
+			if _active_bomb != null and is_instance_valid(_active_bomb):
+				_active_bomb.call("_detonate")
+			else:
+				var s := state
+				_after_resolve(s)
 
 	# Fire zones DoT
 	var to_remove: Array = []
@@ -518,6 +535,8 @@ func _game_over(player_won: bool, msg: String) -> void:
 	if state == State.GAME_OVER:
 		return
 	state = State.GAME_OVER
+	Engine.time_scale = 1.0
+	_hud.reset_speed()
 	_slingshot.set_active(false)
 	_fallback_timer = 0.0
 
@@ -526,10 +545,11 @@ func _game_over(player_won: bool, msg: String) -> void:
 
 	if player_won:
 		# 1. Base win logic & stars
-		var stars := _calculate_stars() 
+		var stars := _calculate_stars()
 		var level_id: int = level_cfg.get("id", 1)
+		var old_rank: int = GameState.player_rank
 		var rewards := GameState.complete_level(level_id, stars, _score)
-		
+
 		# 2. Achievements
 		GameState.check_achievement_direct("first_blood")
 		if stars == 3:
@@ -539,12 +559,14 @@ func _game_over(player_won: bool, msg: String) -> void:
 		GameState.check_and_complete_challenges({
 			"won": true,
 			"stars": stars,
+			"level_id": level_id,
 			"bombs_remaining": _player_bombs_left,
 			"blocks_damaged": _blocks_damaged,
 			"heavy_bombs_used": _heavy_bombs_used,
 			"used_bomb_types": _used_bomb_types,
 			"player_hp_ratio": _player_castle.get_hp_ratio(),
 			"level_time": Time.get_unix_time_from_system() - _level_start_time,
+			"ranked_up": GameState.player_rank > old_rank,
 		})
 
 		# 4. Show win screen
@@ -670,18 +692,42 @@ func _shake(intensity: float) -> void:
 
 # ── Pause ─────────────────────────────────────────────────────────────────────
 
+func _on_speed_changed(mult: float) -> void:
+	_desired_time_scale = mult
+	Engine.time_scale = mult
+
+func _on_detonate_pressed() -> void:
+	if state != State.PLAYER_RESOLVE or _active_bomb == null or not is_instance_valid(_active_bomb):
+		return
+	if not _active_bomb.launched:
+		return
+	_fallback_timer = 0.0
+	_hud.set_detonate_visible(false)
+	_active_bomb.call("_detonate")
+
+func _on_challenge_completed(desc: String, reward: int) -> void:
+	_hud.show_challenge_toast(desc, reward)
+
 func _on_pause() -> void:
+	Engine.time_scale = 1.0
 	get_tree().paused = true
 	_hud.show_pause(true)
 
 func _on_resume() -> void:
 	get_tree().paused = false
 	_hud.show_pause(false)
+	Engine.time_scale = _desired_time_scale
 
 func _on_restart() -> void:
+	Engine.time_scale = 1.0
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
 func _quit_to_menu() -> void:
+	Engine.time_scale = 1.0
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EXIT_TREE:
+		Engine.time_scale = 1.0

@@ -13,7 +13,7 @@
     "title": "Fort Fury",
     "type": "game",
     "description": "Fort Fury — physics castle vs. AI. Web export lives in games/fortfury/ (Godot HTML5).",
-    "details": "Playable in the hub via games/fortfury/index.html. Full Godot project is under games/fortfury/fortfury/ (source; .godot not in git).",
+    "details": "Playable in the hub via games/fortfury/index.html. Godot source and Web export live under games/fortfury/ (.godot not in git).",
     "thumbnail": "",
     "filename": "fortfury.zip"
   },

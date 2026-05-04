@@ -15,6 +15,9 @@ var active: bool = false
 var current_bomb: Node = null
 var preview_steps: int = 40
 
+var _touch_id: int = -1
+var _touch_origin_world: Vector2 = Vector2.ZERO
+
 # For trajectory preview
 var _preview_points: Array = []
 
@@ -37,35 +40,44 @@ func place_bomb(bomb: Node) -> void:
 		current_bomb.position = to_global(Vector2.ZERO)
 		current_bomb.launched = false
 
+func _viewport_to_world(vp_pos: Vector2) -> Vector2:
+	return get_viewport().canvas_transform.affine_inverse() * vp_pos
+
 func _input(event: InputEvent) -> void:
 	if not active or current_bomb == null:
 		return
 
-	var local_pos: Vector2 = Vector2.ZERO
-	if event is InputEventMouseButton:
-		local_pos = to_local(get_global_mouse_position())
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed and local_pos.length() < 80:
-				is_dragging = true
-			elif not event.pressed and is_dragging:
-				is_dragging = false
-				_fire()
-	elif event is InputEventMouseMotion and is_dragging:
-		local_pos = to_local(get_global_mouse_position())
-		pull_offset = local_pos.limit_length(MAX_PULL)
-		_calc_preview()
-		queue_redraw()
-
-	# Touch input
-	if event is InputEventScreenTouch:
-		local_pos = to_local(event.position)
-		if event.pressed and local_pos.length() < 80:
+	# ── Mouse (desktop) ────────────────────────────────────────────────────────
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var local_pos := to_local(get_global_mouse_position())
+		if event.pressed and local_pos.length() < 150:
 			is_dragging = true
 		elif not event.pressed and is_dragging:
 			is_dragging = false
 			_fire()
-	elif event is InputEventScreenDrag and is_dragging:
-		pull_offset = to_local(event.position).limit_length(MAX_PULL)
+	elif event is InputEventMouseMotion and is_dragging:
+		pull_offset = to_local(get_global_mouse_position()).limit_length(MAX_PULL)
+		_calc_preview()
+		queue_redraw()
+
+	# ── Touch (mobile) — accept anywhere, delta-based so drag direction = fire direction ─
+	elif event is InputEventScreenTouch:
+		if event.pressed and _touch_id == -1:
+			_touch_id = event.index
+			_touch_origin_world = _viewport_to_world(event.position)
+			is_dragging = true
+			pull_offset = Vector2.ZERO
+			_calc_preview()
+			queue_redraw()
+		elif not event.pressed and event.index == _touch_id:
+			_touch_id = -1
+			is_dragging = false
+			_fire()
+	elif event is InputEventScreenDrag and is_dragging and event.index == _touch_id:
+		# pull_offset = origin - current so that dragging toward target aims at target
+		# launch_vel = -pull_offset → fires in drag direction
+		var world_pos := _viewport_to_world(event.position)
+		pull_offset = (_touch_origin_world - world_pos).limit_length(MAX_PULL)
 		_calc_preview()
 		queue_redraw()
 

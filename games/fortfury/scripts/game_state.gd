@@ -37,10 +37,10 @@ var difficulty: String = "normal"
 
 # ── Bomb unlock XP thresholds ─────────────────────────────────────────────────
 const BOMB_UNLOCK_XP: Dictionary = {
-	"standard": 0, "heavy": 80, "splitter": 180, "bouncer": 300,
-	"driller": 450, "shockwave": 620, "cluster": 820, "freeze": 1050,
-	"laser": 1310, "fire": 1600, "lightning": 1920, "nuke": 2270,
-	"magnet": 2650, "ghost": 3060, "sticky": 3500, "vortex": 3980,
+	"standard": 0, "heavy": 80, "splitter": 180,
+	"driller": 300, "shockwave": 450, "cluster": 620, "freeze": 820,
+	"laser": 1050, "fire": 1310, "lightning": 1600, "nuke": 1920,
+	"magnet": 2270, "ghost": 2650, "sticky": 3060, "vortex": 3500,
 }
 
 # ── Shop items ────────────────────────────────────────────────────────────────
@@ -82,6 +82,11 @@ const ACHIEVEMENTS: Dictionary = {
 }
 var unlocked_achievements: Array = []
 
+# ── Session counters (not saved, reset on launch) ─────────────────────────────
+var _session_three_stars: int = 0
+var _session_gold_spent: int = 0
+var _session_gold_earned: int = 0
+
 # ── Events ────────────────────────────────────────────────────────────────────
 var active_event: Dictionary = {}  # populated at runtime if date matches
 
@@ -89,6 +94,7 @@ signal xp_changed
 signal gold_changed
 signal bomb_unlocked(id: String)
 signal achievement_unlocked(id: String)
+signal challenge_completed(desc: String, reward_gold: int)
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -144,6 +150,8 @@ func add_xp(amount: int) -> void:
 
 func add_gold(amount: int) -> void:
 	gold += amount
+	if amount > 0:
+		_session_gold_earned += amount
 	gold_changed.emit()
 	save_game()
 
@@ -157,6 +165,8 @@ func complete_level(level_id: int, stars: int, score: int) -> Dictionary:
 	var new_score: int = max(int(prev.get("score", 0)), score)
 	level_progress[key] = {"stars": new_stars, "score": new_score, "completed": true}
 
+	if stars == 3:
+		_session_three_stars += 1
 	var xp_earn := stars * 60 + (150 if first_clear else 0)
 	var gold_earn := stars * 30 + score / 120
 	add_xp(xp_earn)
@@ -261,7 +271,7 @@ func get_todays_challenges() -> Array:
 		{"desc": "Win a level on Hard difficulty", "type": "hard_win", "reward_gold": 500},
 		{"desc": "Win a level in under 45 seconds", "type": "speed_run", "reward_gold": 350},
 		{"desc": "Use 4 different bomb types in one level", "type": "variety", "reward_gold": 400},
-		{"desc": "Hit the enemy castle with a Bouncer", "type": "bounce_hit", "reward_gold": 300},
+		{"desc": "Win a level using a Lightning bomb", "type": "lightning_win", "reward_gold": 300},
 		{"desc": "Win 3 levels in a single session", "type": "marathon", "reward_gold": 600},
 		{"desc": "Earn 1,000 total gold today", "type": "gold_hunter", "reward_gold": 400},
 		{"desc": "Win without using any special bombs", "type": "pure_skill", "reward_gold": 500},
@@ -316,6 +326,7 @@ func check_and_complete_challenges(stats: Dictionary) -> void:
 		if _challenge_met(challenges[i], stats):
 			progress[i] = 1
 			changed = true
+			challenge_completed.emit(challenges[i].get("desc", ""), challenges[i].get("reward_gold", 0))
 	if changed:
 		daily_challenge_progress[key] = progress
 	save_game()
@@ -335,9 +346,18 @@ func _challenge_met(ch: Dictionary, stats: Dictionary) -> bool:
 		"variety":       return (stats.get("used_bomb_types", []) as Array).size() >= 4
 		"marathon":      return win_streak >= 3
 		"speed_run":     return stats.get("level_time", 999.0) <= 45.0
-		"heavy_5":       return stats.get("heavy_bombs_used", 0) >= 5
-		"loyal_player":  return daily_streak >= 2
-		"any_purchase":  return stats.get("any_purchase", false)
+		"heavy_5":        return stats.get("heavy_bombs_used", 0) >= 5
+		"loyal_player":   return daily_streak >= 2
+		"any_purchase":   return stats.get("any_purchase", false)
+		"stars_2":        return _session_three_stars >= 2
+		"shop_250":       return _session_gold_spent >= 250
+		"lightning_win":  return "lightning" in (stats.get("used_bomb_types", []) as Array)
+		"drill_deep":     return "driller" in (stats.get("used_bomb_types", []) as Array)
+		"rank_up":        return stats.get("ranked_up", false)
+		"cluster_hit":    return "cluster" in (stats.get("used_bomb_types", []) as Array) and stats.get("blocks_damaged", 0) >= 5
+		"fashion_war":    return active_skin != "default"
+		"high_tier_pro":  return stats.get("stars", 0) == 3 and stats.get("level_id", 0) > 20
+		"gold_hunter":    return _session_gold_earned >= 1000
 	return false
 
 func claim_daily_challenge(idx: int) -> int:
@@ -373,7 +393,9 @@ func buy_bomb(bomb_id: String) -> bool:
 		return false
 	var cost: Dictionary = SHOP_BOMBS.get(bomb_id, {})
 	if cost.get("gold", 0) > 0 and gold >= cost["gold"]:
-		gold -= cost["gold"]
+		var spent: int = cost["gold"]
+		gold -= spent
+		_session_gold_spent += spent
 		unlocked_bombs.append(bomb_id)
 		bomb_unlocked.emit(bomb_id)
 		gold_changed.emit()
@@ -394,7 +416,9 @@ func buy_upgrade(upg_id: String) -> bool:
 		return false
 	var cost: Dictionary = SHOP_UPGRADES.get(upg_id, {})
 	if cost.get("gold", 0) > 0 and gold >= cost["gold"]:
-		gold -= cost["gold"]
+		var spent: int = cost["gold"]
+		gold -= spent
+		_session_gold_spent += spent
 		gold_changed.emit()
 	elif cost.get("gems", 0) > 0 and gems >= cost["gems"]:
 		gems -= cost["gems"]

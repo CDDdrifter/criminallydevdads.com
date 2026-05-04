@@ -24,14 +24,21 @@ var _bomb_scroll: ScrollContainer
 var _bomb_panel: HBoxContainer
 var _pause_btn: Button
 var _spec_btn: Button
+var _det_btn: Button
+var _speed_btn: Button
 var _pause_overlay: Control
 var _wind_label: Label
 var _selected_bomb_highlight: int = 0
+
+const _SPEEDS: Array = [1.0, 2.0, 4.0]
+const _SPEED_LABELS: Array = ["▶  1x", "▶▶ 2x", "▶▶▶4x"]
+var _speed_idx: int = 0
 
 var _scroll_drag_active: bool = false
 var _scroll_drag_start_x: float = 0.0
 var _scroll_drag_base: int = 0
 var _scroll_dragging: bool = false
+var _active_toasts: int = 0
 
 signal bomb_selected(index: int)
 signal pause_pressed
@@ -39,6 +46,8 @@ signal resume_pressed
 signal restart_pressed
 signal quit_to_menu_pressed
 signal special_pressed
+signal detonate_pressed
+signal speed_changed(multiplier: float)
 
 func _ready() -> void:
 	_build_ui()
@@ -95,6 +104,16 @@ func _build_ui() -> void:
 	_wind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_root.add_child(_wind_label)
 
+	# Speed button (cycles 1x → 2x → 4x)
+	_speed_btn = Button.new()
+	_speed_btn.text = _SPEED_LABELS[0]
+	_speed_btn.position = Vector2(1254, 12)
+	_speed_btn.size = Vector2(130, 52)
+	_speed_btn.pressed.connect(_on_speed_btn_pressed)
+	_style_button(_speed_btn, Color(0.10, 0.12, 0.22), Color(0.30, 0.42, 0.70), Color(0.75, 0.85, 1.0), 8)
+	_speed_btn.add_theme_font_size_override("font_size", 14)
+	_root.add_child(_speed_btn)
+
 	# Pause button
 	_pause_btn = Button.new()
 	_pause_btn.text = "||"
@@ -149,6 +168,16 @@ func _build_ui() -> void:
 	_style_button(_spec_btn, Color(0.42, 0.20, 0.04), Color(0.95, 0.60, 0.10), Color(1.0, 0.84, 0.28), 8)
 	_spec_btn.add_theme_font_size_override("font_size", 15)
 	_root.add_child(_spec_btn)
+
+	_det_btn = Button.new()
+	_det_btn.text = "DETONATE"
+	_det_btn.position = Vector2(1712, 948)
+	_det_btn.size = Vector2(182, 54)
+	_det_btn.pressed.connect(func(): detonate_pressed.emit())
+	_style_button(_det_btn, Color(0.32, 0.05, 0.05), Color(0.88, 0.20, 0.16), Color(1.0, 0.68, 0.68), 8)
+	_det_btn.add_theme_font_size_override("font_size", 15)
+	_det_btn.visible = false
+	_root.add_child(_det_btn)
 
 	# ── Pause overlay ─────────────────────────────────────────────────────────
 	_pause_overlay = Control.new()
@@ -287,8 +316,90 @@ func set_special_used(used: bool) -> void:
 		_spec_btn.text = "* SPECIAL"
 		_style_button(_spec_btn, Color(0.42, 0.20, 0.04), Color(0.95, 0.60, 0.10), Color(1.0, 0.84, 0.28), 8)
 
+func set_detonate_visible(v: bool) -> void:
+	_det_btn.visible = v
+
+func reset_speed() -> void:
+	_speed_idx = 0
+	_apply_speed_style()
+
+func _on_speed_btn_pressed() -> void:
+	_speed_idx = (_speed_idx + 1) % _SPEEDS.size()
+	_apply_speed_style()
+	speed_changed.emit(_SPEEDS[_speed_idx])
+
+func _apply_speed_style() -> void:
+	_speed_btn.text = _SPEED_LABELS[_speed_idx]
+	match _speed_idx:
+		0: _style_button(_speed_btn, Color(0.10, 0.12, 0.22), Color(0.30, 0.42, 0.70), Color(0.75, 0.85, 1.0), 8)
+		1: _style_button(_speed_btn, Color(0.08, 0.22, 0.22), Color(0.20, 0.78, 0.78), Color(0.55, 1.0, 1.0), 8)
+		2: _style_button(_speed_btn, Color(0.28, 0.18, 0.04), Color(0.95, 0.65, 0.10), Color(1.0, 0.90, 0.40), 8)
+
 func show_pause(show: bool) -> void:
 	_pause_overlay.visible = show
+
+func show_challenge_toast(desc: String, reward: int) -> void:
+	const W := 380.0
+	const H := 96.0
+	var slot := _active_toasts
+	_active_toasts += 1
+
+	var panel := Panel.new()
+	panel.size = Vector2(W, H)
+	panel.z_index = 20
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.04, 0.12, 0.05, 0.97)
+	style.corner_radius_top_left = 10
+	style.corner_radius_top_right = 10
+	style.corner_radius_bottom_left = 10
+	style.corner_radius_bottom_right = 10
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(0.28, 0.90, 0.38, 0.90)
+	panel.add_theme_stylebox_override("panel", style)
+
+	var vbox := VBoxContainer.new()
+	vbox.position = Vector2(10, 8)
+	vbox.size = Vector2(W - 20, H - 16)
+	vbox.add_theme_constant_override("separation", 3)
+	panel.add_child(vbox)
+
+	var title_lbl := Label.new()
+	title_lbl.text = "✓  CHALLENGE COMPLETE"
+	title_lbl.add_theme_font_size_override("font_size", 13)
+	title_lbl.add_theme_color_override("font_color", Color(0.38, 1.0, 0.50))
+	vbox.add_child(title_lbl)
+
+	var desc_lbl := Label.new()
+	desc_lbl.text = desc
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_color_override("font_color", Color(0.82, 0.82, 0.82))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.size = Vector2(W - 20, 32)
+	vbox.add_child(desc_lbl)
+
+	var reward_lbl := Label.new()
+	reward_lbl.text = "+%d Gold — claim in Challenges tab" % reward
+	reward_lbl.add_theme_font_size_override("font_size", 12)
+	reward_lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.25))
+	vbox.add_child(reward_lbl)
+
+	_root.add_child(panel)
+
+	var off_x := 1940.0
+	var on_x := 1920.0 - W - 16.0
+	var y := 140.0 + slot * (H + 8.0)
+	panel.position = Vector2(off_x, y)
+
+	var tw := get_tree().create_tween()
+	tw.tween_property(panel, "position:x", on_x, 0.32).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.tween_interval(3.5)
+	tw.tween_property(panel, "position:x", off_x, 0.22).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func() -> void:
+		_active_toasts -= 1
+		panel.queue_free())
 
 func flash_special() -> void:
 	var t: Tween = get_tree().create_tween()
