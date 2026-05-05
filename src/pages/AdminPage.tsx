@@ -30,7 +30,6 @@ import {
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
 import {
   deleteGameBuild,
-  listIndexHtmlCandidatesInZip,
   publicGameIndexUrl,
   sanitizeGameStorageSlug,
   uploadGamePreviewVideo,
@@ -113,9 +112,9 @@ export function AdminPage() {
   const [gameZipFile, setGameZipFile] = useState<File | null>(null);
   /** Live status line during ZIP upload (parse → delete → parallel file uploads). */
   const [zipUploadHint, setZipUploadHint] = useState<string | null>(null);
-  /** Paths to index.html inside the chosen ZIP; empty until ZIP is parsed. */
+  /** Paths to index.html found in the last uploaded ZIP. */
   const [zipEntryCandidates, setZipEntryCandidates] = useState<string[]>([]);
-  /** '' = auto-detect; otherwise exact path inside ZIP (e.g. Build/index.html). */
+  /** Selected playable entry from uploaded ZIP (persisted to site_games.storage_entry_in_zip). */
   const [zipEntryPick, setZipEntryPick] = useState('');
   const thumbFileRef = useRef<HTMLInputElement>(null);
   const previewVideoFileRef = useRef<HTMLInputElement>(null);
@@ -156,37 +155,6 @@ export function AdminPage() {
     reload().catch(console.error);
   }, [reload]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!gameZipFile) {
-      setZipEntryCandidates([]);
-      return;
-    }
-    listIndexHtmlCandidatesInZip(gameZipFile)
-      .then((cands) => {
-        if (cancelled) {
-          return;
-        }
-        setZipEntryCandidates(cands);
-        setZipEntryPick((prev) => {
-          if (!prev.trim()) {
-            return '';
-          }
-          const hit = cands.find((c) => c.toLowerCase() === prev.toLowerCase());
-          return hit ?? '';
-        });
-      })
-      .catch((err) => {
-        console.error(err);
-        if (!cancelled) {
-          setZipEntryCandidates([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [gameZipFile]);
-
   const flash = (msg: string, durationMs = 3500) => {
     setMessage(msg);
     setTimeout(() => setMessage(null), durationMs);
@@ -209,6 +177,10 @@ export function AdminPage() {
     const slug = gameDraft.slug.trim();
     if (!slug) {
       flash('Slug is required.');
+      return;
+    }
+    if (zipEntryCandidates.length > 1 && !zipEntryPick.trim() && gameDraft.storage_slug?.trim()) {
+      flash('Choose which index.html to play, then click Save game.');
       return;
     }
     const title = gameDraft.title.trim() || slug;
@@ -245,11 +217,10 @@ export function AdminPage() {
       return;
     }
     const title = gameDraft.title.trim() || slug;
-    const entryForUpload = zipEntryPick.trim() || null;
     setBusy(true);
     setZipUploadHint('Reading ZIP…');
     try {
-      const { fileCount, exportRootLabel } = await uploadGameZip(
+      const { fileCount, exportRootLabel, indexCandidates } = await uploadGameZip(
         gameDraft.slug,
         gameZipFile,
         true,
@@ -266,13 +237,26 @@ export function AdminPage() {
             setZipUploadHint(`Uploading ${p.done}/${p.total} files…`);
           }
         },
-        entryForUpload,
       );
+      const normalizedCandidates = indexCandidates.map((p) =>
+        p
+          .split('/')
+          .map((seg, i, arr) =>
+            i === arr.length - 1 && seg.toLowerCase() === 'index.html' ? 'index.html' : seg,
+          )
+          .join('/'),
+      );
+      const chosenEntry =
+        normalizedCandidates.length === 1
+          ? (normalizedCandidates[0] ?? '')
+          : gameDraft.storage_entry_in_zip?.trim() || '';
       setGameZipFile(null);
+      setZipEntryCandidates(normalizedCandidates);
+      setZipEntryPick(chosenEntry);
       setGameDraft((prev) => ({
         ...prev,
         storage_slug: storageKey,
-        storage_entry_in_zip: entryForUpload,
+        storage_entry_in_zip: chosenEntry || null,
         title: prev.title?.trim() ? prev.title : title,
       }));
       try {
@@ -280,7 +264,7 @@ export function AdminPage() {
           ...gameUpsertPayload({
             ...gameDraft,
             title,
-            storage_entry_in_zip: entryForUpload,
+            storage_entry_in_zip: chosenEntry || null,
           }),
           storage_slug: storageKey,
         });
@@ -296,10 +280,17 @@ export function AdminPage() {
         return;
       }
       await reload();
-      flash(
-        `✓ Uploaded ${fileCount} files. Packaged from ZIP folder "${exportRootLabel}" → Storage "${storageKey}". If play fails, open the sanity-check link and compare paths.`,
-        9000,
-      );
+      if (normalizedCandidates.length <= 1) {
+        flash(
+          `✓ Uploaded ${fileCount} files. Using ${chosenEntry || 'index.html'} from ZIP "${exportRootLabel}".`,
+          9000,
+        );
+      } else {
+        flash(
+          `Uploaded ${fileCount} files. Now choose which index.html to play from the list below, then click Save game.`,
+          12000,
+        );
+      }
     } catch (e) {
       console.error(e);
       flash(e instanceof Error ? e.message : 'ZIP upload failed', 9000);
@@ -1164,6 +1155,8 @@ export function AdminPage() {
                   onChange={(e) => {
                     setGameZipFile(e.target.files?.[0] ?? null);
                     setZipUploadHint(null);
+                    setZipEntryCandidates([]);
+                    setZipEntryPick('');
                   }}
                 />
                 {zipUploadHint ? (
@@ -1176,9 +1169,13 @@ export function AdminPage() {
                       id="g_zip_entry"
                       value={zipEntryPick}
                       disabled={busy}
-                      onChange={(e) => setZipEntryPick(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setZipEntryPick(value);
+                        setGameDraft((prev) => ({ ...prev, storage_entry_in_zip: value || null }));
+                      }}
                     >
-                      <option value="">Auto-detect (recommended first try)</option>
+                      <option value="">Choose one index.html…</option>
                       {zipEntryCandidates.map((rel) => (
                         <option key={rel} value={rel}>
                           {rel}

@@ -46,12 +46,25 @@ export function sanitizeGameStorageSlug(raw: string): string {
 
 /** Public URL for the hosted index.html (Supabase Storage, public bucket). */
 export function publicGameIndexUrl(storageSlug: string): string {
+  return publicGameEntryUrl(storageSlug, 'index.html');
+}
+
+/** Public URL for any uploaded entry path under a game build slug. */
+export function publicGameEntryUrl(storageSlug: string, entryPath: string): string {
   const base = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
   if (!base) {
     return '';
   }
-  const safe = encodeURIComponent(storageSlug.trim());
-  return `${base}/storage/v1/object/public/${GAME_BUILDS_BUCKET}/${safe}/index.html`;
+  const slug = encodeURIComponent(storageSlug.trim());
+  const entry = entryPath
+    .split('/')
+    .filter(Boolean)
+    .map((seg) => encodeURIComponent(seg))
+    .join('/');
+  if (!entry) {
+    return '';
+  }
+  return `${base}/storage/v1/object/public/${GAME_BUILDS_BUCKET}/${slug}/${entry}`;
 }
 
 function guessContentType(filename: string): string {
@@ -125,26 +138,6 @@ export async function listIndexHtmlCandidatesInZip(zipFile: File): Promise<strin
     return a.localeCompare(b);
   });
   return hits;
-}
-
-/**
- * Use the folder that contains the user-selected index.html (exact path inside the ZIP).
- */
-function rootFromUserEntryZip(paths: string[], userEntry: string): string {
-  const want = norm(userEntry.trim());
-  if (!want) {
-    return detectHtmlRoot(paths);
-  }
-  if (!/(^|\/)index\.html$/i.test(want)) {
-    throw new Error('Entry must be an index.html path inside the ZIP (e.g. MyExport/index.html).');
-  }
-  const match = paths.find((p) => p.toLowerCase() === want.toLowerCase());
-  if (!match) {
-    throw new Error(
-      `No "${userEntry}" in this ZIP. Pick a path from the list or re-export and zip again.`,
-    );
-  }
-  return dirPrefixOf(match);
 }
 
 /**
@@ -245,12 +238,10 @@ function detectHtmlRoot(paths: string[]): string {
 /**
  * Zip entries → relative paths under storage slug (no leading slash).
  */
-async function zipToRelativeFiles(
-  zipFile: File,
-  entryPathInZip?: string | null,
-): Promise<{
+async function zipToRelativeFiles(zipFile: File): Promise<{
   files: { path: string; blob: Blob }[];
   exportRootLabel: string;
+  indexCandidates: string[];
 }> {
   const buf = await zipFile.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
@@ -260,16 +251,21 @@ async function zipToRelativeFiles(
       paths.push(norm(relPath));
     }
   });
-  const root = entryPathInZip?.trim()
-    ? rootFromUserEntryZip(paths, entryPathInZip)
-    : detectHtmlRoot(paths);
+  const root = detectHtmlRoot(paths);
+  const indexCandidates = paths
+    .filter((p) => /(^|\/)index\.html$/i.test(p))
+    .sort((a, b) => {
+      const da = a.split('/').filter(Boolean).length;
+      const db = b.split('/').filter(Boolean).length;
+      if (da !== db) {
+        return da - db;
+      }
+      return a.localeCompare(b);
+    });
   const exportRootLabel = root.replace(/\/$/, '') || 'zip root';
   const out: { path: string; blob: Blob }[] = [];
   for (const p of paths) {
-    if (root && !p.startsWith(root)) {
-      continue;
-    }
-    let rel = root ? p.slice(root.length) : p;
+    let rel = p;
     if (!rel || rel.endsWith('/')) {
       continue;
     }
@@ -293,7 +289,7 @@ async function zipToRelativeFiles(
   if (!hasIndex) {
     throw new Error('Missing index.html next to export assets.');
   }
-  return { files: out, exportRootLabel };
+  return { files: out, exportRootLabel, indexCandidates };
 }
 
 const STORAGE_LIST_PAGE = 1000;
@@ -441,9 +437,7 @@ export async function uploadGameZip(
   zipFile: File,
   wipeFirst = true,
   onProgress?: (p: ZipUploadProgress) => void,
-  /** Exact path inside the ZIP to the game’s index.html (from picker); omit for auto-detect. */
-  entryPathInZip?: string | null,
-): Promise<{ fileCount: number; exportRootLabel: string }> {
+): Promise<{ fileCount: number; exportRootLabel: string; indexCandidates: string[] }> {
   if (!supabase) {
     throw new Error('Supabase not configured');
   }
@@ -452,7 +446,7 @@ export async function uploadGameZip(
     throw new Error('Invalid game slug for upload.');
   }
   onProgress?.({ phase: 'parse' });
-  const { files, exportRootLabel } = await zipToRelativeFiles(zipFile, entryPathInZip);
+  const { files, exportRootLabel, indexCandidates } = await zipToRelativeFiles(zipFile);
   /** Start big binaries first so parallel workers aren’t idle while the last .wasm/.pck trickles in. */
   files.sort((a, b) => b.blob.size - a.blob.size);
   onProgress?.({ phase: 'packaged', exportRootLabel, fileCount: files.length });
@@ -464,7 +458,7 @@ export async function uploadGameZip(
   await uploadExtractedFilesParallel(slug, files, (done, total) => {
     onProgress?.({ phase: 'upload', done, total });
   });
-  return { fileCount: files.length, exportRootLabel };
+  return { fileCount: files.length, exportRootLabel, indexCandidates };
 }
 
 export async function uploadGameThumbnail(gameSlug: string, file: File): Promise<string> {

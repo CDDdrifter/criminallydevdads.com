@@ -2,7 +2,7 @@ import type { DevLogPost, GameRecord, GameView, NavItem, SitePage, SiteSettings 
 import { defaultSiteSettings } from '../types';
 import { supabase, supabaseConfigured } from './supabase';
 import { normalizePageSections } from './pageSections';
-import { publicGameIndexUrl } from './gameStorageUpload';
+import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
 
 function normalizeSitePage(row: Record<string, unknown>): SitePage {
   return {
@@ -21,7 +21,10 @@ function recordToView(g: GameRecord): GameView {
   const localPath = `games/${folder}/index.html`;
   const ext = g.external_url?.trim();
   const storageSlug = g.storage_slug?.trim();
-  const storageUrl = storageSlug ? publicGameIndexUrl(storageSlug) : '';
+  const entryInZip = g.storage_entry_in_zip?.trim();
+  const storageUrl = storageSlug
+    ? publicGameEntryUrl(storageSlug, entryInZip || 'index.html') || publicGameIndexUrl(storageSlug)
+    : '';
 
   /** ZIP / Storage build must win over External URL, or a stale itch/JS link hijacks Play and shows raw code. */
   let launchPath = localPath;
