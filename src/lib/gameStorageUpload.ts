@@ -439,6 +439,70 @@ export type ZipUploadProgress =
   | { phase: 'clearing' }
   | { phase: 'upload'; done: number; total: number };
 
+function mimeRepairOrder(path: string): number {
+  const ext = path.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 'html' || ext === 'htm') {
+    return 0;
+  }
+  if (ext === 'js' || ext === 'mjs') {
+    return 1;
+  }
+  if (ext === 'css' || ext === 'json' || ext === 'svg' || ext === 'map') {
+    return 2;
+  }
+  if (ext === 'wasm') {
+    return 3;
+  }
+  if (ext === 'pck') {
+    return 4;
+  }
+  return 5;
+}
+
+/**
+ * Re-download each file under game-builds/<slug>/ and upload again with correct Content-Type.
+ * Fixes Godot pages that show as raw "code" because Storage had `text/plain` on `index.html`.
+ * Large games take a few minutes (many files).
+ */
+export async function repairGameBuildContentTypes(
+  storageSlug: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ repaired: number }> {
+  if (!supabase) {
+    throw new Error('Supabase not configured');
+  }
+  const slug = sanitizeGameStorageSlug(storageSlug);
+  if (!slug) {
+    throw new Error('Invalid storage slug');
+  }
+  const keys = await listStorageFilesRecursive(slug);
+  if (keys.length === 0) {
+    return { repaired: 0 };
+  }
+  const sorted = [...keys].sort((a, b) => {
+    const d = mimeRepairOrder(a) - mimeRepairOrder(b);
+    if (d !== 0) {
+      return d;
+    }
+    return a.localeCompare(b);
+  });
+  let done = 0;
+  const total = sorted.length;
+  for (const key of sorted) {
+    const pub = publicStorageObjectUrl(GAME_BUILDS_BUCKET, key);
+    const r = await fetch(pub, { cache: 'no-store' });
+    if (!r.ok) {
+      throw new Error(`${key}: could not read file (HTTP ${r.status}). Check bucket is public.`);
+    }
+    const blob = await r.blob();
+    const contentType = guessContentType(key);
+    await uploadStorageObjectWithRetries(key, blob, contentType);
+    done += 1;
+    onProgress?.(done, total);
+  }
+  return { repaired: total };
+}
+
 /** Remove all objects under game-builds/<storageSlug>/ */
 export async function deleteGameBuild(storageSlug: string): Promise<void> {
   if (!supabase) {

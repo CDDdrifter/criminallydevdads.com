@@ -31,6 +31,7 @@ import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSect
 import {
   deleteGameBuild,
   publicGameEntryUrl,
+  repairGameBuildContentTypes,
   sanitizeGameStorageSlug,
   uploadGamePreviewVideo,
   uploadGameThumbnail,
@@ -1102,7 +1103,7 @@ export function AdminPage() {
                 Cloudflare Pages and paste that URL in <strong>External play URL</strong> instead of ZIP upload.
               </p>
               {gameDraft.storage_slug ? (
-                <p className="admin-muted" style={{ margin: '0 0 10px' }}>
+                <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
                   Cloud folder: <code>{gameDraft.storage_slug}</code>
                   {' · '}
                   <a
@@ -1115,6 +1116,21 @@ export function AdminPage() {
                   >
                     Open hosted game page (sanity check)
                   </a>
+                  <br />
+                  <span style={{ opacity: 0.92 }}>
+                    This deploy’s Supabase host:{' '}
+                    <code>
+                      {(() => {
+                        try {
+                          return new URL(getBuildTimeSupabaseUrl()).hostname;
+                        } catch {
+                          return '(invalid URL)';
+                        }
+                      })()}
+                    </code>{' '}
+                    — must match <code>https://&lt;Project ID from Supabase General&gt;.supabase.co</code> exactly (no
+                    extra letters).
+                  </span>
                 </p>
               ) : null}
               {zipCloudConfirmed ? (
@@ -1192,6 +1208,33 @@ export function AdminPage() {
               <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
                 <button type="button" disabled={busy || !gameZipFile || !gameDraft.slug.trim()} onClick={onUploadGameZip}>
                   Upload ZIP & save game
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !gameDraft.storage_slug}
+                  title="Re-tags HTML/JS/WASM on Storage if Play shows raw code"
+                  onClick={async () => {
+                    const key = gameDraft.storage_slug?.trim();
+                    if (!key || !confirm('Re-apply correct file types for every file in this game’s Storage folder? Large games can take a few minutes.')) {
+                      return;
+                    }
+                    setBusy(true);
+                    setZipUploadHint(null);
+                    try {
+                      const { repaired } = await repairGameBuildContentTypes(key, (done, total) => {
+                        setZipUploadHint(`Fixing types ${done}/${total}…`);
+                      });
+                      flash(`Updated ${repaired} file(s). Try Play again (hard refresh).`, 8000);
+                    } catch (e) {
+                      console.error(e);
+                      flash(e instanceof Error ? e.message : 'MIME repair failed', 10000);
+                    } finally {
+                      setZipUploadHint(null);
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Fix file types on Storage
                 </button>
                 <button type="button" disabled={busy || !gameDraft.storage_slug} onClick={onClearHostedGame}>
                   Remove cloud build

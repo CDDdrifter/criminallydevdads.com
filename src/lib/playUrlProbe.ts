@@ -44,7 +44,7 @@ export async function probeGamePlayUrl(url: string): Promise<PlayUrlProbeResult>
         ok: false,
         summary: 'HTML is being served as plain text',
         detail:
-          'The browser will show source "code" instead of running the game. Re-upload the Web export ZIP from Admin (uploads set Content-Type to text/html).',
+          'The browser shows source instead of the game. Fix: Admin → Games → this title → **Fix file types on Storage** (re-tags HTML/JS/WASM without re-uploading the ZIP). Also check the link’s hostname matches Supabase **General → Project ID** exactly (one wrong letter breaks every file).',
       };
     }
 
