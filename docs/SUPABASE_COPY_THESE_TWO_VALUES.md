@@ -4,12 +4,40 @@ Use this page together with what **`/#/admin`** shows you after deploy (it print
 
 ---
 
-## “General” settings vs “API” (why your link still fails)
+## If you only see “API keys” and no URL (new Supabase layout)
 
-- **Project Settings → General** shows **Project ID** (a short ref like `yebnifkynoucfbdhdva`). That is **only part** of the URL — **do not** paste just the ID into GitHub.
-- You need the full **Project URL** from **Project Settings → API** (gear → **API**, not General):  
-  **`https://<that-same-ref>.supabase.co`**
-- The sidebar may say **“Data API”** or show REST docs elsewhere — still, the string you want is the **`https://….supabase.co`** label at the top of the **API** settings page (same page as the **anon** key table).
+Supabase often splits **keys** and **connection info** now. You still have everything you need:
+
+### Option A — Build the URL yourself (always works)
+
+1. Open **Project Settings** (gear) → **General**.
+2. Copy **Project ID** (reference), e.g. `yebnifkynoucfbdhdva`.
+3. Your **`VITE_SUPABASE_URL`** is **exactly**:
+
+   `https://` + **Project ID** + `.supabase.co`
+
+   Example: `https://yebnifkynoucfbdhdva.supabase.co`
+
+   There is no other hostname for a normal cloud project. You do **not** need a separate “URL” field if you have the ID.
+
+### Option B — Connect dialog (shows URL + key together)
+
+1. In the dashboard, open your project.
+2. Look for **Connect** (top area or project home) — or go to:  
+   `https://supabase.com/dashboard/project/<YOUR_PROJECT_ID>?showConnect=true`  
+   (put your **Project ID** in place of `<YOUR_PROJECT_ID>`).
+3. That panel shows the **Project URL** and which key to use for a web app.
+
+### Option C — Older “API” page (if your account still has it)
+
+**Project Settings** (gear) → **API** (in the sub-menu) — sometimes the **Project URL** is at the top. If you don’t have **API**, use A or B above.
+
+---
+
+## “General” vs keys-only pages
+
+- **General** → **Project ID** is the subdomain part of the API URL (see Option A).
+- **API keys** / **Publishable** key pages may **not** repeat the URL — that’s normal now; use Option A or **Connect**.
 
 ---
 
