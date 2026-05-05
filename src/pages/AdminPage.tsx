@@ -825,10 +825,11 @@ export function AdminPage() {
             Sync catalog to GitHub
           </h2>
           <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.5 }}>
-            Edits here save to <strong>Supabase</strong>. To also update the repo’s root{' '}
-            <code>games.json</code> (published games only), run the Edge Function once per batch. Requires a one-time
-            deploy and GitHub token — <code>docs/SYNC_CMS_TO_GITHUB.md</code>. Does <strong>not</strong> upload{' '}
-            <code>games/*/binary</code> files; those stay as they are in git or on Storage.
+            Edits here save to <strong>Supabase</strong>. This button only commits a small <code>games.json</code> file
+            to GitHub (titles, thumbnails, and the <strong>play URL</strong> for each published game — same Storage link
+            the hub uses). It does <strong>not</strong> upload your multi-hundred-file ZIPs into the repo; those files
+            already live on Supabase after you use <strong>Upload ZIP</strong>. One-time Edge Function deploy + GitHub
+            token: <code>docs/SYNC_CMS_TO_GITHUB.md</code>.
           </p>
           <button
             type="button"

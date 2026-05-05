@@ -27,13 +27,17 @@ export async function invokeSyncGamesJsonToGitHub(): Promise<SyncGamesJsonResult
     body: {},
   });
 
-  if (error) {
-    return { error: error.message };
+  const body = data as SyncGamesJsonResult | null;
+  if (body && typeof body === 'object' && typeof body.error === 'string' && body.error) {
+    return { error: body.error };
   }
 
-  const body = data as SyncGamesJsonResult | null;
-  if (body && typeof body === 'object' && 'error' in body && body.error) {
-    return { error: String(body.error) };
+  if (error) {
+    const hint =
+      /non-2xx|failed to send|edge function/i.test(error.message) ?
+        ' Deploy the function and secrets: `supabase functions deploy sync-repo-to-github` and `supabase secrets set GITHUB_TOKEN …` (see docs/SYNC_CMS_TO_GITHUB.md).'
+      : '';
+    return { error: `${error.message}${hint}` };
   }
 
   return body ?? { error: 'Empty response from sync-repo-to-github' };

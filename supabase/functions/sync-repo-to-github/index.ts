@@ -25,6 +25,20 @@ function utf8ToBase64(text: string): string {
   return btoa(bin);
 }
 
+/** Same path rules as `publicGameEntryUrl` in the app — must match how games are hosted on Storage. */
+function publicGameEntryUrl(baseNoSlash: string, storageSlug: string, entryPath: string): string {
+  const slug = encodeURIComponent(storageSlug.trim());
+  const entry = entryPath
+    .split('/')
+    .filter(Boolean)
+    .map((seg) => encodeURIComponent(seg))
+    .join('/');
+  if (!entry) {
+    return '';
+  }
+  return `${baseNoSlash}/storage/v1/object/public/game-builds/${slug}/${entry}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -75,9 +89,7 @@ Deno.serve(async (req) => {
 
     const { data: rows, error: gamesErr } = await userClient
       .from('site_games')
-      .select(
-        'slug,title,type,description,details,thumbnail_url,preview_video_url,external_url,local_folder,storage_slug,sort_order,published',
-      )
+      .select('*')
       .eq('published', true)
       .order('sort_order', { ascending: true });
 
@@ -93,9 +105,15 @@ Deno.serve(async (req) => {
       const slug = String(row.slug ?? '').trim();
       const ext = String(row.external_url ?? '').trim();
       const storageSlug = String(row.storage_slug ?? '').trim();
-      let external_url = ext;
-      if (!external_url && storageSlug) {
-        external_url = `${base}/storage/v1/object/public/game-builds/${encodeURIComponent(storageSlug)}/index.html`;
+      const entryInZip = String(row.storage_entry_in_zip ?? '').trim();
+      const entryPath = entryInZip || 'index.html';
+      /** Match hub precedence: a hosted ZIP build wins over a stale external link. */
+      let playUrl = '';
+      if (storageSlug) {
+        playUrl = publicGameEntryUrl(base, storageSlug, entryPath);
+      }
+      if (!playUrl && ext) {
+        playUrl = ext;
       }
       const entry: Record<string, unknown> = {
         id: slug,
@@ -110,8 +128,10 @@ Deno.serve(async (req) => {
       if (pv) {
         entry.preview_video = pv;
       }
-      if (external_url) {
-        entry.external_url = external_url;
+      /** `url` and `external_url` are both read by the static catalog — set both so tools and humans stay aligned. */
+      if (playUrl) {
+        entry.url = playUrl;
+        entry.external_url = playUrl;
       }
       return entry;
     });
