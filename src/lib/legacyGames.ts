@@ -234,6 +234,8 @@ async function buildGameFromFolder(
     local_folder: folderId,
     launchPath: external || localIndex,
     isPlayable: Boolean(external) || isLocalPlayable,
+    sections: [],
+    visual_preset: '',
   };
 }
 

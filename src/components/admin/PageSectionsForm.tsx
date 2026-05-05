@@ -23,13 +23,16 @@ export function PageSectionsForm({
   pageSlug = '',
   formDisabled = false,
   onNotify,
+  /** Storage path prefix for block uploads (default custom pages: <code>pages/</code>; games use <code>game-detail/</code>). */
+  mediaStorageFolder = 'pages',
 }: {
   sections: PageSection[];
   onChange: (s: PageSection[]) => void;
-  /** Required before media upload — path uses <code>pages/&lt;slug&gt;/…</code> in Storage. */
+  /** Required before media upload — path uses <code>&lt;folder&gt;/&lt;slug&gt;/…</code> in Storage. */
   pageSlug?: string;
   formDisabled?: boolean;
   onNotify?: (msg: string) => void;
+  mediaStorageFolder?: string;
 }) {
   const [mediaBusy, setMediaBusy] = useState(false);
   const slugOk = Boolean(pageSlug.trim());
@@ -69,7 +72,7 @@ export function PageSectionsForm({
     }
     setMediaBusy(true);
     try {
-      const url = await uploadPageSectionImage(pageSlug, sec.id, file);
+      const url = await uploadPageSectionImage(pageSlug, sec.id, file, { folder: mediaStorageFolder });
       onChange(updateSectionAt(sections, i, { url }));
       onNotify?.('Image uploaded.');
     } catch (e) {
@@ -93,7 +96,7 @@ export function PageSectionsForm({
     }
     setMediaBusy(true);
     try {
-      const url = await uploadPageSectionVideo(pageSlug, sec.id, file);
+      const url = await uploadPageSectionVideo(pageSlug, sec.id, file, { folder: mediaStorageFolder });
       onChange(updateSectionAt(sections, i, { url }));
       onNotify?.('Video uploaded.');
     } catch (e) {
@@ -238,7 +241,10 @@ export function PageSectionsForm({
                 />
                 {!slugOk ? (
                   <p className="admin-muted" style={{ margin: '8px 0 0' }}>
-                    Save a page slug first — uploads go to <code>pages/&lt;slug&gt;/…</code>.
+                    Save the slug first — uploads go to <code>
+                      {mediaStorageFolder}/&lt;slug&gt;/…
+                    </code>
+                    .
                   </p>
                 ) : null}
               </div>
@@ -282,7 +288,10 @@ export function PageSectionsForm({
                 />
                 {!slugOk ? (
                   <p className="admin-muted" style={{ margin: '8px 0 0' }}>
-                    Save a page slug first — uploads go to <code>pages/&lt;slug&gt;/…</code>.
+                    Save the slug first — uploads go to <code>
+                      {mediaStorageFolder}/&lt;slug&gt;/…
+                    </code>
+                    .
                   </p>
                 ) : null}
               </div>

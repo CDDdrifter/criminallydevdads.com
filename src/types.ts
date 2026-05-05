@@ -1,3 +1,11 @@
+export type PageSection =
+  | { id: string; kind: 'heading'; title: string; subtitle?: string }
+  | { id: string; kind: 'text'; body: string }
+  | { id: string; kind: 'panel'; title: string; body: string; variant?: 'default' | 'accent' | 'muted' }
+  | { id: string; kind: 'image'; url: string; alt?: string; caption?: string }
+  | { id: string; kind: 'video'; url: string; caption?: string }
+  | { id: string; kind: 'divider' };
+
 export type GameRecord = {
   id: string;
   slug: string;
@@ -15,6 +23,10 @@ export type GameRecord = {
   storage_slug?: string | null;
   /** Path inside the uploaded ZIP to the real index.html when auto-detect is wrong (e.g. `Release/index.html`). */
   storage_entry_in_zip?: string | null;
+  /** Blocks shown on the game detail page below the embed (CMS only). */
+  sections?: PageSection[] | null;
+  /** Site-wide FX accent preset when viewing this game’s page (optional). */
+  visual_preset?: string | null;
   sort_order: number;
   published: boolean;
 };
@@ -32,15 +44,9 @@ export type GameView = {
   local_folder: string;
   launchPath: string;
   isPlayable: boolean;
+  sections: PageSection[];
+  visual_preset: string;
 };
-
-export type PageSection =
-  | { id: string; kind: 'heading'; title: string; subtitle?: string }
-  | { id: string; kind: 'text'; body: string }
-  | { id: string; kind: 'panel'; title: string; body: string; variant?: 'default' | 'accent' | 'muted' }
-  | { id: string; kind: 'image'; url: string; alt?: string; caption?: string }
-  | { id: string; kind: 'video'; url: string; caption?: string }
-  | { id: string; kind: 'divider' };
 
 export type SitePage = {
   id: string;

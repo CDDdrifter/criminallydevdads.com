@@ -272,3 +272,6 @@ using (bucket_id = 'game-videos' and public.is_site_admin());
 alter table site_games add column if not exists preview_video_url text;
 
 alter table site_games add column if not exists storage_entry_in_zip text;
+
+alter table site_games add column if not exists sections jsonb not null default '[]'::jsonb;
+alter table site_games add column if not exists visual_preset text;

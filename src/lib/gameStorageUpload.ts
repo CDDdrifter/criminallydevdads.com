@@ -617,8 +617,13 @@ export async function uploadGamePreviewVideo(gameSlug: string, file: File): Prom
   return publicStorageObjectUrl(GAME_VIDEOS_BUCKET, objectPath);
 }
 
-/** Image block on a custom page (≤ thumbnail bucket limit). */
-export async function uploadPageSectionImage(pageSlug: string, sectionId: string, file: File): Promise<string> {
+/** Image block on a custom page or game detail page (≤ thumbnail bucket limit). */
+export async function uploadPageSectionImage(
+  pageSlug: string,
+  sectionId: string,
+  file: File,
+  options?: { folder?: string },
+): Promise<string> {
   if (!supabase) {
     throw new Error('Supabase not configured');
   }
@@ -637,7 +642,8 @@ export async function uploadPageSectionImage(pageSlug: string, sectionId: string
   if (file.size > MAX_THUMBNAIL_BYTES) {
     throw new Error(`Image must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
   }
-  const objectPath = `pages/${pslug}/${sid}.${ext}`;
+  const folder = (options?.folder ?? 'pages').replace(/^\/+|\/+$/g, '');
+  const objectPath = `${folder}/${pslug}/${sid}.${ext}`;
   const { error } = await supabase.storage.from(GAME_THUMBNAILS_BUCKET).upload(objectPath, file, {
     upsert: true,
     contentType: guessContentType(`x.${ext}`),
@@ -649,8 +655,13 @@ export async function uploadPageSectionImage(pageSlug: string, sectionId: string
   return publicStorageObjectUrl(GAME_THUMBNAILS_BUCKET, objectPath);
 }
 
-/** Video block on a custom page. */
-export async function uploadPageSectionVideo(pageSlug: string, sectionId: string, file: File): Promise<string> {
+/** Video block on a custom page or game detail page. */
+export async function uploadPageSectionVideo(
+  pageSlug: string,
+  sectionId: string,
+  file: File,
+  options?: { folder?: string },
+): Promise<string> {
   if (!supabase) {
     throw new Error('Supabase not configured');
   }
@@ -669,7 +680,8 @@ export async function uploadPageSectionVideo(pageSlug: string, sectionId: string
   if (file.size > MAX_PREVIEW_VIDEO_BYTES) {
     throw new Error(`Video must be ≤ ${MAX_PREVIEW_VIDEO_BYTES / 1024 / 1024} MB.`);
   }
-  const objectPath = `pages/${pslug}/${sid}.${ext}`;
+  const folder = (options?.folder ?? 'pages').replace(/^\/+|\/+$/g, '');
+  const objectPath = `${folder}/${pslug}/${sid}.${ext}`;
   const { error } = await supabase.storage.from(GAME_VIDEOS_BUCKET).upload(objectPath, file, {
     upsert: true,
     contentType: guessContentType(`x.${ext}`),

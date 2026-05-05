@@ -21,7 +21,6 @@
 
 body {
   background:
-    radial-gradient(1100px 700px at var(--cursor-x) var(--cursor-y), rgba(115, 248, 255, 0.09), transparent 55%),
     radial-gradient(800px 600px at 85% 10%, rgba(166, 115, 255, 0.1), transparent 60%),
     linear-gradient(130deg, var(--bg-0) 0%, var(--bg-1) 100%);
   color: var(--text);
@@ -30,6 +29,21 @@ body {
   padding: 20px;
   letter-spacing: 0.2px;
   overflow-x: hidden;
+}
+
+/* Viewport-locked cursor glow (body background scrolls; this layer stays aligned with --cursor-x/y). */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  /* Same stacking level as ::before; ::after paints after so the spotlight stays visible. */
+  z-index: 1;
+  background: radial-gradient(
+    1100px 700px at var(--cursor-x) var(--cursor-y),
+    rgba(115, 248, 255, 0.09),
+    transparent 55%
+  );
 }
 
 body::before {
@@ -85,6 +99,47 @@ body::before {
   margin: 0 auto;
   position: relative;
   z-index: 3;
+}
+
+/* Optional per-game page mood (set on <html data-visual-preset="…"> from GamePage). */
+html[data-visual-preset='ember'] {
+  --accent: #ff9b73;
+  --accent-2: #ff5f8a;
+}
+html[data-visual-preset='ember'] body::after {
+  background: radial-gradient(
+    1100px 700px at var(--cursor-x) var(--cursor-y),
+    rgba(255, 155, 115, 0.12),
+    transparent 55%
+  );
+}
+
+html[data-visual-preset='aurora'] {
+  --accent: #7dffb3;
+  --accent-2: #73d0ff;
+}
+html[data-visual-preset='aurora'] body::after {
+  background: radial-gradient(
+    1100px 700px at var(--cursor-x) var(--cursor-y),
+    rgba(125, 255, 179, 0.1),
+    transparent 55%
+  );
+}
+
+html[data-visual-preset='noir'] {
+  --accent: #c4d0e8;
+  --accent-2: #8a9bbd;
+}
+html[data-visual-preset='noir'] body::after {
+  background: radial-gradient(
+    900px 600px at var(--cursor-x) var(--cursor-y),
+    rgba(180, 190, 210, 0.07),
+    transparent 60%
+  );
+}
+
+html[data-visual-preset='minimal'] body::after {
+  opacity: 0.35;
 }
 
 a {
@@ -246,6 +301,19 @@ button:disabled {
 
 .game-card:hover::before {
   transform: translateX(140%);
+}
+
+a.game-card--link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.game-card--link .game-description {
+  margin-bottom: 0;
+}
+
+.game-detail-article {
+  margin-top: 28px;
 }
 
 .game-thumbnail {

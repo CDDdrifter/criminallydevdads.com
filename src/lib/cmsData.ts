@@ -55,6 +55,8 @@ function recordToView(g: GameRecord): GameView {
     local_folder: folder,
     launchPath,
     isPlayable: Boolean(ext) || Boolean(storageUrl) || Boolean(folder),
+    sections: normalizePageSections(g.sections as unknown),
+    visual_preset: String(g.visual_preset ?? '').trim(),
   };
 }
 

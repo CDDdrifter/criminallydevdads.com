@@ -70,6 +70,8 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
   local_folder: '',
   storage_slug: null,
   storage_entry_in_zip: null,
+  sections: [],
+  visual_preset: '',
   sort_order: 0,
   published: true,
 });
@@ -87,6 +89,8 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     local_folder: draft.local_folder?.trim() || draft.slug.trim(),
     storage_slug: draft.storage_slug ?? null,
     storage_entry_in_zip: draft.storage_entry_in_zip?.trim() || null,
+    sections: ensureSectionIds(draft.sections ?? []),
+    visual_preset: draft.visual_preset?.trim() || null,
     sort_order: Number(draft.sort_order ?? 0),
     published: draft.published ?? true,
   };
@@ -823,14 +827,12 @@ export function AdminPage() {
         </div>
         <div className="admin-panel" style={{ marginTop: 20, borderColor: 'rgba(115, 248, 255, 0.25)' }}>
           <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>
-            Sync catalog to GitHub
+            Push catalog snapshot to GitHub
           </h2>
-          <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.5 }}>
-            Edits here save to <strong>Supabase</strong>. This button only commits a small <code>games.json</code> file
-            to GitHub (titles, thumbnails, and the <strong>play URL</strong> for each published game — same Storage link
-            the hub uses). It does <strong>not</strong> upload your multi-hundred-file ZIPs into the repo; those files
-            already live on Supabase after you use <strong>Upload ZIP</strong>. One-time Edge Function deploy + GitHub
-            token: <code>docs/SYNC_CMS_TO_GITHUB.md</code>.
+          <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55 }}>
+            Saves live in <strong>Supabase</strong>. This writes only root <code>games.json</code> (metadata + play URLs so
+            the hub can fall back without the database). It never commits ZIP builds — those stay in Storage. Setup:{' '}
+            <code>docs/SYNC_CMS_TO_GITHUB.md</code>.
           </p>
           <button
             type="button"
@@ -920,12 +922,10 @@ export function AdminPage() {
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>
               Add or update game
             </h2>
-            <p className="admin-muted">
-              <strong>ZIP upload:</strong> Export Web from Godot, zip the folder, upload below — files go to
-              Supabase Storage (public <code>game-builds/</code>) like itch hosting.
-              <strong> External URL</strong> overrides hosting if set (itch / CDN).
-              <strong> Local folder</strong> is for copies in <code>games/&lt;slug&gt;/</code> on GitHub
-              Pages only.
+            <p className="admin-muted" style={{ lineHeight: 1.55 }}>
+              <strong>ZIP:</strong> Godot Web export → zip → upload (hosted under <code>game-builds/</code>).{' '}
+              <strong>External URL</strong> is used only when there is no ZIP. Repo copies live under{' '}
+              <code>games/&lt;folder&gt;/</code> and stay separate from uploaded builds.
             </p>
             <div className="admin-field">
               <label htmlFor="g_slug">Slug (URL id)</label>
@@ -972,7 +972,45 @@ export function AdminPage() {
                 value={gameDraft.details ?? ''}
                 onChange={(e) => setGameDraft({ ...gameDraft, details: e.target.value })}
               />
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem', lineHeight: 1.5 }}>
+                Shown on the game page when you have no content blocks below — otherwise use blocks for layout.
+              </p>
             </div>
+
+            <div className="admin-field">
+              <label htmlFor="g_visual_preset">Page mood (optional)</label>
+              <select
+                id="g_visual_preset"
+                value={gameDraft.visual_preset ?? ''}
+                onChange={(e) => setGameDraft({ ...gameDraft, visual_preset: e.target.value })}
+              >
+                <option value="">Default (site cyan / purple)</option>
+                <option value="ember">Ember (warm accent)</option>
+                <option value="aurora">Aurora (green / ice)</option>
+                <option value="noir">Noir (muted silver)</option>
+                <option value="minimal">Minimal cursor glow</option>
+              </select>
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
+                Applies while visitors are on this game&apos;s detail page only.
+              </p>
+            </div>
+
+            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 8 }}>
+              Detail page blocks
+            </h3>
+            <p className="admin-muted" style={{ marginTop: 0, fontSize: '0.85rem', lineHeight: 1.5 }}>
+              Build the itch-style page under the playable embed: headings, images, video, panels. Requires the game slug
+              before uploading images here.
+            </p>
+            <PageSectionsForm
+              sections={gameDraft.sections ?? []}
+              onChange={(sections) => setGameDraft({ ...gameDraft, sections })}
+              pageSlug={gameDraft.slug}
+              mediaStorageFolder="game-detail"
+              formDisabled={busy}
+              onNotify={flash}
+            />
+
             <div className="admin-field">
               <label htmlFor="g_thumb_file">Thumbnail</label>
               <p className="admin-muted" style={{ margin: '0 0 10px' }}>
@@ -1277,7 +1315,11 @@ export function AdminPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setGameDraft({ ...g });
+                        setGameDraft({
+                          ...g,
+                          sections: ensureSectionIds(g.sections ?? []),
+                          visual_preset: g.visual_preset ?? '',
+                        });
                         setZipEntryPick(g.storage_entry_in_zip?.trim() ?? '');
                         setGameZipFile(null);
                         setZipEntryCandidates([]);
