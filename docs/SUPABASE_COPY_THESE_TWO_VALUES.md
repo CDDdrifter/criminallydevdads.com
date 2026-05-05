@@ -4,6 +4,15 @@ Use this page together with what **`/#/admin`** shows you after deploy (it print
 
 ---
 
+## “General” settings vs “API” (why your link still fails)
+
+- **Project Settings → General** shows **Project ID** (a short ref like `yebnifkynoucfbdhdva`). That is **only part** of the URL — **do not** paste just the ID into GitHub.
+- You need the full **Project URL** from **Project Settings → API** (gear → **API**, not General):  
+  **`https://<that-same-ref>.supabase.co`**
+- The sidebar may say **“Data API”** or show REST docs elsewhere — still, the string you want is the **`https://….supabase.co`** label at the top of the **API** settings page (same page as the **anon** key table).
+
+---
+
 ## These are NOT what you need (common mix-ups)
 
 | What people open by mistake | Why it’s wrong |

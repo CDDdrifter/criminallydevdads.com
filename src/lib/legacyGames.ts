@@ -101,10 +101,12 @@ export async function pathExists(path: string): Promise<boolean> {
     if (!response.ok) {
       return false;
     }
-    /** Wrong Play URL (e.g. `.js` or bad Storage path) often returns 200 with script MIME — don’t mark playable. */
+    /** Wrong Play URL: JSON error body, JS MIME, etc. — don’t mark playable (avoids iframe full of “code”). */
     const ct = response.headers.get('content-type') ?? '';
-    if (/\.supabase\.co\/storage\//i.test(url) && /(javascript|ecmascript)/i.test(ct)) {
-      return false;
+    if (/\.supabase\.co\/storage\//i.test(url)) {
+      if (/application\/json/i.test(ct) || /(javascript|ecmascript)/i.test(ct)) {
+        return false;
+      }
     }
     return true;
   } catch {
