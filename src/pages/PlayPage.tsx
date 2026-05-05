@@ -1,48 +1,12 @@
-import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { GamePlayerEmbed } from '../components/GamePlayerEmbed';
+import { GameEmbedSection } from '../components/GameEmbedSection';
 import { SiteChrome } from '../components/SiteChrome';
 import { useGames } from '../hooks/useGames';
-import { probeGamePlayUrl } from '../lib/playUrlProbe';
-import { resolveGameUrl } from '../lib/paths';
 
 export function PlayPage() {
   const { slug } = useParams<{ slug: string }>();
   const { games, loading, error } = useGames();
   const game = games.find((g) => g.slug === slug);
-
-  const [probeState, setProbeState] = useState<'idle' | 'checking' | 'ready' | 'failed'>('idle');
-  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
-  const [probeError, setProbeError] = useState<{ summary: string; detail: string } | null>(null);
-
-  useEffect(() => {
-    if (!game?.isPlayable) {
-      setProbeState('idle');
-      setIframeSrc(null);
-      setProbeError(null);
-      return;
-    }
-    const url = resolveGameUrl(game.launchPath);
-    let cancelled = false;
-    setProbeState('checking');
-    setIframeSrc(null);
-    setProbeError(null);
-    void probeGamePlayUrl(url).then((result) => {
-      if (cancelled) {
-        return;
-      }
-      if (result.ok) {
-        setIframeSrc(result.url);
-        setProbeState('ready');
-      } else {
-        setProbeError({ summary: result.summary, detail: result.detail });
-        setProbeState('failed');
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [game?.slug, game?.launchPath, game?.isPlayable]);
 
   if (loading) {
     return (
@@ -86,8 +50,6 @@ export function PlayPage() {
     );
   }
 
-  const resolvedUrl = resolveGameUrl(game.launchPath);
-
   return (
     <SiteChrome
       navExtra={
@@ -97,40 +59,7 @@ export function PlayPage() {
         </>
       }
     >
-      <div className="admin-muted" style={{ marginBottom: 12 }}>
-        Playing: <strong>{game.title}</strong>
-        {' · '}
-        <a href={resolvedUrl} target="_blank" rel="noreferrer">
-          Open play URL in new tab
-        </a>
-      </div>
-
-      {probeState === 'checking' ? (
-        <div className="empty-state">Checking game link…</div>
-      ) : null}
-
-      {probeState === 'failed' && probeError ? (
-        <div className="admin-panel danger-zone" style={{ marginBottom: 16 }}>
-          <p style={{ marginTop: 0 }}>
-            <strong>{probeError.summary}</strong>
-          </p>
-          <p className="admin-muted" style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
-            {probeError.detail}
-          </p>
-          <p className="admin-muted" style={{ marginBottom: 0 }}>
-            Play URL:{' '}
-            <a href={resolvedUrl} target="_blank" rel="noreferrer">
-              <code style={{ wordBreak: 'break-all' }}>{resolvedUrl}</code>
-            </a>
-          </p>
-        </div>
-      ) : null}
-
-      {probeState === 'ready' && iframeSrc ? (
-        <div className="game-embed-wrap">
-          <GamePlayerEmbed title={game.title} src={iframeSrc} />
-        </div>
-      ) : null}
+      <GameEmbedSection game={game} />
     </SiteChrome>
   );
 }

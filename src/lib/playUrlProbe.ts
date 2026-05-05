@@ -1,11 +1,35 @@
 /**
- * Preflight the exact URL we put in the game iframe. Supabase often returns JSON errors or
- * wrong Content-Types; loading those in an iframe looks like "random script/code" to players.
+ * Preflight the Play iframe URL. Supabase Storage sometimes tags index.html as text/plain;
+ * browsers then show source instead of running the game. We can recover by serving HTML from a
+ * blob URL with <base href> pointing at the real Storage folder so JS/WASM still load correctly.
  */
 
 export type PlayUrlProbeResult =
-  | { ok: true; url: string }
+  | { ok: true; iframeSrc: string; compatibilityNote?: string }
   | { ok: false; summary: string; detail: string };
+
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+/** Directory URL ending in / so relative assets (index.js, .wasm) resolve to Storage. */
+function storageFolderUrl(fileUrl: string): string {
+  return new URL('.', fileUrl).href;
+}
+
+export function wrapHtmlWithBaseBlob(html: string, originalIndexUrl: string): string {
+  const baseHref = storageFolderUrl(originalIndexUrl);
+  let out = html;
+  if (/<head[^>]*>/i.test(out)) {
+    out = out.replace(/<head([^>]*)>/i, `<head$1><base href="${escapeAttr(baseHref)}">`);
+  } else if (/<html[^>]*>/i.test(out)) {
+    out = out.replace(/<html([^>]*)>/i, `<html$1><head><base href="${escapeAttr(baseHref)}"></head>`);
+  } else {
+    out = `<!DOCTYPE html><html><head><base href="${escapeAttr(baseHref)}"></head><body>${out}</body></html>`;
+  }
+  const blob = new Blob([out], { type: 'text/html;charset=utf-8' });
+  return URL.createObjectURL(blob);
+}
 
 export async function probeGamePlayUrl(url: string): Promise<PlayUrlProbeResult> {
   try {
@@ -21,7 +45,8 @@ export async function probeGamePlayUrl(url: string): Promise<PlayUrlProbeResult>
       };
     }
 
-    const ct = (r.headers.get('content-type') ?? '').split(';')[0]?.trim() ?? '';
+    const ctFull = r.headers.get('content-type') ?? '';
+    const ct = ctFull.split(';')[0]?.trim() ?? '';
 
     if (/application\/json/i.test(ct)) {
       const t = await r.text();
@@ -39,12 +64,19 @@ export async function probeGamePlayUrl(url: string): Promise<PlayUrlProbeResult>
     const looksHtml =
       start.startsWith('<!doctype') || start.startsWith('<html') || start.startsWith('<!--');
 
-    if (looksHtml && /text\/plain/i.test(ct)) {
+    const htmlMimeOk =
+      /text\/html/i.test(ct) || /application\/xhtml\+xml/i.test(ct);
+
+    /**
+     * Storage often serves HTML as text/plain or octet-stream. Iframe won’t run it; blob + base fixes Play.
+     */
+    if (looksHtml && !htmlMimeOk) {
+      const iframeSrc = wrapHtmlWithBaseBlob(body, url);
       return {
-        ok: false,
-        summary: 'HTML is being served as plain text',
-        detail:
-          'The browser shows source instead of the game. Fix: Admin → Games → this title → **Fix file types on Storage** (re-tags HTML/JS/WASM without re-uploading the ZIP). Also check the link’s hostname matches Supabase **General → Project ID** exactly (one wrong letter breaks every file).',
+        ok: true,
+        iframeSrc,
+        compatibilityNote:
+          'Supabase marked this page with the wrong file type. Playing in compatibility mode — assets still load from your game folder. Use Admin → Fix file types on Storage when you can.',
       };
     }
 
@@ -59,7 +91,18 @@ export async function probeGamePlayUrl(url: string): Promise<PlayUrlProbeResult>
       }
     }
 
-    return { ok: true, url };
+    if (!looksHtml) {
+      if (/\.supabase\.co\/storage\//i.test(url) && /index\.html/i.test(url)) {
+        return {
+          ok: false,
+          summary: 'This URL is not an HTML page',
+          detail: `Expected HTML at this Storage path. Re-upload the Web export ZIP or check storage_entry_in_zip.`,
+        };
+      }
+      return { ok: true, iframeSrc: url };
+    }
+
+    return { ok: true, iframeSrc: url };
   } catch (e) {
     return {
       ok: false,
