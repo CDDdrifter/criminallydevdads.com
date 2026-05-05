@@ -7,7 +7,6 @@ export function useGameEmbed(game: GameView | undefined) {
   const [probeState, setProbeState] = useState<'idle' | 'checking' | 'ready' | 'failed'>('idle');
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const [probeError, setProbeError] = useState<{ summary: string; detail: string } | null>(null);
-  const [compatibilityNote, setCompatibilityNote] = useState<string | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -15,7 +14,6 @@ export function useGameEmbed(game: GameView | undefined) {
       setProbeState('idle');
       setIframeSrc(null);
       setProbeError(null);
-      setCompatibilityNote(null);
       return;
     }
     const url = resolveGameUrl(game.launchPath);
@@ -29,15 +27,12 @@ export function useGameEmbed(game: GameView | undefined) {
     setProbeState('checking');
     setIframeSrc(null);
     setProbeError(null);
-    setCompatibilityNote(null);
-
     void probeGamePlayUrl(url).then((result) => {
       if (cancelled) {
         return;
       }
       if (result.ok) {
         setIframeSrc(result.iframeSrc);
-        setCompatibilityNote(result.compatibilityNote ?? null);
         if (result.iframeSrc.startsWith('blob:')) {
           blobUrlRef.current = result.iframeSrc;
         }
@@ -59,5 +54,5 @@ export function useGameEmbed(game: GameView | undefined) {
 
   const resolvedUrl = game ? resolveGameUrl(game.launchPath) : '';
 
-  return { probeState, iframeSrc, probeError, compatibilityNote, resolvedUrl };
+  return { probeState, iframeSrc, probeError, resolvedUrl };
 }

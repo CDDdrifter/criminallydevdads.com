@@ -5,7 +5,7 @@
  */
 
 export type PlayUrlProbeResult =
-  | { ok: true; iframeSrc: string; compatibilityNote?: string }
+  | { ok: true; iframeSrc: string }
   | { ok: false; summary: string; detail: string };
 
 function escapeAttr(s: string): string {
@@ -72,12 +72,7 @@ export async function probeGamePlayUrl(url: string): Promise<PlayUrlProbeResult>
      */
     if (looksHtml && !htmlMimeOk) {
       const iframeSrc = wrapHtmlWithBaseBlob(body, url);
-      return {
-        ok: true,
-        iframeSrc,
-        compatibilityNote:
-          'Supabase marked this page with the wrong file type. Playing in compatibility mode — assets still load from your game folder. Use Admin → Fix file types on Storage when you can.',
-      };
+      return { ok: true, iframeSrc };
     }
 
     if (/\.supabase\.co\/storage\//i.test(url) && /index\.html/i.test(url)) {

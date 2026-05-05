@@ -9,7 +9,7 @@ type Props = {
 };
 
 export function GameEmbedSection({ game, showPlayingLabel = true }: Props) {
-  const { probeState, iframeSrc, probeError, compatibilityNote, resolvedUrl } = useGameEmbed(game);
+  const { probeState, iframeSrc, probeError, resolvedUrl } = useGameEmbed(game);
 
   if (!game.isPlayable) {
     return null;
@@ -25,12 +25,6 @@ export function GameEmbedSection({ game, showPlayingLabel = true }: Props) {
             Open play URL in new tab
           </a>
         </div>
-      ) : null}
-
-      {compatibilityNote ? (
-        <p className="admin-muted" style={{ marginBottom: 12, lineHeight: 1.5, fontSize: '0.88rem' }}>
-          {compatibilityNote}
-        </p>
       ) : null}
 
       {probeState === 'checking' ? <div className="empty-state">Checking game link…</div> : null}
