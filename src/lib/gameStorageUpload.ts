@@ -141,12 +141,10 @@ export async function listIndexHtmlCandidatesInZip(zipFile: File): Promise<strin
 }
 
 /**
- * Finds the folder that contains the playable `index.html`.
- * Prefers directories that contain Godot/WebAssembly files (`.wasm`, `.pck`, `index.js`) so we
- * do not upload a stray top-level `index.html` while the real export lives in a subfolder, and
- * we avoid grabbing an unrelated HTML file when multiple `index.html` entries exist.
+ * Picks the playable `index.html` inside the ZIP and the folder prefix to strip so the export
+ * lands at `game-builds/<slug>/index.html` (nested Godot folders no longer need manual paths).
  */
-function detectHtmlRoot(paths: string[]): string {
+function pickHtmlExport(paths: string[]): { rootPrefix: string; entryZipPath: string } {
   const htmlPaths = paths.filter((p) => /(^|\/)index\.html$/i.test(p));
   if (htmlPaths.length === 0) {
     throw new Error('ZIP must contain index.html (Godot Web export root).');
@@ -230,9 +228,21 @@ function detectHtmlRoot(paths: string[]): string {
 
   const picked = scored[0]?.p;
   if (!picked) {
+    throw new Error('ZIP must contain index.html (Godot Web export root).');
+  }
+  return { rootPrefix: dirPrefixOf(picked), entryZipPath: picked };
+}
+
+function normalizeIndexHtmlLeaf(relPath: string): string {
+  const parts = relPath.split('/').filter(Boolean);
+  if (parts.length === 0) {
     return '';
   }
-  return dirPrefixOf(picked);
+  const leaf = parts[parts.length - 1];
+  if (leaf && leaf.toLowerCase() === 'index.html') {
+    parts[parts.length - 1] = 'index.html';
+  }
+  return parts.join('/');
 }
 
 /**
@@ -242,6 +252,8 @@ async function zipToRelativeFiles(zipFile: File): Promise<{
   files: { path: string; blob: Blob }[];
   exportRootLabel: string;
   indexCandidates: string[];
+  /** Storage path (under slug) for the auto-detected playable HTML — set on every ZIP upload. */
+  detectedEntry: string;
 }> {
   const buf = await zipFile.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
@@ -251,30 +263,25 @@ async function zipToRelativeFiles(zipFile: File): Promise<{
       paths.push(norm(relPath));
     }
   });
-  const root = detectHtmlRoot(paths);
-  const indexCandidates = paths
-    .filter((p) => /(^|\/)index\.html$/i.test(p))
-    .sort((a, b) => {
-      const da = a.split('/').filter(Boolean).length;
-      const db = b.split('/').filter(Boolean).length;
-      if (da !== db) {
-        return da - db;
-      }
-      return a.localeCompare(b);
-    });
-  const exportRootLabel = root.replace(/\/$/, '') || 'zip root';
+  const { rootPrefix, entryZipPath } = pickHtmlExport(paths);
+  const exportRootLabel = rootPrefix.replace(/\/$/, '') || 'zip root';
+
+  let entryRel = rootPrefix ? entryZipPath.slice(rootPrefix.length) : entryZipPath;
+  entryRel = normalizeIndexHtmlLeaf(entryRel);
+  if (!entryRel) {
+    entryRel = 'index.html';
+  }
+
   const out: { path: string; blob: Blob }[] = [];
   for (const p of paths) {
-    let rel = p;
+    if (rootPrefix && !p.startsWith(rootPrefix)) {
+      continue;
+    }
+    let rel = rootPrefix ? p.slice(rootPrefix.length) : p;
     if (!rel || rel.endsWith('/')) {
       continue;
     }
-    const parts = rel.split('/');
-    const leaf = parts[parts.length - 1];
-    if (leaf && leaf.toLowerCase() === 'index.html') {
-      parts[parts.length - 1] = 'index.html';
-      rel = parts.join('/');
-    }
+    rel = normalizeIndexHtmlLeaf(rel);
     const entry = zip.file(p);
     if (!entry) {
       continue;
@@ -285,11 +292,22 @@ async function zipToRelativeFiles(zipFile: File): Promise<{
   if (out.length === 0) {
     throw new Error('No files found under HTML export root.');
   }
-  const hasIndex = out.some((f) => f.path === 'index.html');
-  if (!hasIndex) {
+  const indexCandidates = out
+    .map((f) => f.path)
+    .filter((rel) => /(^|\/)index\.html$/i.test(rel))
+    .sort((a, b) => {
+      const da = a.split('/').filter(Boolean).length;
+      const db = b.split('/').filter(Boolean).length;
+      if (da !== db) {
+        return da - db;
+      }
+      return a.localeCompare(b);
+    });
+  if (indexCandidates.length === 0) {
     throw new Error('Missing index.html next to export assets.');
   }
-  return { files: out, exportRootLabel, indexCandidates };
+  const detectedEntry = indexCandidates.includes(entryRel) ? entryRel : (indexCandidates[0] ?? 'index.html');
+  return { files: out, exportRootLabel, indexCandidates, detectedEntry };
 }
 
 const STORAGE_LIST_PAGE = 1000;
@@ -437,7 +455,12 @@ export async function uploadGameZip(
   zipFile: File,
   wipeFirst = true,
   onProgress?: (p: ZipUploadProgress) => void,
-): Promise<{ fileCount: number; exportRootLabel: string; indexCandidates: string[] }> {
+): Promise<{
+  fileCount: number;
+  exportRootLabel: string;
+  indexCandidates: string[];
+  detectedEntry: string;
+}> {
   if (!supabase) {
     throw new Error('Supabase not configured');
   }
@@ -446,7 +469,7 @@ export async function uploadGameZip(
     throw new Error('Invalid game slug for upload.');
   }
   onProgress?.({ phase: 'parse' });
-  const { files, exportRootLabel, indexCandidates } = await zipToRelativeFiles(zipFile);
+  const { files, exportRootLabel, indexCandidates, detectedEntry } = await zipToRelativeFiles(zipFile);
   /** Start big binaries first so parallel workers aren’t idle while the last .wasm/.pck trickles in. */
   files.sort((a, b) => b.blob.size - a.blob.size);
   onProgress?.({ phase: 'packaged', exportRootLabel, fileCount: files.length });
@@ -458,7 +481,7 @@ export async function uploadGameZip(
   await uploadExtractedFilesParallel(slug, files, (done, total) => {
     onProgress?.({ phase: 'upload', done, total });
   });
-  return { fileCount: files.length, exportRootLabel, indexCandidates };
+  return { fileCount: files.length, exportRootLabel, indexCandidates, detectedEntry };
 }
 
 export async function uploadGameThumbnail(gameSlug: string, file: File): Promise<string> {

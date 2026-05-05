@@ -30,7 +30,7 @@ import {
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
 import {
   deleteGameBuild,
-  publicGameIndexUrl,
+  publicGameEntryUrl,
   sanitizeGameStorageSlug,
   uploadGamePreviewVideo,
   uploadGameThumbnail,
@@ -179,10 +179,6 @@ export function AdminPage() {
       flash('Slug is required.');
       return;
     }
-    if (zipEntryCandidates.length > 1 && !zipEntryPick.trim() && gameDraft.storage_slug?.trim()) {
-      flash('Choose which index.html to play, then click Save game.');
-      return;
-    }
     const title = gameDraft.title.trim() || slug;
     setBusy(true);
     try {
@@ -220,7 +216,7 @@ export function AdminPage() {
     setBusy(true);
     setZipUploadHint('Reading ZIP…');
     try {
-      const { fileCount, exportRootLabel, indexCandidates } = await uploadGameZip(
+      const { fileCount, exportRootLabel, indexCandidates, detectedEntry } = await uploadGameZip(
         gameDraft.slug,
         gameZipFile,
         true,
@@ -238,18 +234,18 @@ export function AdminPage() {
           }
         },
       );
-      const normalizedCandidates = indexCandidates.map((p) =>
-        p
+      const normalizeEntryPath = (path: string) =>
+        path
           .split('/')
           .map((seg, i, arr) =>
             i === arr.length - 1 && seg.toLowerCase() === 'index.html' ? 'index.html' : seg,
           )
-          .join('/'),
-      );
-      const chosenEntry =
-        normalizedCandidates.length === 1
-          ? (normalizedCandidates[0] ?? '')
-          : gameDraft.storage_entry_in_zip?.trim() || '';
+          .join('/');
+      const normalizedCandidates = indexCandidates.map(normalizeEntryPath);
+      const detectedNorm = normalizeEntryPath(detectedEntry);
+      const chosenEntry = normalizedCandidates.includes(detectedNorm)
+        ? detectedNorm
+        : (normalizedCandidates[0] ?? 'index.html');
       setGameZipFile(null);
       setZipEntryCandidates(normalizedCandidates);
       setZipEntryPick(chosenEntry);
@@ -280,17 +276,10 @@ export function AdminPage() {
         return;
       }
       await reload();
-      if (normalizedCandidates.length <= 1) {
-        flash(
-          `✓ Uploaded ${fileCount} files. Using ${chosenEntry || 'index.html'} from ZIP "${exportRootLabel}".`,
-          9000,
-        );
-      } else {
-        flash(
-          `Uploaded ${fileCount} files. Now choose which index.html to play from the list below, then click Save game.`,
-          12000,
-        );
-      }
+      flash(
+        `✓ Uploaded ${fileCount} files from "${exportRootLabel}". Play now uses "${chosenEntry}" from this ZIP.`,
+        12000,
+      );
     } catch (e) {
       console.error(e);
       flash(e instanceof Error ? e.message : 'ZIP upload failed', 9000);
@@ -1100,10 +1089,10 @@ export function AdminPage() {
                 Cloud HTML5 (itch-style ZIP)
               </h3>
               <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
-                Zip the <strong>whole Web export folder</strong> from Godot (every file — not only{' '}
-                <code>index.html</code>). The playable page must live next to{' '}
-                <code>.wasm</code> / <code>.pck</code> / loader <code>.js</code>. If your ZIP contains several{' '}
-                <code>index.html</code> files, we pick the folder that looks like the real export (wasm/pck).
+                Upload <strong>one .zip per game</strong>: the whole Godot Web export (every file — not only{' '}
+                <code>index.html</code>). We detect the real export folder (next to <code>.wasm</code> /{' '}
+                <code>.pck</code>), strip any outer wrapper, and host it under your game slug so{' '}
+                <strong>Play always uses that upload</strong> for the title you save.
               </p>
               <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
                 <strong>Godot 4 — blank screen or SharedArrayBuffer / cross-origin errors?</strong> Supabase
@@ -1116,11 +1105,14 @@ export function AdminPage() {
                   Cloud folder: <code>{gameDraft.storage_slug}</code>
                   {' · '}
                   <a
-                    href={publicGameIndexUrl(gameDraft.storage_slug)}
+                    href={publicGameEntryUrl(
+                      gameDraft.storage_slug,
+                      gameDraft.storage_entry_in_zip?.trim() || 'index.html',
+                    )}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Open hosted index.html (sanity check)
+                    Open hosted game page (sanity check)
                   </a>
                 </p>
               ) : null}
@@ -1162,12 +1154,12 @@ export function AdminPage() {
                 {zipUploadHint ? (
                   <p className="admin-upload-progress">{zipUploadHint}</p>
                 ) : null}
-                {zipEntryCandidates.length > 0 ? (
+                {zipEntryCandidates.length > 1 ? (
                   <div className="admin-field" style={{ marginTop: 14, marginBottom: 0 }}>
-                    <label htmlFor="g_zip_entry">Which index.html is the game?</label>
+                    <label htmlFor="g_zip_entry">Override entry (only if Play picks the wrong HTML)</label>
                     <select
                       id="g_zip_entry"
-                      value={zipEntryPick}
+                      value={zipEntryPick || zipEntryCandidates[0] || ''}
                       disabled={busy}
                       onChange={(e) => {
                         const value = e.target.value;
@@ -1175,7 +1167,6 @@ export function AdminPage() {
                         setGameDraft((prev) => ({ ...prev, storage_entry_in_zip: value || null }));
                       }}
                     >
-                      <option value="">Choose one index.html…</option>
                       {zipEntryCandidates.map((rel) => (
                         <option key={rel} value={rel}>
                           {rel}
@@ -1186,8 +1177,8 @@ export function AdminPage() {
                       className="admin-muted"
                       style={{ marginTop: 8, textTransform: 'none', fontSize: '0.82rem', lineHeight: 1.5 }}
                     >
-                      If Play shows raw code or a blank screen, pick the same <code>index.html</code> you open when
-                      testing the Web export on your PC (often one folder deep in the ZIP).
+                      The site already selected the most likely Godot export. Change this only if you still see the
+                      wrong page, then click <strong>Save game</strong>.
                     </p>
                   </div>
                 ) : gameDraft.storage_entry_in_zip?.trim() && !gameZipFile ? (
