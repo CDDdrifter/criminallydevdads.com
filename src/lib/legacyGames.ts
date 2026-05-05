@@ -98,7 +98,15 @@ export async function pathExists(path: string): Promise<boolean> {
   const url = /^https?:\/\//i.test(path) ? path : resolvePublicAssetUrl(path);
   try {
     const response = await fetch(url, { cache: 'no-store' });
-    return response.ok;
+    if (!response.ok) {
+      return false;
+    }
+    /** Wrong Play URL (e.g. `.js` or bad Storage path) often returns 200 with script MIME — don’t mark playable. */
+    const ct = response.headers.get('content-type') ?? '';
+    if (/\.supabase\.co\/storage\//i.test(url) && /(javascript|ecmascript)/i.test(ct)) {
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }

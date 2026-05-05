@@ -1,5 +1,11 @@
 import JSZip from 'jszip';
+import { getBuildTimeSupabaseUrl } from './supabaseHealth';
 import { supabase } from './supabase';
+
+/** Must match `normalizeSupabaseProjectUrl` / the live client — never use raw VITE_SUPABASE_URL (dashboard paths break Storage URLs). */
+function supabasePublicOrigin(): string {
+  return getBuildTimeSupabaseUrl().replace(/\/$/, '');
+}
 
 export const GAME_BUILDS_BUCKET = 'game-builds';
 
@@ -23,7 +29,7 @@ function extFromFilename(name: string): string {
 
 /** Public object URL for a file in a public Storage bucket. */
 export function publicStorageObjectUrl(bucket: string, objectPath: string): string {
-  const base = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
+  const base = supabasePublicOrigin();
   if (!base || !objectPath.trim()) {
     return '';
   }
@@ -51,7 +57,7 @@ export function publicGameIndexUrl(storageSlug: string): string {
 
 /** Public URL for any uploaded entry path under a game build slug. */
 export function publicGameEntryUrl(storageSlug: string, entryPath: string): string {
-  const base = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
+  const base = supabasePublicOrigin();
   if (!base) {
     return '';
   }

@@ -26,10 +26,18 @@ function recordToView(g: GameRecord): GameView {
     ? publicGameEntryUrl(storageSlug, entryInZip || 'index.html') || publicGameIndexUrl(storageSlug)
     : '';
 
-  /** ZIP / Storage build must win over External URL, or a stale itch/JS link hijacks Play and shows raw code. */
+  /**
+   * If this row is a cloud ZIP game (`storage_slug`), never fall back to `games/<slug>/index.html` unless
+   * we truly have no Storage URL (misbuilt site) — that fallback often 404s into the SPA shell and looks like “code”.
+   * Storage URL must use the same normalized origin as the Supabase client (see `publicGameEntryUrl`).
+   */
   let launchPath = localPath;
-  if (storageUrl) {
-    launchPath = storageUrl;
+  if (storageSlug) {
+    if (storageUrl) {
+      launchPath = storageUrl;
+    } else if (ext) {
+      launchPath = ext;
+    }
   } else if (ext) {
     launchPath = ext;
   }

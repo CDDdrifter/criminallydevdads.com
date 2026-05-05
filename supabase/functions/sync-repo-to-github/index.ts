@@ -25,6 +25,20 @@ function utf8ToBase64(text: string): string {
   return btoa(bin);
 }
 
+/** Strip accidental `/project/...` paste so Storage URLs match the real API host (same as Vite `normalizeSupabaseProjectUrl`). */
+function normalizeSupabaseApiOrigin(raw: string): string {
+  const t = raw.trim().replace(/\/$/, '');
+  try {
+    const u = new URL(t);
+    if (u.protocol === 'https:' && u.hostname.endsWith('.supabase.co')) {
+      return `https://${u.hostname}`;
+    }
+  } catch {
+    return t;
+  }
+  return t;
+}
+
 /** Same path rules as `publicGameEntryUrl` in the app — must match how games are hosted on Storage. */
 function publicGameEntryUrl(baseNoSlash: string, storageSlug: string, entryPath: string): string {
   const slug = encodeURIComponent(storageSlug.trim());
@@ -100,7 +114,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const base = supabaseUrl.replace(/\/$/, '');
+    const base = normalizeSupabaseApiOrigin(supabaseUrl);
     const legacyGames = (rows ?? []).map((row) => {
       const slug = String(row.slug ?? '').trim();
       const ext = String(row.external_url ?? '').trim();
