@@ -140,11 +140,22 @@ export async function listIndexHtmlCandidatesInZip(zipFile: File): Promise<strin
   return hits;
 }
 
+function isJunkZipPath(p: string): boolean {
+  const n = p.replace(/\\/g, '/');
+  if (/(?:^|\/)__MACOSX\//i.test(n)) {
+    return true;
+  }
+  if (/(?:^|\/)\.DS_Store$/i.test(n)) {
+    return true;
+  }
+  return false;
+}
+
 /**
- * Picks the playable `index.html` inside the ZIP and the folder prefix to strip so the export
- * lands at `game-builds/<slug>/index.html` (nested Godot folders no longer need manual paths).
+ * Picks the playable `index.html` (Godot / HTML5). We do **not** strip folders: the whole ZIP tree
+ * is uploaded like itch/static hosting so relative asset paths keep working.
  */
-function pickHtmlExport(paths: string[]): { rootPrefix: string; entryZipPath: string } {
+function pickPlayableIndexPath(paths: string[]): string {
   const htmlPaths = paths.filter((p) => /(^|\/)index\.html$/i.test(p));
   if (htmlPaths.length === 0) {
     throw new Error('ZIP must contain index.html (Godot Web export root).');
@@ -230,7 +241,7 @@ function pickHtmlExport(paths: string[]): { rootPrefix: string; entryZipPath: st
   if (!picked) {
     throw new Error('ZIP must contain index.html (Godot Web export root).');
   }
-  return { rootPrefix: dirPrefixOf(picked), entryZipPath: picked };
+  return picked;
 }
 
 function normalizeIndexHtmlLeaf(relPath: string): string {
@@ -257,36 +268,34 @@ async function zipToRelativeFiles(zipFile: File): Promise<{
 }> {
   const buf = await zipFile.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
-  const paths: string[] = [];
+  /** Normalized path + raw zip key so `zip.file(raw)` always resolves (Windows paths, etc.). */
+  const items: { normPath: string; rawPath: string }[] = [];
   zip.forEach((relPath, entry) => {
     if (!entry.dir) {
-      paths.push(norm(relPath));
+      const n = norm(relPath);
+      if (!isJunkZipPath(n)) {
+        items.push({ normPath: n, rawPath: relPath });
+      }
     }
   });
-  const { rootPrefix, entryZipPath } = pickHtmlExport(paths);
-  const exportRootLabel = rootPrefix.replace(/\/$/, '') || 'zip root';
+  const paths = items.map((i) => i.normPath);
+  const entryZipPath = pickPlayableIndexPath(paths);
+  const exportRootLabel = dirPrefixOf(entryZipPath).replace(/\/$/, '') || 'zip root';
 
-  let entryRel = rootPrefix ? entryZipPath.slice(rootPrefix.length) : entryZipPath;
-  entryRel = normalizeIndexHtmlLeaf(entryRel);
-  if (!entryRel) {
-    entryRel = 'index.html';
-  }
+  const entryRel = normalizeIndexHtmlLeaf(entryZipPath) || 'index.html';
 
   const out: { path: string; blob: Blob }[] = [];
-  for (const p of paths) {
-    if (rootPrefix && !p.startsWith(rootPrefix)) {
-      continue;
-    }
-    let rel = rootPrefix ? p.slice(rootPrefix.length) : p;
+  for (const { normPath, rawPath } of items) {
+    let rel = normPath;
     if (!rel || rel.endsWith('/')) {
       continue;
     }
     rel = normalizeIndexHtmlLeaf(rel);
-    const entry = zip.file(p);
-    if (!entry) {
+    const zf = zip.file(rawPath) ?? zip.file(normPath);
+    if (!zf) {
       continue;
     }
-    const blob = await entry.async('blob');
+    const blob = await zf.async('blob');
     out.push({ path: rel, blob });
   }
   if (out.length === 0) {

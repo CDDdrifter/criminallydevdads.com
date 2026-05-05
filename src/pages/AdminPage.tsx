@@ -1090,10 +1090,10 @@ export function AdminPage() {
                 Cloud HTML5 (itch-style ZIP)
               </h3>
               <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
-                Upload <strong>one .zip per game</strong>: the whole Godot Web export (every file — not only{' '}
-                <code>index.html</code>). We detect the real export folder (next to <code>.wasm</code> /{' '}
-                <code>.pck</code>), strip any outer wrapper, and host it under your game slug so{' '}
-                <strong>Play always uses that upload</strong> for the title you save.
+                Upload <strong>one .zip per game</strong> (the whole Godot Web export). We upload <strong>every file</strong>{' '}
+                with the same folders as in the ZIP — like itch/static hosting — then open the best{' '}
+                <code>index.html</code> next to <code>.wasm</code> / <code>.pck</code>. If Play breaks after a code update,
+                upload the ZIP again for that game.
               </p>
               <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
                 <strong>Godot 4 — blank screen or SharedArrayBuffer / cross-origin errors?</strong> Supabase
