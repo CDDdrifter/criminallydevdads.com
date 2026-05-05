@@ -80,10 +80,21 @@ export async function upsertGame(row: Partial<GameRecord> & { slug: string; titl
   if (!supabase) {
     throw new Error('Supabase not configured');
   }
-  const { error } = await supabase.from('site_games').upsert(row, { onConflict: 'slug' });
-  if (error) {
-    throw error;
+  const payload: Record<string, unknown> = { ...row };
+  // Backward-compatible writes: if DB schema lags behind frontend fields, retry without unknown columns.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const { error } = await supabase.from('site_games').upsert(payload, { onConflict: 'slug' });
+    if (!error) {
+      return;
+    }
+    const msg = error.message ?? '';
+    const unknown = msg.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of relation/i)?.[1];
+    if (!unknown || !(unknown in payload)) {
+      throw error;
+    }
+    delete payload[unknown];
   }
+  throw new Error('Could not save game row due to schema mismatch in site_games.');
 }
 
 export async function deleteGameBySlug(slug: string) {
