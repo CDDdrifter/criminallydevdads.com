@@ -32,6 +32,7 @@ export function App() {
           <Route path="/devlog" element={<DevLogListPage />} />
           <Route path="/devlog/:slug" element={<DevLogPostPage />} />
           <Route path="/p/:slug" element={<StaticPage />} />
+          {/* Stripe redirects: success/cancel URLs built with SITE_URL in create-checkout-session */}
           <Route path="/purchase/success" element={<PurchaseSuccessPage />} />
           <Route path="/purchase/terms" element={<PurchaseTermsPage />} />
           <Route path="/admin" element={<AdminPage />} />

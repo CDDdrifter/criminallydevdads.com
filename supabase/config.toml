@@ -4,5 +4,7 @@
 [functions.sync-repo-to-github]
 verify_jwt = true
 
+# Guest checkout: buyers are not Supabase-authenticated. Security = published game row + server-side amount checks.
+# JWT verification would block anonymous invokes from the anon client.
 [functions.create-checkout-session]
 verify_jwt = false

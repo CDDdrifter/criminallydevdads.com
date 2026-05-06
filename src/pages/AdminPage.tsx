@@ -1330,6 +1330,7 @@ export function AdminPage() {
                 onChange={(e) => setGameDraft({ ...gameDraft, external_url: e.target.value })}
               />
             </div>
+            {/* Commerce columns on site_games — GamePurchaseBlock + Edge create-checkout-session. External URL wins over built-in Stripe. */}
             <div className="admin-field">
               <label htmlFor="g_pricing_model">Pricing</label>
               <select

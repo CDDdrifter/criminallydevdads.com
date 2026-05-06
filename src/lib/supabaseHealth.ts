@@ -1,10 +1,14 @@
 /**
  * Validates build-time Supabase env so mis-copied dashboard URLs fail visibly on /admin.
+ *
+ * RELATED: Stripe checkout uses a different URL — Edge secret `SITE_URL` = your **public site** root
+ * (hash routes), not `https://*.supabase.co`. See docs/STRIPE_CHECKOUT.md.
  */
 
 /**
  * API base URL must be https://REF.supabase.co only. Dashboard / docs sometimes paste a path
  * after the host (e.g. /project/default) — strip it so the JS client matches PostgREST.
+ * Same normalization idea as create-checkout-session Edge Function for SUPABASE_URL.
  */
 export function normalizeSupabaseProjectUrl(raw: string): string {
   const t = raw.trim();

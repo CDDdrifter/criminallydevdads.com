@@ -1,3 +1,21 @@
+/**
+ * Purchase UI on the game detail page (`GamePage`).
+ *
+ * PRECEDENCE
+ * ----------
+ * 1. `game.purchase_url` — render a plain `<a>` (external store / Payment Link). No Edge Function.
+ * 2. Else, if `gameOffersInternalCheckout(game)` — button(s) that call `startGameCheckout`.
+ * 3. Else — render nothing (free / misconfigured price).
+ *
+ * AMOUNTS
+ * -------
+ * - Fixed: no `amountCents` sent; server uses `price_cents` or `stripe_price_id`.
+ * - PWYW / donation: user enters USD; we send `amountCents`. Server enforces floor ≥ max(admin, 50¢).
+ *
+ * STYLING
+ * -------
+ * Uses existing hub classes `btn-play`, `btn-download`, `admin-muted` so layout matches the rest of the site.
+ */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { GameView } from '../types';
@@ -15,6 +33,7 @@ export function GamePurchaseBlock({ game }: Props) {
   const priceText = formatGamePriceLabel(game);
   const asset = game.type.toLowerCase() === 'asset';
 
+  // Default the amount field from suggested / first preset so mobile users can one-tap checkout.
   useEffect(() => {
     const min = Math.max(game.pwyw_min_cents, stripeMinimumUsdCents());
     let cents = min;

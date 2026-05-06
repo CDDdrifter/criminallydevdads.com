@@ -58,6 +58,7 @@ function normalizeSupportButtons(raw: unknown): SupportButton[] {
   return out.length > 0 ? out : defaultSiteSettings.support_buttons;
 }
 
+/** Maps DB row → hub `GameView` (play URL resolution + commerce fields for GamePurchaseBlock). */
 function recordToView(g: GameRecord): GameView {
   const folder = g.local_folder ?? g.slug;
   const localPath = `games/${folder}/index.html`;

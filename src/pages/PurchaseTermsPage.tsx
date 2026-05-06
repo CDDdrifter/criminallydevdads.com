@@ -1,3 +1,7 @@
+/**
+ * Short digital-goods terms for buyers; expand with real legal review as needed.
+ * Linked from GamePurchaseBlock and success page.
+ */
 import { Link } from 'react-router-dom';
 import { SiteChrome } from '../components/SiteChrome';
 

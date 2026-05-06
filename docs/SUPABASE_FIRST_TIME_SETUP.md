@@ -6,7 +6,9 @@ You only do this **once per website** if you want **`/#/admin`**. I cannot run t
 
 **Shortest path (email login only):** **[`SIMPLE_ADMIN_LOGIN.md`](SIMPLE_ADMIN_LOGIN.md)**.
 
-**Ultra-literal “which two strings to copy”:** **[`SUPABASE_COPY_THESE_TWO_VALUES.md`](SUPABASE_COPY_THESE_TWO_VALUES.md)** (same as the hints on **`/#/admin`** after deploy).
+**Ultra-literal “which two strings to copy”:** **[`SUPABASE_COPY_THESE_TWO_VALUES.md`](SUPABASE_COPY_THESE_TWO_VALUES.md)** (same as the hints on **`/#/admin`** after deploy). That page also explains the **new Supabase dashboard layout** (Project ID → build `https://<id>.supabase.co` when the URL field is hidden).
+
+**Selling with Stripe** uses **additional** secrets on the **Edge Function** (`SITE_URL`, etc.) — not the same as `VITE_*`. See **[`STRIPE_CHECKOUT.md`](STRIPE_CHECKOUT.md)** so redirects and keys stay aligned with this site’s **hash** routes.
 
 ---
 

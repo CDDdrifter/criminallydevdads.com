@@ -1,3 +1,7 @@
+/**
+ * Stripe success redirect target (HashRouter): /#/purchase/success?session_id=...
+ * Must stay in sync with SITE_URL + path in supabase/functions/create-checkout-session/index.ts.
+ */
 import { Link, useSearchParams } from 'react-router-dom';
 import { SiteChrome } from '../components/SiteChrome';
 

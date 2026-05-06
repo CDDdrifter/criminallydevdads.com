@@ -285,6 +285,8 @@ alter table site_settings add column if not exists support_page_href text;
 alter table site_settings add column if not exists stripe_donation_url text;
 alter table site_settings add column if not exists support_buttons jsonb not null default '[]'::jsonb;
 
+-- Commerce (Stripe Checkout via Edge Function). See docs/STRIPE_CHECKOUT.md.
+-- VITE_SUPABASE_URL (GitHub) is NOT the same as Edge secret SITE_URL (public hub for redirects).
 alter table site_games add column if not exists pricing_model text not null default 'free';
 alter table site_games add column if not exists pwyw_min_cents int;
 alter table site_games add column if not exists pwyw_suggested_cents int;

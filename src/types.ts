@@ -14,6 +14,12 @@ export type SupportButton = {
   variant?: 'primary' | 'secondary';
 };
 
+/**
+ * Mirrors `site_games.pricing_model` when CMS is used.
+ * - free: no Buy / no Edge checkout
+ * - fixed: Edge session from price_cents or stripe_price_id
+ * - pwyw | donation: Edge session with customer amount_cents (server validates floor)
+ */
 export type GamePricingModel = 'free' | 'fixed' | 'pwyw' | 'donation';
 
 export type GameRecord = {
@@ -70,12 +76,17 @@ export type GameView = {
   isPlayable: boolean;
   sections: PageSection[];
   visual_preset: string;
+  /** Normalized for UI + checkout (legacy rows may infer `fixed` from price_cents). */
   pricing_model: GamePricingModel;
   price_cents: number;
+  /** If non-empty, GamePurchaseBlock links here and skips built-in Stripe (itch, Payment Link, etc.). */
   purchase_url: string;
   stripe_price_id: string;
+  /** USD cents; Stripe minimum still enforced server-side (50). */
   pwyw_min_cents: number;
+  /** USD cents; default amount hint for PWYW UI only. */
   pwyw_suggested_cents: number;
+  /** USD cents; donation preset chip amounts. */
   donation_presets_cents: number[];
 };
 
