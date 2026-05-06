@@ -17,6 +17,15 @@ export function HomePage() {
 
   const filtered =
     filter === 'all' ? games : games.filter((g) => g.type.toLowerCase() === filter);
+  const supportButtons = settings.support_buttons.map((btn) => {
+    if (btn.id === 'donate' && settings.stripe_donation_url.trim()) {
+      return { ...btn, href: settings.stripe_donation_url.trim(), external: true };
+    }
+    if (btn.id === 'contact' && settings.support_page_href.trim()) {
+      return { ...btn, href: settings.support_page_href.trim(), external: false };
+    }
+    return btn;
+  });
 
   return (
     <SiteChrome>
@@ -107,21 +116,28 @@ export function HomePage() {
           {settings.support_body}
         </p>
         <div className="support-buttons">
-          <button type="button" className="btn-support" disabled style={{ opacity: 0.5 }}>
-            💰 Donate
-          </button>
-          <button type="button" className="btn-support" disabled style={{ opacity: 0.5 }}>
-            🛒 Merch Shop
-          </button>
-          <button
-            type="button"
-            className="btn-support"
-            onClick={() => {
-              window.location.href = 'mailto:contact@criminallydevdads.com';
-            }}
-          >
-            📧 Contact Us
-          </button>
+          {supportButtons.map((btn) => {
+            const href = btn.href.trim();
+            if (!href) {
+              return (
+                <button key={btn.id} type="button" className="btn-support" disabled style={{ opacity: 0.5 }}>
+                  {btn.label}
+                </button>
+              );
+            }
+            if (btn.external) {
+              return (
+                <a key={btn.id} href={href} target="_blank" rel="noreferrer" className="btn-support">
+                  {btn.label}
+                </a>
+              );
+            }
+            return (
+              <Link key={btn.id} to={href} className="btn-support">
+                {btn.label}
+              </Link>
+            );
+          })}
         </div>
       </div>
 

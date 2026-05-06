@@ -18,6 +18,7 @@
  */
 
 import type { GameView } from '../types';
+import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePricing';
 import { resolvePublicAssetUrl } from './paths';
 
 const REPO_OWNER = import.meta.env.VITE_GITHUB_REPO_OWNER ?? 'CDDdrifter';
@@ -44,6 +45,13 @@ type LegacyMeta = {
   url?: string;
   /** Same as `url` — use whichever name you prefer in JSON. */
   external_url?: string;
+  pricing_model?: string;
+  price_cents?: number;
+  purchase_url?: string;
+  stripe_price_id?: string;
+  pwyw_min_cents?: number;
+  pwyw_suggested_cents?: number;
+  donation_presets_cents?: number[];
 };
 
 /** Prefer `url`, fall back to `external_url`. */
@@ -219,6 +227,7 @@ async function buildGameFromFolder(
   }
   const id = metadata.id ?? folderId;
   const previewRaw = (metadata.preview_video ?? '').trim();
+  const priceCents = Math.max(0, Math.round(Number(metadata.price_cents ?? 0)));
   return {
     id,
     slug: folderId,
@@ -236,6 +245,13 @@ async function buildGameFromFolder(
     isPlayable: Boolean(external) || isLocalPlayable,
     sections: [],
     visual_preset: '',
+    pricing_model: gamePricingModelFromRecord(metadata.pricing_model, priceCents),
+    price_cents: priceCents,
+    purchase_url: String(metadata.purchase_url ?? '').trim(),
+    stripe_price_id: String(metadata.stripe_price_id ?? '').trim(),
+    pwyw_min_cents: Math.max(0, Math.round(Number(metadata.pwyw_min_cents ?? 0))),
+    pwyw_suggested_cents: Math.max(0, Math.round(Number(metadata.pwyw_suggested_cents ?? 0))),
+    donation_presets_cents: donationPresetsFromUnknown(metadata.donation_presets_cents),
   };
 }
 

@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { GameEmbedSection } from '../components/GameEmbedSection';
+import { GamePurchaseBlock } from '../components/GamePurchaseBlock';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
+import { formatGamePriceLabel } from '../lib/gamePricing';
 import { useGames } from '../hooks/useGames';
 
 export function GamePage() {
@@ -42,6 +44,7 @@ export function GamePage() {
   }
 
   const hasBlocks = game.sections.length > 0;
+  const priceText = formatGamePriceLabel(game);
 
   return (
     <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
@@ -52,7 +55,7 @@ export function GamePage() {
           {game.title}
         </h1>
         <p className="admin-muted" style={{ marginBottom: 24 }}>
-          {game.type.toUpperCase()} · {game.slug}
+          {game.type.toUpperCase()} · {game.slug} · {priceText}
         </p>
 
         {!game.isPlayable ? (
@@ -111,6 +114,7 @@ export function GamePage() {
               External link
             </a>
           ) : null}
+          <GamePurchaseBlock game={game} />
         </div>
       </article>
     </SiteChrome>

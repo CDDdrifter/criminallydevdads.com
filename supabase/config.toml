@@ -3,3 +3,6 @@
 
 [functions.sync-repo-to-github]
 verify_jwt = true
+
+[functions.create-checkout-session]
+verify_jwt = false

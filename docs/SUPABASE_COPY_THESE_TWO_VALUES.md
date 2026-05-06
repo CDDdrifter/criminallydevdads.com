@@ -4,6 +4,20 @@ Use this page together with what **`/#/admin`** shows you after deploy (it print
 
 ---
 
+## Selling with Stripe? Different secrets (do not mix these up)
+
+The **two values below** (`VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`) go in **GitHub Actions** and `.env.local` only. They are **not** your Stripe keys.
+
+**Stripe + checkout** additionally needs:
+
+- **`STRIPE_SECRET_KEY`**, **`SITE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`** set as **Supabase Edge Function secrets** for `create-checkout-session` — **not** in `VITE_*`.
+
+**`SITE_URL`** is your **public website** (where the hash routes live), **not** `https://xxx.supabase.co`. Getting that wrong sends customers to a broken page after payment.
+
+Full commerce guide (troubleshooting, hash URLs, dashboard UI pitfalls): **`docs/STRIPE_CHECKOUT.md`**.
+
+---
+
 ## If you only see “API keys” and no URL (new Supabase layout)
 
 Supabase often splits **keys** and **connection info** now. You still have everything you need:

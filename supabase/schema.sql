@@ -72,6 +72,9 @@ create table if not exists site_settings (
   hero_subtitle text,
   support_title text,
   support_body text,
+  support_page_href text,
+  stripe_donation_url text,
+  support_buttons jsonb not null default '[]'::jsonb,
   footer_text text
 );
 
@@ -275,3 +278,19 @@ alter table site_games add column if not exists storage_entry_in_zip text;
 
 alter table site_games add column if not exists sections jsonb not null default '[]'::jsonb;
 alter table site_games add column if not exists visual_preset text;
+alter table site_games add column if not exists price_cents int;
+alter table site_games add column if not exists purchase_url text;
+alter table site_games add column if not exists stripe_price_id text;
+alter table site_settings add column if not exists support_page_href text;
+alter table site_settings add column if not exists stripe_donation_url text;
+alter table site_settings add column if not exists support_buttons jsonb not null default '[]'::jsonb;
+
+alter table site_games add column if not exists pricing_model text not null default 'free';
+alter table site_games add column if not exists pwyw_min_cents int;
+alter table site_games add column if not exists pwyw_suggested_cents int;
+alter table site_games add column if not exists donation_presets_cents jsonb not null default '[]'::jsonb;
+
+update site_games
+set pricing_model = 'fixed'
+where coalesce(price_cents, 0) > 0
+  and pricing_model = 'free';

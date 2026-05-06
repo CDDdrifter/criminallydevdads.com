@@ -37,8 +37,22 @@ import {
   uploadGameThumbnail,
   uploadGameZip,
 } from '../lib/gameStorageUpload';
-import { invokeSyncGamesJsonToGitHub } from '../lib/syncRepoGitHub';
-import type { DevLogPost, GameRecord, NavItem, PageSection, SitePage, SiteSettings } from '../types';
+import {
+  invokeSyncAllCmsToGitHub,
+  invokeSyncGamesJsonToGitHub,
+  invokeSyncSiteContentToGitHub,
+} from '../lib/syncRepoGitHub';
+import { donationPresetsFromUnknown } from '../lib/gamePricing';
+import type {
+  DevLogPost,
+  GamePricingModel,
+  GameRecord,
+  NavItem,
+  PageSection,
+  SitePage,
+  SiteSettings,
+  SupportButton,
+} from '../types';
 import { defaultSiteSettings } from '../types';
 
 type Tab = 'overview' | 'settings' | 'games' | 'pages' | 'nav' | 'devlogs';
@@ -72,8 +86,23 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
   storage_entry_in_zip: null,
   sections: [],
   visual_preset: '',
+  pricing_model: 'free',
+  price_cents: 0,
+  purchase_url: '',
+  stripe_price_id: '',
+  pwyw_min_cents: null,
+  pwyw_suggested_cents: null,
+  donation_presets_cents: [],
   sort_order: 0,
   published: true,
+});
+
+const newSupportButton = (): SupportButton => ({
+  id: crypto.randomUUID(),
+  label: '',
+  href: '',
+  external: false,
+  variant: 'secondary',
 });
 
 function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: string }) {
@@ -91,6 +120,9 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     storage_entry_in_zip: draft.storage_entry_in_zip?.trim() || null,
     sections: ensureSectionIds(draft.sections ?? []),
     visual_preset: draft.visual_preset?.trim() || null,
+    price_cents: Number(draft.price_cents ?? 0),
+    purchase_url: draft.purchase_url?.trim() || null,
+    stripe_price_id: draft.stripe_price_id?.trim() || null,
     sort_order: Number(draft.sort_order ?? 0),
     published: draft.published ?? true,
   };
@@ -827,38 +859,85 @@ export function AdminPage() {
         </div>
         <div className="admin-panel" style={{ marginTop: 20, borderColor: 'rgba(115, 248, 255, 0.25)' }}>
           <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>
-            Push catalog snapshot to GitHub
+            Push CMS snapshots to GitHub
           </h2>
           <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55 }}>
-            Saves live in <strong>Supabase</strong>. This writes only root <code>games.json</code> (metadata + play URLs so
-            the hub can fall back without the database). It never commits ZIP builds — those stay in Storage. Setup:{' '}
+            Saves live in <strong>Supabase</strong>. Use these buttons to write snapshots into GitHub so deploys can ship
+            content/layout changes with the build. ZIP game files still stay in Storage and are never committed. Setup:{' '}
             <code>docs/SYNC_CMS_TO_GITHUB.md</code>.
           </p>
-          <button
-            type="button"
-            disabled={busy}
-            style={{ marginTop: 12 }}
-            onClick={() => {
-              setBusy(true);
-              setSyncRepoMessage(null);
-              invokeSyncGamesJsonToGitHub()
-                .then((r) => {
-                  if (r.error) {
-                    setSyncRepoMessage(r.error);
-                  } else {
-                    setSyncRepoMessage(
-                      `Synced ${r.games ?? 0} published game(s) to games.json.${r.commit_url ? ` ${r.commit_url}` : ''}`,
-                    );
-                  }
-                })
-                .catch((e) =>
-                  setSyncRepoMessage(e instanceof Error ? e.message : 'Sync failed'),
-                )
-                .finally(() => setBusy(false));
-            }}
-          >
-            Push games.json to GitHub
-          </button>
+          <div className="admin-row" style={{ marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                setSyncRepoMessage(null);
+                invokeSyncGamesJsonToGitHub()
+                  .then((r) => {
+                    if (r.error) {
+                      setSyncRepoMessage(r.error);
+                    } else {
+                      setSyncRepoMessage(
+                        `Synced games.json (${r.games ?? 0} published game(s)).${r.commit_url ? ` ${r.commit_url}` : ''}`,
+                      );
+                    }
+                  })
+                  .catch((e) => setSyncRepoMessage(e instanceof Error ? e.message : 'Sync failed'))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              Push games.json
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                setSyncRepoMessage(null);
+                invokeSyncSiteContentToGitHub()
+                  .then((r) => {
+                    if (r.error) {
+                      setSyncRepoMessage(r.error);
+                    } else {
+                      setSyncRepoMessage(
+                        `Synced site content snapshot (${r.files?.length ?? 0} files in /cms).${
+                          r.commit_url ? ` ${r.commit_url}` : ''
+                        }`,
+                      );
+                    }
+                  })
+                  .catch((e) => setSyncRepoMessage(e instanceof Error ? e.message : 'Sync failed'))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              Push pages/layout snapshot
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                setSyncRepoMessage(null);
+                invokeSyncAllCmsToGitHub()
+                  .then((r) => {
+                    if (r.error) {
+                      setSyncRepoMessage(r.error);
+                    } else {
+                      setSyncRepoMessage(
+                        `Synced full CMS snapshot (${r.files?.length ?? 0} files).${
+                          r.commit_url ? ` ${r.commit_url}` : ''
+                        }`,
+                      );
+                    }
+                  })
+                  .catch((e) => setSyncRepoMessage(e instanceof Error ? e.message : 'Sync failed'))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              Push everything (games + pages + settings)
+            </button>
+          </div>
           {syncRepoMessage ? (
             <p className="admin-muted" style={{ marginTop: 12, whiteSpace: 'pre-wrap' }}>
               {syncRepoMessage}
@@ -901,6 +980,141 @@ export function AdminPage() {
               value={settings.support_body}
               onChange={(e) => setSettings({ ...settings, support_body: e.target.value })}
             />
+          </div>
+          <div className="admin-field">
+            <label htmlFor="support_page_href">Support / contact page path</label>
+            <input
+              id="support_page_href"
+              placeholder="/p/support"
+              value={settings.support_page_href}
+              onChange={(e) => setSettings({ ...settings, support_page_href: e.target.value })}
+            />
+            <p className="admin-muted" style={{ marginTop: 8, fontSize: '0.82rem' }}>
+              Used by the default Contact button at the bottom of the homepage.
+            </p>
+          </div>
+          <div className="admin-field">
+            <label htmlFor="stripe_donation_url">Stripe donation URL (optional)</label>
+            <input
+              id="stripe_donation_url"
+              placeholder="https://buy.stripe.com/..."
+              value={settings.stripe_donation_url}
+              onChange={(e) => setSettings({ ...settings, stripe_donation_url: e.target.value })}
+            />
+            <p className="admin-muted" style={{ marginTop: 8, fontSize: '0.82rem', lineHeight: 1.5 }}>
+              If set, the Donate button automatically opens this URL. Use a Stripe Payment Link configured for
+              customer-chosen amount.
+            </p>
+          </div>
+          <div className="admin-panel" style={{ borderStyle: 'dashed' }}>
+            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
+              Bottom support buttons (homepage)
+            </h3>
+            <p className="admin-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: '0.82rem', lineHeight: 1.45 }}>
+              Add as many buttons as you want in the support section. Top header links are managed in the
+              <strong> Navigation</strong> tab.
+            </p>
+            <div className="admin-grid" style={{ gap: 10 }}>
+              {settings.support_buttons.map((btn, i) => (
+                <div key={btn.id || i} className="admin-panel">
+                  <div className="admin-row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+                    <strong style={{ fontSize: '0.85rem' }}>Button {i + 1}</strong>
+                    <span className="admin-row">
+                      <button
+                        type="button"
+                        disabled={i === 0}
+                        onClick={() => {
+                          const next = [...settings.support_buttons];
+                          const [item] = next.splice(i, 1);
+                          if (item) next.splice(i - 1, 0, item);
+                          setSettings({ ...settings, support_buttons: next });
+                        }}
+                      >
+                        Up
+                      </button>
+                      <button
+                        type="button"
+                        disabled={i === settings.support_buttons.length - 1}
+                        onClick={() => {
+                          const next = [...settings.support_buttons];
+                          const [item] = next.splice(i, 1);
+                          if (item) next.splice(i + 1, 0, item);
+                          setSettings({ ...settings, support_buttons: next });
+                        }}
+                      >
+                        Down
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            support_buttons: settings.support_buttons.filter((_, idx) => idx !== i),
+                          })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  </div>
+                  <div className="admin-field">
+                    <label>Label</label>
+                    <input
+                      value={btn.label}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          support_buttons: settings.support_buttons.map((b, idx) =>
+                            idx === i ? { ...b, label: e.target.value } : b,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="admin-field">
+                    <label>Href</label>
+                    <input
+                      value={btn.href}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          support_buttons: settings.support_buttons.map((b, idx) =>
+                            idx === i ? { ...b, href: e.target.value } : b,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                  <label className="admin-row" style={{ gap: 8 }}>
+                    <input
+                      type="checkbox"
+                      checked={btn.external ?? false}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          support_buttons: settings.support_buttons.map((b, idx) =>
+                            idx === i ? { ...b, external: e.target.checked } : b,
+                          ),
+                        })
+                      }
+                    />
+                    Open in new tab (external)
+                  </label>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              style={{ marginTop: 10 }}
+              onClick={() =>
+                setSettings({
+                  ...settings,
+                  support_buttons: [...settings.support_buttons, newSupportButton()],
+                })
+              }
+            >
+              Add support button
+            </button>
           </div>
           <div className="admin-field">
             <label htmlFor="footer_text">Footer</label>
@@ -1117,6 +1331,133 @@ export function AdminPage() {
               />
             </div>
             <div className="admin-field">
+              <label htmlFor="g_pricing_model">Pricing</label>
+              <select
+                id="g_pricing_model"
+                value={(gameDraft.pricing_model ?? 'free') as GamePricingModel}
+                onChange={(e) =>
+                  setGameDraft({
+                    ...gameDraft,
+                    pricing_model: e.target.value as GamePricingModel,
+                  })
+                }
+              >
+                <option value="free">Free (no checkout on this site)</option>
+                <option value="fixed">Fixed price — Stripe Checkout</option>
+                <option value="pwyw">Pay what you want — Stripe Checkout</option>
+                <option value="donation">Donation / support — Stripe Checkout</option>
+              </select>
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
+                Built-in checkout uses the Edge Function <code>create-checkout-session</code> (see{' '}
+                <strong>docs/STRIPE_CHECKOUT.md</strong>). Minimum charge is <strong>$0.50 USD</strong> (Stripe rule).
+              </p>
+            </div>
+            {gameDraft.pricing_model === 'fixed' ? (
+              <div className="admin-field">
+                <label htmlFor="g_price">Price (USD)</label>
+                <input
+                  id="g_price"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={Number(gameDraft.price_cents ?? 0) / 100}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      price_cents: Math.max(0, Math.round(Number(e.target.value || 0) * 100)),
+                    })
+                  }
+                />
+              </div>
+            ) : null}
+            {gameDraft.pricing_model === 'pwyw' || gameDraft.pricing_model === 'donation' ? (
+              <>
+                <div className="admin-field">
+                  <label htmlFor="g_pwyw_min">Minimum amount (USD)</label>
+                  <input
+                    id="g_pwyw_min"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={Number(gameDraft.pwyw_min_cents ?? 0) / 100}
+                    onChange={(e) =>
+                      setGameDraft({
+                        ...gameDraft,
+                        pwyw_min_cents: Math.max(0, Math.round(Number(e.target.value || 0) * 100)),
+                      })
+                    }
+                  />
+                  <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
+                    Checkout still enforces at least $0.50 if you leave this lower.
+                  </p>
+                </div>
+              </>
+            ) : null}
+            {gameDraft.pricing_model === 'pwyw' ? (
+              <div className="admin-field">
+                <label htmlFor="g_pwyw_suggested">Suggested amount (USD, optional)</label>
+                <input
+                  id="g_pwyw_suggested"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={Number(gameDraft.pwyw_suggested_cents ?? 0) / 100}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      pwyw_suggested_cents: Math.max(0, Math.round(Number(e.target.value || 0) * 100)),
+                    })
+                  }
+                />
+              </div>
+            ) : null}
+            {gameDraft.pricing_model === 'donation' ? (
+              <div className="admin-field">
+                <label htmlFor="g_donation_presets">Quick amounts (USD, comma-separated)</label>
+                <input
+                  id="g_donation_presets"
+                  placeholder="5, 10, 25"
+                  value={(gameDraft.donation_presets_cents ?? [])
+                    .map((c) => (c / 100).toString())
+                    .join(', ')}
+                  onChange={(e) => {
+                    const cents = e.target.value
+                      .split(',')
+                      .map((s) => Math.round(parseFloat(s.trim()) * 100))
+                      .filter((n) => Number.isFinite(n) && n > 0);
+                    setGameDraft({
+                      ...gameDraft,
+                      donation_presets_cents: [...new Set(cents)].sort((a, b) => a - b),
+                    });
+                  }}
+                />
+              </div>
+            ) : null}
+            <div className="admin-field">
+              <label htmlFor="g_purchase_url">External checkout URL (optional)</label>
+              <input
+                id="g_purchase_url"
+                placeholder="https://buy.stripe.com/... or itch.io / Gumroad"
+                value={gameDraft.purchase_url ?? ''}
+                onChange={(e) => setGameDraft({ ...gameDraft, purchase_url: e.target.value })}
+              />
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
+                If set, the game page uses this link instead of built-in Stripe Checkout (e.g. third-party store).
+              </p>
+            </div>
+            <div className="admin-field">
+              <label htmlFor="g_stripe_price_id">Stripe Price ID (optional, fixed price only)</label>
+              <input
+                id="g_stripe_price_id"
+                placeholder="price_..."
+                value={gameDraft.stripe_price_id ?? ''}
+                onChange={(e) => setGameDraft({ ...gameDraft, stripe_price_id: e.target.value })}
+              />
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
+                If set for a <strong>fixed</strong> price, Checkout uses this Price instead of the USD field above.
+              </p>
+            </div>
+            <div className="admin-field">
               <label htmlFor="g_folder">Local folder (optional, defaults to slug)</label>
               <input
                 id="g_folder"
@@ -1319,6 +1660,10 @@ export function AdminPage() {
                           ...g,
                           sections: ensureSectionIds(g.sections ?? []),
                           visual_preset: g.visual_preset ?? '',
+                          pricing_model: (g.pricing_model ?? 'free') as GamePricingModel,
+                          donation_presets_cents: donationPresetsFromUnknown(g.donation_presets_cents),
+                          pwyw_min_cents: g.pwyw_min_cents ?? null,
+                          pwyw_suggested_cents: g.pwyw_suggested_cents ?? null,
                         });
                         setZipEntryPick(g.storage_entry_in_zip?.trim() ?? '');
                         setGameZipFile(null);

@@ -16,6 +16,8 @@ import { DevLogPostPage } from './pages/DevLogPostPage';
 import { GamePage } from './pages/GamePage';
 import { HomePage } from './pages/HomePage';
 import { PlayPage } from './pages/PlayPage';
+import { PurchaseSuccessPage } from './pages/PurchaseSuccessPage';
+import { PurchaseTermsPage } from './pages/PurchaseTermsPage';
 import { StaticPage } from './pages/StaticPage';
 
 export function App() {
@@ -30,6 +32,8 @@ export function App() {
           <Route path="/devlog" element={<DevLogListPage />} />
           <Route path="/devlog/:slug" element={<DevLogPostPage />} />
           <Route path="/p/:slug" element={<StaticPage />} />
+          <Route path="/purchase/success" element={<PurchaseSuccessPage />} />
+          <Route path="/purchase/terms" element={<PurchaseTermsPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </HashRouter>

@@ -1,8 +1,10 @@
-import type { DevLogPost, GameRecord, GameView, NavItem, SitePage, SiteSettings } from '../types';
+import type { DevLogPost, GameRecord, GameView, NavItem, SitePage, SiteSettings, SupportButton } from '../types';
 import { defaultSiteSettings } from '../types';
+import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePricing';
 import { supabase, supabaseConfigured } from './supabase';
 import { normalizePageSections } from './pageSections';
 import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
+import { fetchStaticJson } from './staticCms';
 
 function normalizeSitePage(row: Record<string, unknown>): SitePage {
   return {
@@ -14,6 +16,46 @@ function normalizeSitePage(row: Record<string, unknown>): SitePage {
     show_in_nav: Boolean(row.show_in_nav ?? true),
     sort_order: Number(row.sort_order ?? 0),
   };
+}
+
+function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): SiteSettings | null {
+  if (!row || typeof row !== 'object' || Object.keys(row).length === 0) {
+    return null;
+  }
+  const r = row as SiteSettings & { id?: number };
+  return {
+    hero_title: r.hero_title ?? defaultSiteSettings.hero_title,
+    hero_subtitle: r.hero_subtitle ?? defaultSiteSettings.hero_subtitle,
+    support_title: r.support_title ?? defaultSiteSettings.support_title,
+    support_body: r.support_body ?? defaultSiteSettings.support_body,
+    support_page_href: String((row as Record<string, unknown>).support_page_href ?? defaultSiteSettings.support_page_href),
+    stripe_donation_url: String((row as Record<string, unknown>).stripe_donation_url ?? ''),
+    support_buttons: normalizeSupportButtons((row as Record<string, unknown>).support_buttons),
+    footer_text: r.footer_text ?? defaultSiteSettings.footer_text,
+  };
+}
+
+function normalizeSupportButtons(raw: unknown): SupportButton[] {
+  if (!Array.isArray(raw)) {
+    return defaultSiteSettings.support_buttons;
+  }
+  const out: SupportButton[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const rec = item as Record<string, unknown>;
+    const id = String(rec.id ?? '').trim();
+    const label = String(rec.label ?? '').trim();
+    const href = String(rec.href ?? '').trim();
+    if (!id || !label || !href) continue;
+    out.push({
+      id,
+      label,
+      href,
+      external: Boolean(rec.external),
+      variant: rec.variant === 'primary' ? 'primary' : 'secondary',
+    });
+  }
+  return out.length > 0 ? out : defaultSiteSettings.support_buttons;
 }
 
 function recordToView(g: GameRecord): GameView {
@@ -42,6 +84,7 @@ function recordToView(g: GameRecord): GameView {
     launchPath = ext;
   }
 
+  const priceCents = Math.max(0, Number(g.price_cents ?? 0));
   return {
     id: g.id,
     slug: g.slug,
@@ -57,6 +100,13 @@ function recordToView(g: GameRecord): GameView {
     isPlayable: Boolean(ext) || Boolean(storageUrl) || Boolean(folder),
     sections: normalizePageSections(g.sections as unknown),
     visual_preset: String(g.visual_preset ?? '').trim(),
+    pricing_model: gamePricingModelFromRecord(g.pricing_model, priceCents),
+    price_cents: priceCents,
+    purchase_url: String(g.purchase_url ?? '').trim(),
+    stripe_price_id: String(g.stripe_price_id ?? '').trim(),
+    pwyw_min_cents: Math.max(0, Number(g.pwyw_min_cents ?? 0)),
+    pwyw_suggested_cents: Math.max(0, Number(g.pwyw_suggested_cents ?? 0)),
+    donation_presets_cents: donationPresetsFromUnknown(g.donation_presets_cents),
   };
 }
 
@@ -121,6 +171,13 @@ export async function deleteGameBySlug(slug: string) {
 }
 
 export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
+  const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
+  if (Array.isArray(staticPages)) {
+    const row = staticPages.find((p) => typeof p === 'object' && p && String((p as Record<string, unknown>).slug) === slug);
+    if (row && typeof row === 'object') {
+      return normalizeSitePage(row as Record<string, unknown>);
+    }
+  }
   if (!supabaseConfigured || !supabase) {
     return null;
   }
@@ -137,6 +194,12 @@ export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
 }
 
 export async function fetchSitePages(): Promise<SitePage[]> {
+  const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
+  if (Array.isArray(staticPages) && staticPages.length > 0) {
+    return staticPages
+      .filter((p): p is Record<string, unknown> => Boolean(p && typeof p === 'object'))
+      .map(normalizeSitePage);
+  }
   if (!supabaseConfigured || !supabase) {
     return [];
   }
@@ -153,6 +216,10 @@ export async function fetchSitePages(): Promise<SitePage[]> {
 }
 
 export async function fetchNavItems(): Promise<NavItem[]> {
+  const staticNav = await fetchStaticJson<NavItem[]>('cms/site-nav.json');
+  if (Array.isArray(staticNav) && staticNav.length > 0) {
+    return staticNav;
+  }
   if (!supabaseConfigured || !supabase) {
     return [];
   }
@@ -168,6 +235,13 @@ export async function fetchNavItems(): Promise<NavItem[]> {
 }
 
 export async function fetchDevLogBySlug(slug: string): Promise<DevLogPost | null> {
+  const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
+  if (Array.isArray(staticLogs)) {
+    const hit = staticLogs.find((p) => p.slug === slug);
+    if (hit) {
+      return hit;
+    }
+  }
   if (!supabaseConfigured || !supabase) {
     return null;
   }
@@ -199,6 +273,11 @@ export async function fetchDevLogs(): Promise<DevLogPost[]> {
 }
 
 export async function fetchSiteSettings(): Promise<SiteSettings> {
+  const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
+  const fromStatic = siteSettingsFromRow(staticRow);
+  if (fromStatic) {
+    return fromStatic;
+  }
   if (!supabaseConfigured || !supabase) {
     return defaultSiteSettings;
   }
@@ -206,14 +285,7 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
   if (error || !data) {
     return defaultSiteSettings;
   }
-  const row = data as SiteSettings & { id: number };
-  return {
-    hero_title: row.hero_title ?? defaultSiteSettings.hero_title,
-    hero_subtitle: row.hero_subtitle ?? defaultSiteSettings.hero_subtitle,
-    support_title: row.support_title ?? defaultSiteSettings.support_title,
-    support_body: row.support_body ?? defaultSiteSettings.support_body,
-    footer_text: row.footer_text ?? defaultSiteSettings.footer_text,
-  };
+  return siteSettingsFromRow(data as Record<string, unknown>) ?? defaultSiteSettings;
 }
 
 export async function saveSiteSettings(patch: Partial<SiteSettings>) {
@@ -228,6 +300,9 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     hero_subtitle: merged.hero_subtitle,
     support_title: merged.support_title,
     support_body: merged.support_body,
+    support_page_href: merged.support_page_href,
+    stripe_donation_url: merged.stripe_donation_url,
+    support_buttons: merged.support_buttons,
     footer_text: merged.footer_text,
   });
   if (error) {

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/copy-games.mjs && node scripts/postbuild-spa-fallback.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/copy-games.mjs && node scripts/copy-cms.mjs && node scripts/postbuild-spa-fallback.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
