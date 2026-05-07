@@ -1,12 +1,26 @@
+import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { GameEmbedSection } from '../components/GameEmbedSection';
 import { SiteChrome } from '../components/SiteChrome';
 import { useGames } from '../hooks/useGames';
+import { normalizeVisualPresetInput } from '../lib/visualPresets';
 
 export function PlayPage() {
   const { slug } = useParams<{ slug: string }>();
   const { games, loading, error } = useGames();
   const game = games.find((g) => g.slug === slug);
+
+  useEffect(() => {
+    const preset = normalizeVisualPresetInput(game?.visual_preset);
+    if (preset) {
+      document.documentElement.dataset.visualPreset = preset;
+    } else {
+      delete document.documentElement.dataset.visualPreset;
+    }
+    return () => {
+      delete document.documentElement.dataset.visualPreset;
+    };
+  }, [game?.visual_preset]);
 
   if (loading) {
     return (

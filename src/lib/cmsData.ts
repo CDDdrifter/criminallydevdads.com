@@ -5,6 +5,7 @@ import { supabase, supabaseConfigured } from './supabase';
 import { normalizePageSections } from './pageSections';
 import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
 import { fetchStaticJson } from './staticCms';
+import { normalizeVisualPresetInput } from './visualPresets';
 
 function normalizeSitePage(row: Record<string, unknown>): SitePage {
   return {
@@ -18,20 +19,35 @@ function normalizeSitePage(row: Record<string, unknown>): SitePage {
   };
 }
 
+function siteSettingsBool(row: Record<string, unknown>, key: string, fallback: boolean): boolean {
+  const v = row[key];
+  if (typeof v === 'boolean') {
+    return v;
+  }
+  return fallback;
+}
+
 function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): SiteSettings | null {
   if (!row || typeof row !== 'object' || Object.keys(row).length === 0) {
     return null;
   }
   const r = row as SiteSettings & { id?: number };
+  const raw = row as Record<string, unknown>;
   return {
     hero_title: r.hero_title ?? defaultSiteSettings.hero_title,
     hero_subtitle: r.hero_subtitle ?? defaultSiteSettings.hero_subtitle,
     support_title: r.support_title ?? defaultSiteSettings.support_title,
     support_body: r.support_body ?? defaultSiteSettings.support_body,
-    support_page_href: String((row as Record<string, unknown>).support_page_href ?? defaultSiteSettings.support_page_href),
-    stripe_donation_url: String((row as Record<string, unknown>).stripe_donation_url ?? ''),
-    support_buttons: normalizeSupportButtons((row as Record<string, unknown>).support_buttons),
+    support_page_href: String(raw.support_page_href ?? defaultSiteSettings.support_page_href),
+    stripe_donation_url: String(raw.stripe_donation_url ?? ''),
+    support_buttons: normalizeSupportButtons(raw.support_buttons),
     footer_text: r.footer_text ?? defaultSiteSettings.footer_text,
+    site_visual_preset: normalizeVisualPresetInput(String(raw.site_visual_preset ?? '')),
+    fx_scanlines: siteSettingsBool(raw, 'fx_scanlines', defaultSiteSettings.fx_scanlines),
+    fx_noise: siteSettingsBool(raw, 'fx_noise', defaultSiteSettings.fx_noise),
+    fx_vignette: siteSettingsBool(raw, 'fx_vignette', defaultSiteSettings.fx_vignette),
+    fx_hue_shift: siteSettingsBool(raw, 'fx_hue_shift', defaultSiteSettings.fx_hue_shift),
+    fx_cursor_spotlight: siteSettingsBool(raw, 'fx_cursor_spotlight', defaultSiteSettings.fx_cursor_spotlight),
   };
 }
 
@@ -40,13 +56,17 @@ function normalizeSupportButtons(raw: unknown): SupportButton[] {
     return defaultSiteSettings.support_buttons;
   }
   const out: SupportButton[] = [];
-  for (const item of raw) {
+  for (let i = 0; i < raw.length; i++) {
+    const item = raw[i];
     if (!item || typeof item !== 'object') continue;
     const rec = item as Record<string, unknown>;
-    const id = String(rec.id ?? '').trim();
+    /**
+     * Keep user edits even when fields are partially filled.
+     * Older behavior dropped incomplete buttons, which looked like “Save didn’t work”.
+     */
+    const id = String(rec.id ?? '').trim() || `btn-${i + 1}`;
     const label = String(rec.label ?? '').trim();
     const href = String(rec.href ?? '').trim();
-    if (!id || !label || !href) continue;
     out.push({
       id,
       label,
@@ -55,7 +75,7 @@ function normalizeSupportButtons(raw: unknown): SupportButton[] {
       variant: rec.variant === 'primary' ? 'primary' : 'secondary',
     });
   }
-  return out.length > 0 ? out : defaultSiteSettings.support_buttons;
+  return out;
 }
 
 /** Maps DB row → hub `GameView` (play URL resolution + commerce fields for GamePurchaseBlock). */
@@ -100,7 +120,7 @@ function recordToView(g: GameRecord): GameView {
     launchPath,
     isPlayable: Boolean(ext) || Boolean(storageUrl) || Boolean(folder),
     sections: normalizePageSections(g.sections as unknown),
-    visual_preset: String(g.visual_preset ?? '').trim(),
+    visual_preset: normalizeVisualPresetInput(g.visual_preset),
     pricing_model: gamePricingModelFromRecord(g.pricing_model, priceCents),
     price_cents: priceCents,
     purchase_url: String(g.purchase_url ?? '').trim(),
@@ -295,7 +315,7 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
   }
   const current = await fetchSiteSettings();
   const merged = { ...current, ...patch };
-  const { error } = await supabase.from('site_settings').upsert({
+  const payload: Record<string, unknown> = {
     id: 1,
     hero_title: merged.hero_title,
     hero_subtitle: merged.hero_subtitle,
@@ -305,10 +325,26 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     stripe_donation_url: merged.stripe_donation_url,
     support_buttons: merged.support_buttons,
     footer_text: merged.footer_text,
-  });
-  if (error) {
-    throw error;
+    site_visual_preset: normalizeVisualPresetInput(merged.site_visual_preset) || null,
+    fx_scanlines: merged.fx_scanlines,
+    fx_noise: merged.fx_noise,
+    fx_vignette: merged.fx_vignette,
+    fx_hue_shift: merged.fx_hue_shift,
+    fx_cursor_spotlight: merged.fx_cursor_spotlight,
+  };
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const { error } = await supabase.from('site_settings').upsert(payload);
+    if (!error) {
+      return;
+    }
+    const msg = error.message ?? '';
+    const unknown = msg.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of relation/i)?.[1];
+    if (!unknown || !(unknown in payload)) {
+      throw error;
+    }
+    delete payload[unknown];
   }
+  throw new Error('Could not save site_settings (schema mismatch — run latest supabase/schema.sql or migrations).');
 }
 
 export async function fetchAllPagesAdmin(): Promise<SitePage[]> {

@@ -10,6 +10,7 @@
  */
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { FxBackdrop } from './components/FxBackdrop';
+import { GlobalHtmlFxSync } from './components/GlobalHtmlFxSync';
 import { AdminPage } from './pages/AdminPage';
 import { DevLogListPage } from './pages/DevLogListPage';
 import { DevLogPostPage } from './pages/DevLogPostPage';
@@ -22,22 +23,21 @@ import { StaticPage } from './pages/StaticPage';
 
 export function App() {
   return (
-    <>
+    <HashRouter>
+      <GlobalHtmlFxSync />
       <FxBackdrop />
-      <HashRouter>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/game/:slug" element={<GamePage />} />
-          <Route path="/play/:slug" element={<PlayPage />} />
-          <Route path="/devlog" element={<DevLogListPage />} />
-          <Route path="/devlog/:slug" element={<DevLogPostPage />} />
-          <Route path="/p/:slug" element={<StaticPage />} />
-          {/* Stripe redirects: success/cancel URLs built with SITE_URL in create-checkout-session */}
-          <Route path="/purchase/success" element={<PurchaseSuccessPage />} />
-          <Route path="/purchase/terms" element={<PurchaseTermsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-        </Routes>
-      </HashRouter>
-    </>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/game/:slug" element={<GamePage />} />
+        <Route path="/play/:slug" element={<PlayPage />} />
+        <Route path="/devlog" element={<DevLogListPage />} />
+        <Route path="/devlog/:slug" element={<DevLogPostPage />} />
+        <Route path="/p/:slug" element={<StaticPage />} />
+        {/* Stripe redirects: success/cancel URLs built with SITE_URL in create-checkout-session */}
+        <Route path="/purchase/success" element={<PurchaseSuccessPage />} />
+        <Route path="/purchase/terms" element={<PurchaseTermsPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+      </Routes>
+    </HashRouter>
   );
 }

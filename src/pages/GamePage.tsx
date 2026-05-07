@@ -5,6 +5,7 @@ import { GamePurchaseBlock } from '../components/GamePurchaseBlock';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
 import { formatGamePriceLabel } from '../lib/gamePricing';
+import { normalizeVisualPresetInput } from '../lib/visualPresets';
 import { useGames } from '../hooks/useGames';
 
 export function GamePage() {
@@ -13,7 +14,7 @@ export function GamePage() {
   const game = games.find((g) => g.slug === slug);
 
   useEffect(() => {
-    const preset = game?.visual_preset?.trim();
+    const preset = normalizeVisualPresetInput(game?.visual_preset);
     if (preset) {
       document.documentElement.dataset.visualPreset = preset;
     } else {

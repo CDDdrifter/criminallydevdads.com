@@ -19,6 +19,7 @@
 
 import type { GameView } from '../types';
 import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePricing';
+import { normalizeVisualPresetInput } from './visualPresets';
 import { resolvePublicAssetUrl } from './paths';
 
 const REPO_OWNER = import.meta.env.VITE_GITHUB_REPO_OWNER ?? 'CDDdrifter';
@@ -52,6 +53,8 @@ type LegacyMeta = {
   pwyw_min_cents?: number;
   pwyw_suggested_cents?: number;
   donation_presets_cents?: number[];
+  /** Same preset ids as Site Settings / Admin (ember, aurora, …). */
+  visual_preset?: string;
 };
 
 /** Prefer `url`, fall back to `external_url`. */
@@ -244,7 +247,7 @@ async function buildGameFromFolder(
     launchPath: external || localIndex,
     isPlayable: Boolean(external) || isLocalPlayable,
     sections: [],
-    visual_preset: '',
+    visual_preset: normalizeVisualPresetInput(metadata.visual_preset),
     pricing_model: gamePricingModelFromRecord(metadata.pricing_model, priceCents),
     price_cents: priceCents,
     purchase_url: String(metadata.purchase_url ?? '').trim(),

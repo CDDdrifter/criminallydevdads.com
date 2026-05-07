@@ -44,7 +44,13 @@ supabase secrets set ^
 
 (On Mac/Linux use `\` line continuations instead of `^`.)
 
-**Dashboard alternative:** Supabase → **Project Settings** → **Edge Functions** → **Secrets** (if your plan shows it) — add the same names/values.
+**If pushes still fail with “Missing … SUPABASE_ANON_KEY”** (or generic non-2xx), add the anon key explicitly (same string as **Project Settings → API → anon public**):
+
+```bash
+supabase secrets set SUPABASE_ANON_KEY=paste_anon_public_key_here
+```
+
+**Dashboard alternative:** Supabase → **Project Settings** → **Edge Functions** → **Secrets** — add `GITHUB_*` plus `SUPABASE_ANON_KEY` if needed.
 
 ### 3) Deploy the Edge Function (required after every change to `supabase/functions/`)
 
@@ -89,7 +95,7 @@ Only when **we added new database columns** or you’re doing a **fresh** databa
 
 | Symptom | Fix |
 |--------|-----|
-| **“Edge Function returned a non-2xx status code”** (generic) | Deploy the latest function, then try again: `supabase functions deploy sync-repo-to-github`. After the next site deploy, Admin will show the **real** error text from the function (e.g. missing token, GitHub 403). |
+| **“Edge Function returned a non-2xx status code”** (generic) | The **next** hub build shows the **real** message (HTTP status + JSON from the function). Meanwhile: (1) `supabase functions deploy sync-repo-to-github`, (2) `supabase secrets set` for GitHub **and** confirm **SUPABASE_ANON_KEY** exists under **Edge Functions → Secrets** (copy the same anon key as **Project Settings → API** if the dashboard didn’t auto-inject it). (3) `supabase link` must match the project in **VITE_SUPABASE_URL**. |
 | “Deploy the function…” / 404 / failed to send | Run `supabase functions deploy sync-repo-to-github` |
 | “Server missing GITHUB_TOKEN…” | Run `supabase secrets set …` again |
 | “Forbidden — not a site admin” | Your login email must be allowed (`site_admin_emails` / `site_admin_domains` in SQL from `schema.sql`) |

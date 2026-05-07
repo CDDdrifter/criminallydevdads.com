@@ -43,6 +43,7 @@ import {
   invokeSyncSiteContentToGitHub,
 } from '../lib/syncRepoGitHub';
 import { donationPresetsFromUnknown } from '../lib/gamePricing';
+import { VISUAL_PRESET_OPTIONS, normalizeVisualPresetInput } from '../lib/visualPresets';
 import type {
   DevLogPost,
   GamePricingModel,
@@ -119,7 +120,7 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     storage_slug: draft.storage_slug ?? null,
     storage_entry_in_zip: draft.storage_entry_in_zip?.trim() || null,
     sections: ensureSectionIds(draft.sections ?? []),
-    visual_preset: draft.visual_preset?.trim() || null,
+    visual_preset: normalizeVisualPresetInput(draft.visual_preset) || null,
     price_cents: Number(draft.price_cents ?? 0),
     purchase_url: draft.purchase_url?.trim() || null,
     stripe_price_id: draft.stripe_price_id?.trim() || null,
@@ -1116,6 +1117,60 @@ export function AdminPage() {
               Add support button
             </button>
           </div>
+
+          <div className="admin-panel" style={{ borderStyle: 'dashed' }}>
+            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
+              Visual atmosphere (site-wide)
+            </h3>
+            <p className="admin-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: '0.82rem', lineHeight: 1.55 }}>
+              These map directly to <code>src/index.css</code> (<code>.fx-*</code>, <code>body::before</code>,{' '}
+              <code>body::after</code>) and <code>FxBackdrop</code>. Toggles set <code>html[data-fx-*]</code> via{' '}
+              <code>GlobalHtmlFxSync</code>. Per-game moods on <strong>Game</strong> still override colors on{' '}
+              <code>/game/…</code> and <code>/play/…</code> only.
+            </p>
+            <div className="admin-field">
+              <label htmlFor="site_visual_preset">Site mood (hub, devlog, pages, admin…)</label>
+              <select
+                id="site_visual_preset"
+                value={settings.site_visual_preset ?? ''}
+                onChange={(e) => setSettings({ ...settings, site_visual_preset: e.target.value })}
+              >
+                {VISUAL_PRESET_OPTIONS.map((o) => (
+                  <option key={o.value || 'default'} value={o.value} title={o.hint}>
+                    {o.label}
+                    {o.value ? '' : ' — hub default accents'}
+                  </option>
+                ))}
+              </select>
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.8rem' }}>
+                Hover an option for a short description. Keys must match CSS — add new moods in code +{' '}
+                <code>visualPresets.ts</code> together.
+              </p>
+            </div>
+            <div className="admin-grid" style={{ gap: 8 }}>
+              {(
+                [
+                  ['fx_scanlines', 'Scanlines overlay', '.fx-scanlines'],
+                  ['fx_noise', 'Noise / grain', '.fx-noise'],
+                  ['fx_vignette', 'Vignette (edge darken)', '.fx-vignette'],
+                  ['fx_hue_shift', 'Animated color wash', 'body::before'],
+                  ['fx_cursor_spotlight', 'Cursor-following spotlight', 'body::after + --cursor-x/y'],
+                ] as const
+              ).map(([key, label, cssRef]) => (
+                <label key={key} className="admin-row" style={{ gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={settings[key]}
+                    onChange={(e) => setSettings({ ...settings, [key]: e.target.checked })}
+                  />
+                  <span>
+                    {label} <span className="admin-muted">({cssRef})</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="admin-field">
             <label htmlFor="footer_text">Footer</label>
             <textarea
@@ -1198,14 +1253,16 @@ export function AdminPage() {
                 value={gameDraft.visual_preset ?? ''}
                 onChange={(e) => setGameDraft({ ...gameDraft, visual_preset: e.target.value })}
               >
-                <option value="">Default (site cyan / purple)</option>
-                <option value="ember">Ember (warm accent)</option>
-                <option value="aurora">Aurora (green / ice)</option>
-                <option value="noir">Noir (muted silver)</option>
-                <option value="minimal">Minimal cursor glow</option>
+                {VISUAL_PRESET_OPTIONS.map((o) => (
+                  <option key={o.value || 'default'} value={o.value} title={o.hint}>
+                    {o.label}
+                    {o.value ? '' : ' — follow hub'}
+                  </option>
+                ))}
               </select>
               <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
-                Applies while visitors are on this game&apos;s detail page only.
+                Applies on this game&apos;s <strong>detail</strong> and <strong>fullscreen play</strong> routes only.
+                FX layer on/off still comes from <strong>Site settings</strong> above.
               </p>
             </div>
 

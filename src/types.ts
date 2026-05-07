@@ -130,6 +130,21 @@ export type SiteSettings = {
   /** Buttons shown in the support block at the bottom of the homepage. */
   support_buttons: SupportButton[];
   footer_text: string;
+  /**
+   * Hub / inner pages mood — same keys as `site_games.visual_preset` (ember, aurora, …).
+   * Game detail + fullscreen play pages override from the game row.
+   */
+  site_visual_preset: string;
+  /** CRT-style lines — `.fx-scanlines` in index.css */
+  fx_scanlines: boolean;
+  /** Animated grain — `.fx-noise` */
+  fx_noise: boolean;
+  /** Edge darkening — `.fx-vignette` */
+  fx_vignette: boolean;
+  /** Animated color wash — `body::before` */
+  fx_hue_shift: boolean;
+  /** Mouse-following radial — `body::after` (uses --cursor-x/y from SiteChrome) */
+  fx_cursor_spotlight: boolean;
 };
 
 export const defaultSiteSettings: SiteSettings = {
@@ -146,4 +161,10 @@ export const defaultSiteSettings: SiteSettings = {
     { id: 'contact', label: 'Contact / Support', href: '/p/support', external: false, variant: 'secondary' },
   ],
   footer_text: '© 2026 CRIMINALLY DEV DADS  // ALL RIGHTS RESERVED // STAY CRIMINAL',
+  site_visual_preset: '',
+  fx_scanlines: true,
+  fx_noise: true,
+  fx_vignette: true,
+  fx_hue_shift: true,
+  fx_cursor_spotlight: true,
 };

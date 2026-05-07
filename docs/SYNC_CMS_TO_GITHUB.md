@@ -43,6 +43,9 @@ Workflow:
      GITHUB_BRANCH=main
    ```
 
+   If the function returns **500** about **SUPABASE_ANON_KEY**, add it explicitly (same value as **Project Settings → API → anon public**):  
+   `supabase secrets set SUPABASE_ANON_KEY=eyJ...`
+
 4. **Deploy / redeploy** the function after code changes:
 
    ```bash

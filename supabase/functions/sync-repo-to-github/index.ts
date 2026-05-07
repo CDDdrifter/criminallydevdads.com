@@ -79,10 +79,22 @@ Deno.serve(async (req) => {
       ? requestBody.scope
       : 'games';
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseUrl = normalizeSupabaseApiOrigin(Deno.env.get('SUPABASE_URL') ?? '');
+    const supabaseAnonKey = (Deno.env.get('SUPABASE_ANON_KEY') ?? '').trim();
     if (!supabaseUrl || !supabaseAnonKey) {
-      return jsonResponse({ error: 'Missing Supabase env' }, 500);
+      const missing = [
+        !supabaseUrl ? 'SUPABASE_URL' : null,
+        !supabaseAnonKey ? 'SUPABASE_ANON_KEY' : null,
+      ]
+        .filter(Boolean)
+        .join(', ');
+      return jsonResponse(
+        {
+          error:
+            `Missing Edge secrets: ${missing}. Hosted Supabase usually injects these; if not, add them under Project Settings → Edge Functions → Secrets (anon key = API page “anon public”, URL = https://YOUR_REF.supabase.co only).`,
+        },
+        500,
+      );
     }
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {

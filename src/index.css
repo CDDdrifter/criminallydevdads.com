@@ -94,6 +94,23 @@ body::before {
   background: radial-gradient(circle at center, transparent 45%, rgba(0, 0, 0, 0.45) 100%);
 }
 
+/* Site Settings → toggles (set by GlobalHtmlFxSync / siteFx.ts). Default: layers on when attrs missing. */
+html[data-fx-scanlines='off'] .fx-scanlines {
+  display: none !important;
+}
+html[data-fx-noise='off'] .fx-noise {
+  display: none !important;
+}
+html[data-fx-vignette='off'] .fx-vignette {
+  display: none !important;
+}
+html[data-fx-hue-shift='off'] body::before {
+  display: none !important;
+}
+html[data-fx-cursor-spotlight='off'] body::after {
+  display: none !important;
+}
+
 .container {
   max-width: 1400px;
   margin: 0 auto;
@@ -101,7 +118,10 @@ body::before {
   z-index: 3;
 }
 
-/* Optional per-game page mood (set on <html data-visual-preset="…"> from GamePage). */
+/*
+ * Optional page mood — keys must match src/lib/visualPresets.ts (Admin: Site mood + per-game mood).
+ * Applied on <html data-visual-preset="…"> from GlobalHtmlFxSync / GamePage / PlayPage.
+ */
 html[data-visual-preset='ember'] {
   --accent: #ff9b73;
   --accent-2: #ff5f8a;

@@ -296,3 +296,10 @@ update site_games
 set pricing_model = 'fixed'
 where coalesce(price_cents, 0) > 0
   and pricing_model = 'free';
+
+alter table site_settings add column if not exists site_visual_preset text;
+alter table site_settings add column if not exists fx_scanlines boolean not null default true;
+alter table site_settings add column if not exists fx_noise boolean not null default true;
+alter table site_settings add column if not exists fx_vignette boolean not null default true;
+alter table site_settings add column if not exists fx_hue_shift boolean not null default true;
+alter table site_settings add column if not exists fx_cursor_spotlight boolean not null default true;
