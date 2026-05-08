@@ -303,3 +303,7 @@ alter table site_settings add column if not exists fx_noise boolean not null def
 alter table site_settings add column if not exists fx_vignette boolean not null default true;
 alter table site_settings add column if not exists fx_hue_shift boolean not null default true;
 alter table site_settings add column if not exists fx_cursor_spotlight boolean not null default true;
+
+alter table site_settings add column if not exists promo_events jsonb not null default '[]'::jsonb;
+alter table site_settings add column if not exists custom_css text not null default '';
+alter table site_settings add column if not exists fx_intensity text not null default 'normal';

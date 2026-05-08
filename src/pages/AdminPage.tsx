@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -27,6 +27,7 @@ import {
   getRawBuildTimeSupabaseUrl,
   supabaseUrlLooksValid,
 } from '../lib/supabaseHealth';
+import { HrefQuickPick } from '../components/admin/HrefQuickPick';
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
 import {
   deleteGameBuild,
@@ -42,6 +43,7 @@ import {
   invokeSyncGamesJsonToGitHub,
   invokeSyncSiteContentToGitHub,
 } from '../lib/syncRepoGitHub';
+import { blockingSiteSettingsIssues, softSiteSettingsLinkHints } from '../lib/adminSettingsValidate';
 import { donationPresetsFromUnknown } from '../lib/gamePricing';
 import { VISUAL_PRESET_OPTIONS, normalizeVisualPresetInput } from '../lib/visualPresets';
 import type {
@@ -50,6 +52,7 @@ import type {
   GameRecord,
   NavItem,
   PageSection,
+  SiteEvent,
   SitePage,
   SiteSettings,
   SupportButton,
@@ -106,6 +109,31 @@ const newSupportButton = (): SupportButton => ({
   variant: 'secondary',
 });
 
+function newPromoEvent(): SiteEvent {
+  return {
+    id: crypto.randomUUID(),
+    title: '',
+    body: '',
+    href: '',
+    external: false,
+    starts_at: null,
+    ends_at: null,
+    active: true,
+  };
+}
+
+function copyPublicHashUrl(route: string) {
+  try {
+    const u = new URL(window.location.href);
+    const path = route.startsWith('/') ? route : `/${route}`;
+    u.hash = `#${path}`;
+    void navigator.clipboard?.writeText(u.href);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: string }) {
   return {
     slug: draft.slug.trim(),
@@ -134,6 +162,10 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [settingsSaveDetail, setSettingsSaveDetail] = useState<string | null>(null);
+  const [settingsFieldErrors, setSettingsFieldErrors] = useState<Record<string, string>>({});
+  const settingsSaveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [games, setGames] = useState<GameRecord[]>([]);
@@ -171,6 +203,8 @@ export function AdminPage() {
     published_at: new Date().toISOString().slice(0, 16),
   });
 
+  const settingsLinkHints = useMemo(() => softSiteSettingsLinkHints(settings, pages), [settings, pages]);
+
   const reload = useCallback(async () => {
     if (!supabaseConfigured || !auth.isAdmin) {
       return;
@@ -193,6 +227,32 @@ export function AdminPage() {
     reload().catch(console.error);
   }, [reload]);
 
+  useEffect(() => {
+    return () => {
+      if (settingsSaveSuccessTimerRef.current) {
+        clearTimeout(settingsSaveSuccessTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (tab !== 'settings') {
+      setSettingsSaveStatus('idle');
+      setSettingsSaveDetail(null);
+    }
+  }, [tab]);
+
+  const clearSettingsFieldError = useCallback((key: string) => {
+    setSettingsFieldErrors((prev) => {
+      if (!(key in prev)) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
   const flash = (msg: string, durationMs = 3500) => {
     setMessage(msg);
     setTimeout(() => setMessage(null), durationMs);
@@ -200,12 +260,44 @@ export function AdminPage() {
 
   const onSaveSettings = async () => {
     setBusy(true);
+    setSettingsSaveDetail(null);
+    setSettingsFieldErrors({});
+
+    const validationErrors = blockingSiteSettingsIssues(settings);
+    if (Object.keys(validationErrors).length) {
+      setSettingsFieldErrors(validationErrors);
+      setSettingsSaveStatus('error');
+      setSettingsSaveDetail('Fix the fields marked with ✗, then save again.');
+      flash('Some links look invalid — check the red messages next to each field.');
+      setBusy(false);
+      return;
+    }
+
     try {
       await saveSiteSettings(settings);
+      const fresh = await fetchSiteSettings();
+      setSettings(fresh);
+      setSettingsSaveStatus('success');
       flash('Site settings saved.');
+      if (settingsSaveSuccessTimerRef.current) {
+        clearTimeout(settingsSaveSuccessTimerRef.current);
+      }
+      settingsSaveSuccessTimerRef.current = setTimeout(() => {
+        setSettingsSaveStatus('idle');
+        settingsSaveSuccessTimerRef.current = null;
+      }, 12000);
     } catch (e) {
       console.error(e);
-      flash(e instanceof Error ? e.message : 'Save failed');
+      const msg = e instanceof Error ? e.message : 'Save failed';
+      setSettingsSaveStatus('error');
+      setSettingsSaveDetail(msg);
+      const col = msg.match(/column\s+"?([\w_]+)"?\s+of\s+relation/i)?.[1];
+      if (col && ['promo_events', 'custom_css', 'fx_intensity'].includes(col)) {
+        setSettingsFieldErrors({
+          _migration: `Your database is missing column "${col}". Run Supabase migration 011 (see supabase/migrations/011_…sql), then try again.`,
+        });
+      }
+      flash(msg);
     } finally {
       setBusy(false);
     }
@@ -950,6 +1042,26 @@ export function AdminPage() {
 
       {tab === 'settings' && (
         <div className="admin-panel admin-grid">
+          {settingsFieldErrors._migration ? (
+            <div
+              role="alert"
+              style={{
+                gridColumn: '1 / -1',
+                padding: '12px 14px',
+                borderRadius: 8,
+                border: '1px solid var(--danger)',
+                background: 'rgba(255, 95, 191, 0.12)',
+                color: 'var(--text)',
+                fontSize: '0.88rem',
+                lineHeight: 1.5,
+              }}
+            >
+              <span style={{ color: 'var(--danger)', marginRight: 8 }} aria-hidden>
+                ✗
+              </span>
+              {settingsFieldErrors._migration}
+            </div>
+          ) : null}
           <div className="admin-field">
             <label htmlFor="hero_title">Hero title</label>
             <input
@@ -988,11 +1100,35 @@ export function AdminPage() {
               id="support_page_href"
               placeholder="/p/support"
               value={settings.support_page_href}
-              onChange={(e) => setSettings({ ...settings, support_page_href: e.target.value })}
+              onChange={(e) => {
+                clearSettingsFieldError('support_page_href');
+                setSettings({ ...settings, support_page_href: e.target.value });
+              }}
             />
+            {settingsFieldErrors.support_page_href ? (
+              <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                <span aria-hidden>✗ </span>
+                {settingsFieldErrors.support_page_href}
+              </p>
+            ) : settingsLinkHints.support_page_href ? (
+              <p style={{ color: '#c9a227', fontSize: '0.82rem', marginTop: 8 }}>
+                <span aria-hidden>⚠ </span>
+                {settingsLinkHints.support_page_href}
+              </p>
+            ) : null}
             <p className="admin-muted" style={{ marginTop: 8, fontSize: '0.82rem' }}>
-              Used by the default Contact button at the bottom of the homepage.
+              Used by the default Contact button at the bottom of the homepage (overrides that button&apos;s href when
+              this field is non-empty).
             </p>
+            <HrefQuickPick
+              pages={pages.map((p) => ({ slug: p.slug, title: p.title }))}
+              games={games.map((g) => ({ slug: g.slug, title: g.title }))}
+              disabled={busy}
+              onPick={(href) => {
+                clearSettingsFieldError('support_page_href');
+                setSettings({ ...settings, support_page_href: href });
+              }}
+            />
           </div>
           <div className="admin-field">
             <label htmlFor="stripe_donation_url">Stripe donation URL (optional)</label>
@@ -1000,7 +1136,18 @@ export function AdminPage() {
               id="stripe_donation_url"
               placeholder="https://buy.stripe.com/..."
               value={settings.stripe_donation_url}
-              onChange={(e) => setSettings({ ...settings, stripe_donation_url: e.target.value })}
+              onChange={(e) => {
+                setSettingsFieldErrors((prev) => {
+                  const next = { ...prev };
+                  Object.keys(next).forEach((k) => {
+                    if (k.startsWith('support_btn_')) {
+                      delete next[k];
+                    }
+                  });
+                  return next;
+                });
+                setSettings({ ...settings, stripe_donation_url: e.target.value });
+              }}
             />
             <p className="admin-muted" style={{ marginTop: 8, fontSize: '0.82rem', lineHeight: 1.5 }}>
               If set, the Donate button automatically opens this URL. Use a Stripe Payment Link configured for
@@ -1015,9 +1162,24 @@ export function AdminPage() {
               Add as many buttons as you want in the support section. Top header links are managed in the
               <strong> Navigation</strong> tab.
             </p>
+            <p className="admin-muted" style={{ marginBottom: 12, fontSize: '0.82rem', lineHeight: 1.5 }}>
+              <strong>How href works:</strong> This site uses a <strong>hash router</strong>. Store internal paths like{' '}
+              <code>/p/shop</code> or <code>/game/slug</code> — no <code>#</code>, no full domain. That only works if{' '}
+              <em>Open in new tab (external)</em> is <strong>off</strong>. For a hosted store (Shopify, etc.), paste the
+              full <code>https://…</code> URL and leave <em>external</em> on. The slug after <code>/p/</code> must match a
+              page in the <strong>Pages</strong> tab (e.g. slug <code>shop</code> → link <code>/p/shop</code>).
+            </p>
             <div className="admin-grid" style={{ gap: 10 }}>
               {settings.support_buttons.map((btn, i) => (
-                <div key={btn.id || i} className="admin-panel">
+                <div
+                  key={btn.id || i}
+                  className="admin-panel"
+                  style={
+                    settingsFieldErrors[`support_btn_${i}`]
+                      ? { borderColor: 'var(--danger)', borderWidth: 1, borderStyle: 'solid' }
+                      : undefined
+                  }
+                >
                   <div className="admin-row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                     <strong style={{ fontSize: '0.85rem' }}>Button {i + 1}</strong>
                     <span className="admin-row">
@@ -1076,28 +1238,84 @@ export function AdminPage() {
                     <label>Href</label>
                     <input
                       value={btn.href}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        clearSettingsFieldError(`support_btn_${i}`);
                         setSettings({
                           ...settings,
                           support_buttons: settings.support_buttons.map((b, idx) =>
                             idx === i ? { ...b, href: e.target.value } : b,
                           ),
-                        })
-                      }
+                        });
+                      }}
                     />
+                    <HrefQuickPick
+                      pages={pages.map((p) => ({ slug: p.slug, title: p.title }))}
+                      games={games.map((g) => ({ slug: g.slug, title: g.title }))}
+                      disabled={busy}
+                      onPick={(href) => {
+                        clearSettingsFieldError(`support_btn_${i}`);
+                        setSettings({
+                          ...settings,
+                          support_buttons: settings.support_buttons.map((b, idx) =>
+                            idx === i ? { ...b, href } : b,
+                          ),
+                        });
+                      }}
+                    />
+                    {settingsFieldErrors[`support_btn_${i}`] ? (
+                      <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                        <span aria-hidden>✗ </span>
+                        {settingsFieldErrors[`support_btn_${i}`]}
+                      </p>
+                    ) : settingsLinkHints[`support_btn_${i}`] ? (
+                      <p style={{ color: '#c9a227', fontSize: '0.82rem', marginTop: 8 }}>
+                        <span aria-hidden>⚠ </span>
+                        {settingsLinkHints[`support_btn_${i}`]}
+                      </p>
+                    ) : null}
                   </div>
+                  {btn.id === 'contact' && settings.support_page_href.trim() ? (
+                    <p
+                      className="admin-muted"
+                      style={{
+                        fontSize: '0.78rem',
+                        marginTop: 4,
+                        padding: '8px 10px',
+                        borderLeft: '3px solid var(--accent)',
+                        background: 'rgba(115, 248, 255, 0.06)',
+                      }}
+                    >
+                      <strong>Homepage uses</strong> the Support / contact path above (
+                      <code>{settings.support_page_href.trim()}</code>), not this href field, for the Contact button.
+                    </p>
+                  ) : null}
+                  {btn.id === 'donate' && settings.stripe_donation_url.trim() ? (
+                    <p
+                      className="admin-muted"
+                      style={{
+                        fontSize: '0.78rem',
+                        marginTop: 4,
+                        padding: '8px 10px',
+                        borderLeft: '3px solid var(--accent)',
+                        background: 'rgba(115, 248, 255, 0.06)',
+                      }}
+                    >
+                      <strong>Homepage uses</strong> the Stripe donation URL field for Donate, not this href.
+                    </p>
+                  ) : null}
                   <label className="admin-row" style={{ gap: 8 }}>
                     <input
                       type="checkbox"
                       checked={btn.external ?? false}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        clearSettingsFieldError(`support_btn_${i}`);
                         setSettings({
                           ...settings,
                           support_buttons: settings.support_buttons.map((b, idx) =>
                             idx === i ? { ...b, external: e.target.checked } : b,
                           ),
-                        })
-                      }
+                        });
+                      }}
                     />
                     Open in new tab (external)
                   </label>
@@ -1115,6 +1333,193 @@ export function AdminPage() {
               }
             >
               Add support button
+            </button>
+          </div>
+
+          <div className="admin-panel" style={{ borderStyle: 'dashed' }}>
+            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
+              Homepage events &amp; promos
+            </h3>
+            <p className="admin-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: '0.82rem', lineHeight: 1.55 }}>
+              Announcement cards above the game grid. Leave dates empty to show whenever <strong>Active</strong> is on.
+              Use <code>YYYY-MM-DD</code> or a full ISO timestamp. “Learn more” uses the optional link.
+            </p>
+            {(settings.promo_events ?? []).map((ev, i) => (
+              <div
+                key={ev.id}
+                className="admin-panel"
+                style={{
+                  marginBottom: 12,
+                  borderStyle: 'solid',
+                  padding: 12,
+                  ...(settingsFieldErrors[`promo_${i}_href`]
+                    ? { borderColor: 'var(--danger)', borderWidth: 1 }
+                    : {}),
+                }}
+              >
+                <div className="admin-row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+                  <strong style={{ fontSize: '0.85rem' }}>Event {i + 1}</strong>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSettings({
+                        ...settings,
+                        promo_events: settings.promo_events.filter((_, idx) => idx !== i),
+                      })
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="admin-field">
+                  <label>Title</label>
+                  <input
+                    value={ev.title}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        promo_events: settings.promo_events.map((x, idx) =>
+                          idx === i ? { ...x, title: e.target.value } : x,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+                <div className="admin-field">
+                  <label>Body (optional)</label>
+                  <textarea
+                    rows={3}
+                    value={ev.body}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        promo_events: settings.promo_events.map((x, idx) =>
+                          idx === i ? { ...x, body: e.target.value } : x,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+                <div className="admin-field">
+                  <label>Link href (optional)</label>
+                  <input
+                    placeholder="/p/about or https://…"
+                    value={ev.href}
+                    onChange={(e) => {
+                      clearSettingsFieldError(`promo_${i}_href`);
+                      setSettings({
+                        ...settings,
+                        promo_events: settings.promo_events.map((x, idx) =>
+                          idx === i ? { ...x, href: e.target.value } : x,
+                        ),
+                      });
+                    }}
+                  />
+                  <HrefQuickPick
+                    pages={pages.map((p) => ({ slug: p.slug, title: p.title }))}
+                    games={games.map((g) => ({ slug: g.slug, title: g.title }))}
+                    disabled={busy}
+                    onPick={(href) => {
+                      clearSettingsFieldError(`promo_${i}_href`);
+                      setSettings({
+                        ...settings,
+                        promo_events: settings.promo_events.map((x, idx) =>
+                          idx === i ? { ...x, href } : x,
+                        ),
+                      });
+                    }}
+                  />
+                  {settingsFieldErrors[`promo_${i}_href`] ? (
+                    <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                      <span aria-hidden>✗ </span>
+                      {settingsFieldErrors[`promo_${i}_href`]}
+                    </p>
+                  ) : settingsLinkHints[`promo_${i}_href`] ? (
+                    <p style={{ color: '#c9a227', fontSize: '0.82rem', marginTop: 8 }}>
+                      <span aria-hidden>⚠ </span>
+                      {settingsLinkHints[`promo_${i}_href`]}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="admin-grid" style={{ gap: 8 }}>
+                  <div className="admin-field">
+                    <label>Starts (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="YYYY-MM-DD"
+                      value={ev.starts_at ?? ''}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          promo_events: settings.promo_events.map((x, idx) =>
+                            idx === i
+                              ? { ...x, starts_at: e.target.value.trim() || null }
+                              : x,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="admin-field">
+                    <label>Ends (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="YYYY-MM-DD"
+                      value={ev.ends_at ?? ''}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          promo_events: settings.promo_events.map((x, idx) =>
+                            idx === i ? { ...x, ends_at: e.target.value.trim() || null } : x,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <label className="admin-row" style={{ gap: 8, marginTop: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={ev.external}
+                    onChange={(e) => {
+                      clearSettingsFieldError(`promo_${i}_href`);
+                      setSettings({
+                        ...settings,
+                        promo_events: settings.promo_events.map((x, idx) =>
+                          idx === i ? { ...x, external: e.target.checked } : x,
+                        ),
+                      });
+                    }}
+                  />
+                  External link (new tab)
+                </label>
+                <label className="admin-row" style={{ gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={ev.active}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        promo_events: settings.promo_events.map((x, idx) =>
+                          idx === i ? { ...x, active: e.target.checked } : x,
+                        ),
+                      })
+                    }
+                  />
+                  Active
+                </label>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                setSettings({
+                  ...settings,
+                  promo_events: [...(settings.promo_events ?? []), newPromoEvent()],
+                })
+              }
+            >
+              Add homepage event
             </button>
           </div>
 
@@ -1147,6 +1552,23 @@ export function AdminPage() {
                 <code>visualPresets.ts</code> together.
               </p>
             </div>
+            <div className="admin-field">
+              <label htmlFor="fx_intensity">FX strength (for layers that are on)</label>
+              <select
+                id="fx_intensity"
+                value={settings.fx_intensity}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    fx_intensity: e.target.value as SiteSettings['fx_intensity'],
+                  })
+                }
+              >
+                <option value="subtle">Subtle</option>
+                <option value="normal">Normal</option>
+                <option value="intense">Intense</option>
+              </select>
+            </div>
             <div className="admin-grid" style={{ gap: 8 }}>
               {(
                 [
@@ -1171,6 +1593,29 @@ export function AdminPage() {
             </div>
           </div>
 
+          <div className="admin-panel" style={{ borderStyle: 'dashed' }}>
+            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
+              Custom CSS (advanced)
+            </h3>
+            <p className="admin-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: '0.82rem', lineHeight: 1.55 }}>
+              Injected globally after the main stylesheet. Useful for small layout tweaks; you can target{' '}
+              <code>.container</code>, <code>.game-card</code>, <code>.top-nav</code>, etc. Only paste CSS you fully
+              trust.
+            </p>
+            <textarea
+              id="site_custom_css"
+              rows={14}
+              value={settings.custom_css}
+              onChange={(e) => setSettings({ ...settings, custom_css: e.target.value })}
+              style={{
+                width: '100%',
+                fontFamily: 'ui-monospace, Consolas, monospace',
+                fontSize: '0.82rem',
+                lineHeight: 1.45,
+              }}
+            />
+          </div>
+
           <div className="admin-field">
             <label htmlFor="footer_text">Footer</label>
             <textarea
@@ -1179,9 +1624,42 @@ export function AdminPage() {
               onChange={(e) => setSettings({ ...settings, footer_text: e.target.value })}
             />
           </div>
-          <button type="button" disabled={busy} onClick={onSaveSettings}>
-            Save settings
-          </button>
+          <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <button type="button" disabled={busy} onClick={onSaveSettings}>
+              Save settings
+            </button>
+            {settingsSaveStatus === 'success' ? (
+              <span
+                style={{ color: '#3ecf8e', fontSize: '1.35rem', lineHeight: 1 }}
+                title="Saved successfully"
+                aria-label="Saved successfully"
+              >
+                ✓
+              </span>
+            ) : null}
+            {settingsSaveStatus === 'error' ? (
+              <span
+                style={{ color: 'var(--danger)', fontSize: '1.35rem', lineHeight: 1 }}
+                title="Save failed or validation error"
+                aria-label="Save failed or validation error"
+              >
+                ✗
+              </span>
+            ) : null}
+          </div>
+          {settingsSaveDetail ? (
+            <p
+              style={{
+                marginTop: 10,
+                fontSize: '0.88rem',
+                lineHeight: 1.45,
+                color: settingsSaveStatus === 'error' ? 'var(--danger)' : 'var(--muted)',
+              }}
+              role={settingsSaveStatus === 'error' ? 'alert' : undefined}
+            >
+              {settingsSaveDetail}
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -1768,7 +2246,8 @@ export function AdminPage() {
             </h2>
             <p className="admin-muted">
               Public URL: <code>/#/p/&lt;slug&gt;</code>. Stack headings, text, panels, and images. If you add
-              no blocks, the legacy <strong>Body</strong> field is shown instead.
+              no blocks, the legacy <strong>Body</strong> field is shown instead. Turn off <strong>Show in top nav</strong>{' '}
+              for a <strong>secret page</strong> (no header link — share the URL directly).
             </p>
             <div className="admin-field">
               <label htmlFor="p_slug">Slug</label>
@@ -1835,10 +2314,22 @@ export function AdminPage() {
                   <span>
                     <strong>{p.title}</strong>{' '}
                     <span className="admin-muted">
-                      /p/{p.slug} {p.show_in_nav ? '· nav' : ''}
+                      /p/{p.slug}
+                      {p.show_in_nav ? ' · in nav' : ' · secret'}
                     </span>
                   </span>
                   <span className="admin-row">
+                    <button
+                      type="button"
+                      title="Copy link"
+                      onClick={() => {
+                        if (copyPublicHashUrl(`/p/${p.slug}`)) {
+                          flash('Copied page URL.');
+                        }
+                      }}
+                    >
+                      Copy URL
+                    </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -1904,6 +2395,12 @@ export function AdminPage() {
                 id="n_href"
                 value={navDraft.href}
                 onChange={(e) => setNavDraft({ ...navDraft, href: e.target.value })}
+              />
+              <HrefQuickPick
+                pages={pages.map((p) => ({ slug: p.slug, title: p.title }))}
+                games={games.map((g) => ({ slug: g.slug, title: g.title }))}
+                disabled={busy}
+                onPick={(href) => setNavDraft({ ...navDraft, href })}
               />
             </div>
             <div className="admin-field">
