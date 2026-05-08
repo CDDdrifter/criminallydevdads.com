@@ -16,6 +16,7 @@ import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
 import { fetchStaticJson } from './staticCms';
 import { normalizePromoEvents } from './promoEvents';
 import { normalizeVisualPresetInput } from './visualPresets';
+import { unknownColumnFromPostgrestMessage } from './postgrestUnknownColumn';
 
 function normalizeFxIntensity(raw: unknown): FxIntensity {
   const s = String(raw ?? '').toLowerCase();
@@ -227,19 +228,19 @@ export async function upsertGame(row: Partial<GameRecord> & { slug: string; titl
   }
   const payload: Record<string, unknown> = { ...row };
   // Backward-compatible writes: if DB schema lags behind frontend fields, retry without unknown columns.
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 16; attempt++) {
     const { error } = await supabase.from('site_games').upsert(payload, { onConflict: 'slug' });
     if (!error) {
       return;
     }
     const msg = error.message ?? '';
-    const unknown = msg.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of relation/i)?.[1];
+    const unknown = unknownColumnFromPostgrestMessage(msg);
     if (!unknown || !(unknown in payload)) {
       throw error;
     }
     delete payload[unknown];
   }
-  throw new Error('Could not save game row due to schema mismatch in site_games.');
+  throw new Error('Could not save game row after column retries (run 014_ensure_admin_write_schema.sql).');
 }
 
 export async function deleteGameBySlug(slug: string) {
@@ -397,19 +398,19 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     promo_events: merged.promo_events,
     custom_css: merged.custom_css,
   };
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 16; attempt++) {
     const { error } = await supabase.from('site_settings').upsert(payload);
     if (!error) {
       return;
     }
     const msg = error.message ?? '';
-    const unknown = msg.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of relation/i)?.[1];
+    const unknown = unknownColumnFromPostgrestMessage(msg);
     if (!unknown || !(unknown in payload)) {
       throw error;
     }
     delete payload[unknown];
   }
-  throw new Error('Could not save site_settings (schema mismatch — run latest supabase/schema.sql or migrations).');
+  throw new Error('Could not save site_settings after column retries (run 014_ensure_admin_write_schema.sql).');
 }
 
 export async function fetchAllPagesAdmin(): Promise<SitePage[]> {
@@ -439,19 +440,19 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
     immersive_layout: Boolean(row.immersive_layout ?? false),
     custom_mood_css: String(row.custom_mood_css ?? ''),
   };
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 16; attempt++) {
     const { error } = await supabase.from('site_pages').upsert(payload, { onConflict: 'slug' });
     if (!error) {
       return;
     }
     const msg = error.message ?? '';
-    const unknown = msg.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of relation/i)?.[1];
+    const unknown = unknownColumnFromPostgrestMessage(msg);
     if (!unknown || !(unknown in payload)) {
       throw error;
     }
     delete payload[unknown];
   }
-  throw new Error('Could not save site_pages row (schema mismatch — run latest supabase migrations).');
+  throw new Error('Could not save site_pages row after column retries (run 014_ensure_admin_write_schema.sql).');
 }
 
 export async function deletePageSlug(slug: string) {
@@ -523,7 +524,17 @@ export async function upsertDevLog(
   if (!supabase) {
     throw new Error('Supabase not configured');
   }
-  const { error } = await supabase.from('site_dev_logs').upsert(row, { onConflict: 'slug' });
+  const publishedAt =
+    typeof row.published_at === 'string' && row.published_at.trim()
+      ? row.published_at.trim()
+      : new Date().toISOString();
+  const payload: Record<string, unknown> = {
+    slug: row.slug.trim(),
+    title: row.title.trim(),
+    body: row.body ?? '',
+    published_at: publishedAt,
+  };
+  const { error } = await supabase.from('site_dev_logs').upsert(payload, { onConflict: 'slug' });
   if (error) {
     throw error;
   }

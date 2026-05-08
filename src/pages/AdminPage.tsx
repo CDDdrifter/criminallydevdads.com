@@ -46,6 +46,8 @@ import {
 } from '../lib/syncRepoGitHub';
 import { blockingSiteSettingsIssues, softSiteSettingsLinkHints } from '../lib/adminSettingsValidate';
 import { donationPresetsFromUnknown } from '../lib/gamePricing';
+import { unknownColumnFromPostgrestMessage } from '../lib/postgrestUnknownColumn';
+import { formatSupabaseWriteError, isRlsOrPermissionError } from '../lib/supabaseWriteError';
 import { VISUAL_PRESET_OPTIONS, normalizeVisualPresetInput } from '../lib/visualPresets';
 import type {
   DevLogPost,
@@ -61,6 +63,14 @@ import type {
 import { defaultSiteSettings } from '../types';
 
 type Tab = 'overview' | 'settings' | 'games' | 'pages' | 'nav' | 'devlogs';
+
+function describeAdminWriteFailure(err: unknown): string {
+  const core = formatSupabaseWriteError(err);
+  if (isRlsOrPermissionError(err)) {
+    return `${core}\n\nRow security / permission: you must be signed in as an allowed editor. In Supabase, check site_admin_domains and site_admin_emails for this project. Try Sign out, then sign in again.`;
+  }
+  return `${core}\n\nIf a database column is missing, run supabase/migrations/014_ensure_admin_write_schema.sql once in the Supabase SQL Editor.`;
+}
 
 function emptyPageDraft(): Partial<SitePage> & {
   slug: string;
@@ -433,16 +443,16 @@ export function AdminPage() {
       }, 12000);
     } catch (e) {
       console.error(e);
-      const msg = e instanceof Error ? e.message : 'Save failed';
       setSettingsSaveStatus('error');
-      setSettingsSaveDetail(msg);
-      const col = msg.match(/column\s+"?([\w_]+)"?\s+of\s+relation/i)?.[1];
-      if (col && ['promo_events', 'custom_css', 'fx_intensity'].includes(col)) {
+      setSettingsSaveDetail(describeAdminWriteFailure(e));
+      const msg = formatSupabaseWriteError(e);
+      const col = unknownColumnFromPostgrestMessage(msg);
+      if (col) {
         setSettingsFieldErrors({
-          _migration: `Your database is missing column "${col}". Run Supabase migration 011 (see supabase/migrations/011_…sql), then try again.`,
+          _migration: `Missing column "${col}". Run supabase/migrations/014_ensure_admin_write_schema.sql in the Supabase SQL Editor.`,
         });
       }
-      flash(msg);
+      flash(formatSupabaseWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -489,17 +499,6 @@ export function AdminPage() {
       return;
     }
 
-    const mood = normalizeVisualPresetInput(gameDraft.visual_preset);
-    if (mood === 'custom' && !String(gameDraft.custom_mood_css ?? '').trim()) {
-      setGameSaveStatus('error');
-      setGameFieldErrors({
-        custom_mood_css: '✗ Custom mood needs CSS in the box below (or pick another mood).',
-      });
-      setGameSaveDetail('✗ Custom mood: add CSS, or change the mood dropdown.');
-      flash('Custom mood requires some CSS.');
-      return;
-    }
-
     setBusy(true);
     const payload = gameUpsertPayload({ ...gameDraft, slug, title });
     try {
@@ -521,12 +520,10 @@ export function AdminPage() {
       }, 14000);
     } catch (e) {
       console.error(e);
-      const msg = e instanceof Error ? e.message : 'Save failed';
+      const detail = describeAdminWriteFailure(e);
       setGameSaveStatus('error');
-      setGameSaveDetail(
-        `${msg} Nothing was reliably saved — fix the error below (often a missing DB column: run latest supabase migrations), then try again.`,
-      );
-      flash(msg);
+      setGameSaveDetail(detail);
+      flash(formatSupabaseWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -755,15 +752,6 @@ export function AdminPage() {
       return;
     }
     const moodPage = normalizeVisualPresetInput(pageDraft.visual_preset);
-    if (moodPage === 'custom' && !String(pageDraft.custom_mood_css ?? '').trim()) {
-      setPageSaveStatus('error');
-      setPageFieldErrors({
-        custom_mood_css: '✗ Custom mood needs CSS in the box below (or pick another mood).',
-      });
-      setPageSaveDetail('✗ Custom mood: add CSS, or change the mood dropdown.');
-      flash('Custom page mood requires CSS.');
-      return;
-    }
     const slugSaved = pageDraft.slug.trim();
     const titleSaved = pageDraft.title.trim();
     const sections = ensureSectionIds(pageDraft.sections ?? []);
@@ -816,12 +804,9 @@ export function AdminPage() {
       }, 14000);
     } catch (e) {
       console.error(e);
-      const msg = e instanceof Error ? e.message : 'Save failed';
       setPageSaveStatus('error');
-      setPageSaveDetail(
-        `${msg} If a column is missing, run migrations 012+013 in Supabase.`,
-      );
-      flash(msg);
+      setPageSaveDetail(describeAdminWriteFailure(e));
+      flash(formatSupabaseWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -866,10 +851,9 @@ export function AdminPage() {
       }, 12000);
     } catch (e) {
       console.error(e);
-      const msg = e instanceof Error ? e.message : 'Save failed';
       setNavSaveStatus('error');
-      setNavSaveDetail(msg);
-      flash(msg);
+      setNavSaveDetail(describeAdminWriteFailure(e));
+      flash(formatSupabaseWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -921,10 +905,9 @@ export function AdminPage() {
       }, 12000);
     } catch (e) {
       console.error(e);
-      const msg = e instanceof Error ? e.message : 'Save failed';
       setLogSaveStatus('error');
-      setLogSaveDetail(msg);
-      flash(msg);
+      setLogSaveDetail(describeAdminWriteFailure(e));
+      flash(formatSupabaseWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -2142,8 +2125,8 @@ export function AdminPage() {
             <div className="admin-field">
               <label htmlFor="g_custom_mood_css">Custom mood CSS</label>
               <p className="admin-muted" style={{ margin: '0 0 8px', fontSize: '0.82rem', lineHeight: 1.45 }}>
-                Injected on this game&apos;s routes only (trust this CSS). Required when mood is <strong>Custom</strong>;
-                optional for other moods as an extra layer.
+                Injected on this game&apos;s routes only (trust this CSS). Optional for any mood; with <strong>Custom</strong>{' '}
+                mood, baseline colors still come from <code>index.css</code> until you add rules here.
               </p>
               <textarea
                 id="g_custom_mood_css"
