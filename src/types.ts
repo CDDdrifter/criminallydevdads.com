@@ -114,6 +114,8 @@ export type SitePage = {
   sections: PageSection[];
   show_in_nav: boolean;
   sort_order: number;
+  /** Page-only mood; same keys as hub / game presets (Admin + index.css). */
+  visual_preset?: string | null;
 };
 
 export type NavItem = {

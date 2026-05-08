@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchPageBySlug } from '../lib/cmsData';
+import { normalizeVisualPresetInput } from '../lib/visualPresets';
 import type { SitePage } from '../types';
 
 export function StaticPage() {
@@ -15,6 +16,7 @@ export function StaticPage() {
       setPage(null);
       return;
     }
+    setPage(undefined);
     fetchPageBySlug(slug).then((p) => {
       if (!cancelled) {
         setPage(p);
@@ -24,6 +26,25 @@ export function StaticPage() {
       cancelled = true;
     };
   }, [slug]);
+
+  useEffect(() => {
+    if (page === undefined) {
+      return;
+    }
+    if (!page) {
+      delete document.documentElement.dataset.visualPreset;
+      return;
+    }
+    const preset = normalizeVisualPresetInput(page.visual_preset);
+    if (preset) {
+      document.documentElement.dataset.visualPreset = preset;
+    } else {
+      delete document.documentElement.dataset.visualPreset;
+    }
+    return () => {
+      delete document.documentElement.dataset.visualPreset;
+    };
+  }, [page]);
 
   if (page === undefined) {
     return (

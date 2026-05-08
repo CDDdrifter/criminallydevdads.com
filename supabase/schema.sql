@@ -44,6 +44,7 @@ create table if not exists site_pages (
   sections jsonb not null default '[]'::jsonb,
   show_in_nav boolean not null default true,
   sort_order int not null default 0,
+  visual_preset text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -307,3 +308,5 @@ alter table site_settings add column if not exists fx_cursor_spotlight boolean n
 alter table site_settings add column if not exists promo_events jsonb not null default '[]'::jsonb;
 alter table site_settings add column if not exists custom_css text not null default '';
 alter table site_settings add column if not exists fx_intensity text not null default 'normal';
+
+alter table site_pages add column if not exists visual_preset text;

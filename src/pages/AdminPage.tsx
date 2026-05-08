@@ -10,6 +10,7 @@ import {
   fetchAllGamesAdmin,
   fetchAllNavAdmin,
   fetchAllPagesAdmin,
+  fetchPageBySlug,
   fetchSiteSettings,
   saveSiteSettings,
   upsertDevLog,
@@ -73,6 +74,7 @@ function emptyPageDraft(): Partial<SitePage> & {
     sections: [],
     show_in_nav: true,
     sort_order: 0,
+    visual_preset: '',
   };
 }
 
@@ -152,9 +154,41 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     price_cents: Number(draft.price_cents ?? 0),
     purchase_url: draft.purchase_url?.trim() || null,
     stripe_price_id: draft.stripe_price_id?.trim() || null,
+    pricing_model: draft.pricing_model ?? 'free',
+    pwyw_min_cents: draft.pwyw_min_cents ?? null,
+    pwyw_suggested_cents: draft.pwyw_suggested_cents ?? null,
+    donation_presets_cents: donationPresetsFromUnknown(draft.donation_presets_cents),
     sort_order: Number(draft.sort_order ?? 0),
     published: draft.published ?? true,
   };
+}
+
+function summarizeGameSave(p: ReturnType<typeof gameUpsertPayload>): string {
+  const mood = p.visual_preset ? `Mood: ${p.visual_preset}` : 'Mood: hub default';
+  const n = Array.isArray(p.sections) ? p.sections.length : 0;
+  const blocks = n ? `${n} detail block(s)` : 'No detail blocks';
+  const commerce =
+    p.pricing_model && p.pricing_model !== 'free'
+      ? `Commerce: ${p.pricing_model} (${p.price_cents ?? 0}¢)`
+      : 'Commerce: free';
+  const host = p.storage_slug ? 'Hosted: ZIP on Storage' : p.external_url?.trim() ? 'Play: external URL' : 'Play: local / repo path';
+  const vis = p.published === false ? 'Unpublished (hidden from hub)' : 'Published on hub';
+  return `Saved “${p.title}” (${p.slug}) · ${blocks} · ${commerce} · ${mood} · ${host} · ${vis}. All of these fields were written to the database.`;
+}
+
+function summarizePageSave(args: {
+  slug: string;
+  title: string;
+  sectionsLen: number;
+  hasBody: boolean;
+  showInNav: boolean;
+  mood: string;
+}): string {
+  const mood = args.mood ? `Mood: ${args.mood}` : 'Mood: hub default';
+  const blocks =
+    args.sectionsLen > 0 ? `${args.sectionsLen} block(s)` : args.hasBody ? 'Legacy body only' : 'Empty body (add blocks or body)';
+  const nav = args.showInNav ? 'Shown in top nav' : 'Secret page (URL only)';
+  return `Saved page “${args.title}” (${args.slug}) · ${blocks} · ${mood} · ${nav}.`;
 }
 
 export function AdminPage() {
@@ -166,6 +200,15 @@ export function AdminPage() {
   const [settingsSaveDetail, setSettingsSaveDetail] = useState<string | null>(null);
   const [settingsFieldErrors, setSettingsFieldErrors] = useState<Record<string, string>>({});
   const settingsSaveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gameSaveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageSaveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [gameSaveStatus, setGameSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [gameSaveDetail, setGameSaveDetail] = useState<string | null>(null);
+  const [gameSaveSummary, setGameSaveSummary] = useState<string | null>(null);
+  const [pageSaveStatus, setPageSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [pageSaveDetail, setPageSaveDetail] = useState<string | null>(null);
+  const [pageSaveSummary, setPageSaveSummary] = useState<string | null>(null);
 
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [games, setGames] = useState<GameRecord[]>([]);
@@ -232,6 +275,12 @@ export function AdminPage() {
       if (settingsSaveSuccessTimerRef.current) {
         clearTimeout(settingsSaveSuccessTimerRef.current);
       }
+      if (gameSaveSuccessTimerRef.current) {
+        clearTimeout(gameSaveSuccessTimerRef.current);
+      }
+      if (pageSaveSuccessTimerRef.current) {
+        clearTimeout(pageSaveSuccessTimerRef.current);
+      }
     };
   }, []);
 
@@ -239,6 +288,16 @@ export function AdminPage() {
     if (tab !== 'settings') {
       setSettingsSaveStatus('idle');
       setSettingsSaveDetail(null);
+    }
+    if (tab !== 'games') {
+      setGameSaveStatus('idle');
+      setGameSaveDetail(null);
+      setGameSaveSummary(null);
+    }
+    if (tab !== 'pages') {
+      setPageSaveStatus('idle');
+      setPageSaveDetail(null);
+      setPageSaveSummary(null);
     }
   }, [tab]);
 
@@ -311,17 +370,34 @@ export function AdminPage() {
     }
     const title = gameDraft.title.trim() || slug;
     setBusy(true);
+    setGameSaveDetail(null);
+    setGameSaveSummary(null);
+    const payload = gameUpsertPayload({ ...gameDraft, title });
     try {
-      await upsertGame(gameUpsertPayload({ ...gameDraft, title }));
+      await upsertGame(payload);
       setGameDraft(emptyGame());
       setZipEntryPick('');
       setZipEntryCandidates([]);
       setGameZipFile(null);
       await reload();
+      setGameSaveStatus('success');
+      setGameSaveSummary(summarizeGameSave(payload));
       flash('Game saved.');
+      if (gameSaveSuccessTimerRef.current) {
+        clearTimeout(gameSaveSuccessTimerRef.current);
+      }
+      gameSaveSuccessTimerRef.current = setTimeout(() => {
+        setGameSaveStatus('idle');
+        gameSaveSuccessTimerRef.current = null;
+      }, 14000);
     } catch (e) {
       console.error(e);
-      flash(e instanceof Error ? e.message : 'Save failed');
+      const msg = e instanceof Error ? e.message : 'Save failed';
+      setGameSaveStatus('error');
+      setGameSaveDetail(
+        `${msg} Nothing was reliably saved — fix the error below (often a missing DB column: run latest supabase migrations), then try again.`,
+      );
+      flash(msg);
     } finally {
       setBusy(false);
     }
@@ -528,22 +604,59 @@ export function AdminPage() {
       return;
     }
     const slugSaved = pageDraft.slug.trim();
+    const titleSaved = pageDraft.title.trim();
+    const sections = ensureSectionIds(pageDraft.sections ?? []);
+    const bodySaved = pageDraft.body ?? '';
+    const showNav = pageDraft.show_in_nav ?? true;
+    const moodRaw = normalizeVisualPresetInput(pageDraft.visual_preset);
     setBusy(true);
+    setPageSaveDetail(null);
+    setPageSaveSummary(null);
     try {
       await upsertPage({
         slug: slugSaved,
-        title: pageDraft.title.trim(),
-        body: pageDraft.body ?? '',
-        sections: ensureSectionIds(pageDraft.sections ?? []),
-        show_in_nav: pageDraft.show_in_nav ?? true,
+        title: titleSaved,
+        body: bodySaved,
+        sections,
+        show_in_nav: showNav,
         sort_order: Number(pageDraft.sort_order ?? 0),
+        visual_preset: moodRaw || null,
       });
+      const verify = await fetchPageBySlug(slugSaved);
+      if (!verify) {
+        throw new Error(
+          'Upsert returned OK but the page could not be read back (check RLS: site_pages row read for anon, or wrong slug).',
+        );
+      }
       setPageDraft(emptyPageDraft());
       await reload();
+      setPageSaveStatus('success');
+      setPageSaveSummary(
+        summarizePageSave({
+          slug: slugSaved,
+          title: titleSaved,
+          sectionsLen: sections.length,
+          hasBody: Boolean(bodySaved.trim()),
+          showInNav: showNav,
+          mood: moodRaw,
+        }),
+      );
       flash(`Page saved. Public URL: /p/${slugSaved}`);
+      if (pageSaveSuccessTimerRef.current) {
+        clearTimeout(pageSaveSuccessTimerRef.current);
+      }
+      pageSaveSuccessTimerRef.current = setTimeout(() => {
+        setPageSaveStatus('idle');
+        pageSaveSuccessTimerRef.current = null;
+      }, 14000);
     } catch (e) {
       console.error(e);
-      flash(e instanceof Error ? e.message : 'Save failed');
+      const msg = e instanceof Error ? e.message : 'Save failed';
+      setPageSaveStatus('error');
+      setPageSaveDetail(
+        `${msg} If this mentions a missing column (e.g. visual_preset), run migration 012 in Supabase. If RLS, ensure admin policies allow insert/update on site_pages.`,
+      );
+      flash(msg);
     } finally {
       setBusy(false);
     }
@@ -2173,9 +2286,39 @@ export function AdminPage() {
               />
               Published (visible on hub)
             </label>
-            <button type="button" disabled={busy || !gameDraft.slug.trim()} onClick={onSaveGame}>
-              Save game
-            </button>
+            <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button type="button" disabled={busy || !gameDraft.slug.trim()} onClick={onSaveGame}>
+                Save game
+              </button>
+              {gameSaveStatus === 'success' ? (
+                <span
+                  style={{ color: '#3ecf8e', fontSize: '1.35rem', lineHeight: 1 }}
+                  title="Saved"
+                  aria-label="Game saved successfully"
+                >
+                  ✓
+                </span>
+              ) : null}
+              {gameSaveStatus === 'error' ? (
+                <span
+                  style={{ color: 'var(--danger)', fontSize: '1.35rem', lineHeight: 1 }}
+                  title="Save failed"
+                  aria-label="Game save failed"
+                >
+                  ✗
+                </span>
+              ) : null}
+            </div>
+            {gameSaveSummary ? (
+              <p className="admin-muted" style={{ marginTop: 10, fontSize: '0.86rem', lineHeight: 1.5 }}>
+                {gameSaveSummary}
+              </p>
+            ) : null}
+            {gameSaveDetail ? (
+              <p style={{ marginTop: 10, fontSize: '0.86rem', lineHeight: 1.5, color: 'var(--danger)' }} role="alert">
+                {gameSaveDetail}
+              </p>
+            ) : null}
           </div>
 
           <div className="admin-panel">
@@ -2265,6 +2408,25 @@ export function AdminPage() {
                 onChange={(e) => setPageDraft({ ...pageDraft, title: e.target.value })}
               />
             </div>
+            <div className="admin-field">
+              <label htmlFor="p_visual_preset">Page mood (this route only)</label>
+              <select
+                id="p_visual_preset"
+                value={pageDraft.visual_preset ?? ''}
+                onChange={(e) => setPageDraft({ ...pageDraft, visual_preset: e.target.value })}
+              >
+                {VISUAL_PRESET_OPTIONS.map((o) => (
+                  <option key={o.value || 'default'} value={o.value} title={o.hint}>
+                    {o.label}
+                    {o.value ? '' : ' — follow hub'}
+                  </option>
+                ))}
+              </select>
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.8rem', lineHeight: 1.45 }}>
+                Same presets as site-wide mood and game pages. FX on/off still comes from Site settings; this only
+                recolors accents and spotlight for <code>/p/…</code>.
+              </p>
+            </div>
             <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 8 }}>
               Page blocks
             </h3>
@@ -2298,11 +2460,41 @@ export function AdminPage() {
                 checked={pageDraft.show_in_nav ?? true}
                 onChange={(e) => setPageDraft({ ...pageDraft, show_in_nav: e.target.checked })}
               />
-              Show in navigation
+              Show in top navigation (off = secret page)
             </label>
-            <button type="button" disabled={busy} onClick={onSavePage}>
-              Save page
-            </button>
+            <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button type="button" disabled={busy} onClick={onSavePage}>
+                Save page
+              </button>
+              {pageSaveStatus === 'success' ? (
+                <span
+                  style={{ color: '#3ecf8e', fontSize: '1.35rem', lineHeight: 1 }}
+                  title="Saved"
+                  aria-label="Page saved successfully"
+                >
+                  ✓
+                </span>
+              ) : null}
+              {pageSaveStatus === 'error' ? (
+                <span
+                  style={{ color: 'var(--danger)', fontSize: '1.35rem', lineHeight: 1 }}
+                  title="Save failed"
+                  aria-label="Page save failed"
+                >
+                  ✗
+                </span>
+              ) : null}
+            </div>
+            {pageSaveSummary ? (
+              <p className="admin-muted" style={{ marginTop: 10, fontSize: '0.86rem', lineHeight: 1.5 }}>
+                {pageSaveSummary}
+              </p>
+            ) : null}
+            {pageSaveDetail ? (
+              <p style={{ marginTop: 10, fontSize: '0.86rem', lineHeight: 1.5, color: 'var(--danger)' }} role="alert">
+                {pageSaveDetail}
+              </p>
+            ) : null}
           </div>
           <div className="admin-panel">
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>
@@ -2316,6 +2508,7 @@ export function AdminPage() {
                     <span className="admin-muted">
                       /p/{p.slug}
                       {p.show_in_nav ? ' · in nav' : ' · secret'}
+                      {p.visual_preset ? ` · ${p.visual_preset}` : ''}
                     </span>
                   </span>
                   <span className="admin-row">
@@ -2336,6 +2529,7 @@ export function AdminPage() {
                         setPageDraft({
                           ...p,
                           sections: p.sections ?? [],
+                          visual_preset: p.visual_preset ?? '',
                         })
                       }
                     >

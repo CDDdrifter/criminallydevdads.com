@@ -34,6 +34,7 @@ function normalizeSitePage(row: Record<string, unknown>): SitePage {
     sections: normalizePageSections(row.sections),
     show_in_nav: Boolean(row.show_in_nav ?? true),
     sort_order: Number(row.sort_order ?? 0),
+    visual_preset: normalizeVisualPresetInput(String(row.visual_preset ?? '')) || null,
   };
 }
 
@@ -388,10 +389,28 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
   if (!supabase) {
     throw new Error('Supabase not configured');
   }
-  const { error } = await supabase.from('site_pages').upsert(row, { onConflict: 'slug' });
-  if (error) {
-    throw error;
+  const payload: Record<string, unknown> = {
+    slug: row.slug.trim(),
+    title: row.title.trim(),
+    body: row.body ?? '',
+    sections: row.sections ?? [],
+    show_in_nav: row.show_in_nav ?? true,
+    sort_order: Number(row.sort_order ?? 0),
+    visual_preset: normalizeVisualPresetInput(String(row.visual_preset ?? '')) || null,
+  };
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const { error } = await supabase.from('site_pages').upsert(payload, { onConflict: 'slug' });
+    if (!error) {
+      return;
+    }
+    const msg = error.message ?? '';
+    const unknown = msg.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of relation/i)?.[1];
+    if (!unknown || !(unknown in payload)) {
+      throw error;
+    }
+    delete payload[unknown];
   }
+  throw new Error('Could not save site_pages row (schema mismatch — run latest supabase migrations).');
 }
 
 export async function deletePageSlug(slug: string) {

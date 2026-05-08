@@ -17,7 +17,11 @@ export function GlobalHtmlFxSync() {
   }, [settings]);
 
   useEffect(() => {
-    if (pathname.startsWith('/game/') || pathname.startsWith('/play/')) {
+    if (
+      pathname.startsWith('/game/') ||
+      pathname.startsWith('/play/') ||
+      pathname.startsWith('/p/')
+    ) {
       return;
     }
     setGlobalVisualPreset(settings.site_visual_preset);

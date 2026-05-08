@@ -233,6 +233,90 @@ html[data-visual-preset='minimal'] body::after {
   opacity: 0.35;
 }
 
+html[data-visual-preset='dawn'] {
+  --accent: #ffb4a2;
+  --accent-2: #ffd6a5;
+}
+html[data-visual-preset='dawn'] body::after {
+  background: radial-gradient(
+    1000px 640px at var(--cursor-x) var(--cursor-y),
+    rgba(255, 200, 170, 0.12),
+    transparent 55%
+  );
+}
+
+html[data-visual-preset='nebula'] {
+  --accent: #b388ff;
+  --accent-2: #64ffda;
+}
+html[data-visual-preset='nebula'] body::after {
+  background: radial-gradient(
+    1050px 680px at var(--cursor-x) var(--cursor-y),
+    rgba(179, 136, 255, 0.11),
+    transparent 52%
+  );
+}
+
+html[data-visual-preset='terminal'] {
+  --accent: #39ff14;
+  --accent-2: #00ff9f;
+}
+html[data-visual-preset='terminal'] body::after {
+  background: radial-gradient(
+    900px 600px at var(--cursor-x) var(--cursor-y),
+    rgba(57, 255, 20, 0.09),
+    transparent 58%
+  );
+}
+
+html[data-visual-preset='ocean'] {
+  --accent: #5ee7df;
+  --accent-2: #4a90d9;
+}
+html[data-visual-preset='ocean'] body::after {
+  background: radial-gradient(
+    1000px 650px at var(--cursor-x) var(--cursor-y),
+    rgba(94, 231, 223, 0.1),
+    transparent 55%
+  );
+}
+
+html[data-visual-preset='bloodline'] {
+  --accent: #ff8787;
+  --accent-2: #e03131;
+}
+html[data-visual-preset='bloodline'] body::after {
+  background: radial-gradient(
+    950px 620px at var(--cursor-x) var(--cursor-y),
+    rgba(255, 100, 100, 0.1),
+    transparent 56%
+  );
+}
+
+html[data-visual-preset='chroma'] {
+  --accent: #ff2ec4;
+  --accent-2: #00e5ff;
+}
+html[data-visual-preset='chroma'] body::after {
+  background: radial-gradient(
+    1100px 700px at var(--cursor-x) var(--cursor-y),
+    rgba(255, 46, 196, 0.09),
+    transparent 50%
+  );
+}
+
+html[data-visual-preset='sandstorm'] {
+  --accent: #fcc419;
+  --accent-2: #fd7e14;
+}
+html[data-visual-preset='sandstorm'] body::after {
+  background: radial-gradient(
+    980px 630px at var(--cursor-x) var(--cursor-y),
+    rgba(252, 196, 25, 0.1),
+    transparent 54%
+  );
+}
+
 a {
   color: var(--accent);
   text-decoration: none;
