@@ -1,0 +1,45 @@
+[
+  {
+    "id": "baa75c31-0ba3-46d5-8a2c-7b56109bffe7",
+    "slug": "support",
+    "title": "support",
+    "body": "",
+    "sections": [
+      {
+        "id": "36809de2-9fc9-4570-97f9-f46b5e305e6d",
+        "kind": "heading",
+        "title": "Support page",
+        "subtitle": "Welcome"
+      },
+      {
+        "id": "e9efe58c-0519-42e8-864a-13c7d4de59c8",
+        "body": "Thanks for visiting our website.  If you have any problems or concerns, or anything else you would like to say, feel free to email us at support@criminallydevdads.com",
+        "kind": "panel",
+        "title": "Connect to us",
+        "variant": "default"
+      }
+    ],
+    "show_in_nav": true,
+    "sort_order": 0,
+    "created_at": "2026-05-07T16:09:13.395135+00:00",
+    "updated_at": "2026-05-07T16:09:13.395135+00:00"
+  },
+  {
+    "id": "4ab8d992-adcd-4280-b64c-cdc41b045271",
+    "slug": "shop",
+    "title": "shop",
+    "body": "",
+    "sections": [
+      {
+        "id": "642f747b-0803-4182-9814-594092bd5f8d",
+        "kind": "heading",
+        "title": "Shop Store front ",
+        "subtitle": "(coming soon)"
+      }
+    ],
+    "show_in_nav": true,
+    "sort_order": 0,
+    "created_at": "2026-05-07T16:11:07.759571+00:00",
+    "updated_at": "2026-05-07T16:11:07.759571+00:00"
+  }
+]
