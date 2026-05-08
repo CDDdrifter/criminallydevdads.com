@@ -7,17 +7,8 @@ import type { GameView } from '../types';
 import { fetchPublishedGames } from '../lib/cmsData';
 import { gameCatalogMode } from '../lib/gameCatalog';
 import { supabaseConfigured } from '../lib/supabase';
-import { loadLegacyGames, pathExists } from '../lib/legacyGames';
-
-async function verifyPlayability(games: GameView[]): Promise<GameView[]> {
-  return Promise.all(
-    games.map(async (g) => {
-      /** Always trust `launchPath` from the catalog (Storage vs external is already decided there). */
-      const ok = await pathExists(g.launchPath);
-      return { ...g, isPlayable: ok };
-    }),
-  );
-}
+import { loadLegacyGames } from '../lib/legacyGames';
+import { verifyGamePlayability } from '../lib/verifyGamePlayability';
 
 export function useGames() {
   const [games, setGames] = useState<GameView[]>([]);
@@ -40,7 +31,7 @@ export function useGames() {
 
         if (mode === 'cms') {
           const cms = await fetchPublishedGames();
-          const verified = await verifyPlayability(cms);
+          const verified = await verifyGamePlayability(cms);
           if (!cancelled) {
             setGames(verified);
           }
@@ -57,7 +48,7 @@ export function useGames() {
           }
         }
         if (cms.length > 0) {
-          const verified = await verifyPlayability(cms);
+          const verified = await verifyGamePlayability(cms);
           if (!cancelled) {
             setGames(verified);
           }

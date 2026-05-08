@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { PageSectionsView } from '../components/PageSectionsView';
+import { RouteScopedCss } from '../components/RouteScopedCss';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchPageBySlug } from '../lib/cmsData';
 import { normalizeVisualPresetInput } from '../lib/visualPresets';
@@ -46,6 +47,21 @@ export function StaticPage() {
     };
   }, [page]);
 
+  useEffect(() => {
+    if (page === undefined || !page) {
+      delete document.documentElement.dataset.immersiveLayout;
+      return;
+    }
+    if (page.immersive_layout) {
+      document.documentElement.dataset.immersiveLayout = 'on';
+    } else {
+      delete document.documentElement.dataset.immersiveLayout;
+    }
+    return () => {
+      delete document.documentElement.dataset.immersiveLayout;
+    };
+  }, [page]);
+
   if (page === undefined) {
     return (
       <SiteChrome>
@@ -66,7 +82,8 @@ export function StaticPage() {
   }
 
   return (
-    <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
+    <SiteChrome navExtra={<Link to="/">← Hub</Link>} immersive={Boolean(page.immersive_layout)}>
+      <RouteScopedCss id={`page-${page.slug}`} css={page.custom_mood_css ?? ''} />
       <article className="admin-panel page-article">
         <h1 className="header-title" style={{ fontSize: '2.2rem', textAlign: 'left' }}>
           {page.title}

@@ -1,14 +1,46 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { GameEmbedSection } from '../components/GameEmbedSection';
+import { RouteScopedCss } from '../components/RouteScopedCss';
 import { SiteChrome } from '../components/SiteChrome';
-import { useGames } from '../hooks/useGames';
+import { fetchGameViewBySlug } from '../lib/cmsData';
 import { normalizeVisualPresetInput } from '../lib/visualPresets';
+import { verifyGamePlayability } from '../lib/verifyGamePlayability';
+import type { GameView } from '../types';
 
 export function PlayPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { games, loading, error } = useGames();
-  const game = games.find((g) => g.slug === slug);
+  const [game, setGame] = useState<GameView | null | undefined>(undefined);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slug?.trim()) {
+      setGame(null);
+      setLoadError('Missing game slug.');
+      return;
+    }
+    let cancelled = false;
+    setGame(undefined);
+    setLoadError(null);
+    (async () => {
+      const row = await fetchGameViewBySlug(slug.trim());
+      if (cancelled) {
+        return;
+      }
+      if (!row) {
+        setGame(null);
+        setLoadError('Game not found, or it is a draft.');
+        return;
+      }
+      const [verified] = await verifyGamePlayability([row]);
+      if (!cancelled) {
+        setGame(verified ?? row);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
 
   useEffect(() => {
     const preset = normalizeVisualPresetInput(game?.visual_preset);
@@ -22,7 +54,18 @@ export function PlayPage() {
     };
   }, [game?.visual_preset]);
 
-  if (loading) {
+  useEffect(() => {
+    if (game?.immersive_layout) {
+      document.documentElement.dataset.immersiveLayout = 'on';
+    } else {
+      delete document.documentElement.dataset.immersiveLayout;
+    }
+    return () => {
+      delete document.documentElement.dataset.immersiveLayout;
+    };
+  }, [game?.immersive_layout]);
+
+  if (game === undefined) {
     return (
       <SiteChrome>
         <div className="empty-state">Loading…</div>
@@ -30,10 +73,10 @@ export function PlayPage() {
     );
   }
 
-  if (error || !game) {
+  if (!game) {
     return (
       <SiteChrome>
-        <div className="empty-state">{error ?? 'Game not found.'}</div>
+        <div className="empty-state">{loadError ?? 'Game not found.'}</div>
         <p style={{ textAlign: 'center' }}>
           <Link to="/">← Back</Link>
         </p>
@@ -44,6 +87,7 @@ export function PlayPage() {
   if (!game.isPlayable) {
     return (
       <SiteChrome navExtra={<Link to={`/game/${game.slug}`}>← Details</Link>}>
+        <RouteScopedCss id={`play-${game.slug}`} css={game.custom_mood_css} />
         <div className="admin-panel danger-zone">
           <p className="admin-muted">
             This build is not reachable at <code>{game.launchPath}</code>. Fix it by: (1) adding{' '}
@@ -66,6 +110,7 @@ export function PlayPage() {
 
   return (
     <SiteChrome
+      immersive={game.immersive_layout}
       navExtra={
         <>
           <Link to={`/game/${game.slug}`}>Details</Link>
@@ -73,6 +118,7 @@ export function PlayPage() {
         </>
       }
     >
+      <RouteScopedCss id={`play-${game.slug}`} css={game.custom_mood_css} />
       <GameEmbedSection game={game} />
     </SiteChrome>
   );

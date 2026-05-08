@@ -1,17 +1,49 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { GameEmbedSection } from '../components/GameEmbedSection';
 import { GamePurchaseBlock } from '../components/GamePurchaseBlock';
 import { PageSectionsView } from '../components/PageSectionsView';
+import { RouteScopedCss } from '../components/RouteScopedCss';
 import { SiteChrome } from '../components/SiteChrome';
+import { fetchGameViewBySlug } from '../lib/cmsData';
 import { formatGamePriceLabel } from '../lib/gamePricing';
 import { normalizeVisualPresetInput } from '../lib/visualPresets';
-import { useGames } from '../hooks/useGames';
+import { verifyGamePlayability } from '../lib/verifyGamePlayability';
+import type { GameView } from '../types';
 
 export function GamePage() {
   const { slug } = useParams<{ slug: string }>();
-  const { games, loading, error } = useGames();
-  const game = games.find((g) => g.slug === slug);
+  const [game, setGame] = useState<GameView | null | undefined>(undefined);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slug?.trim()) {
+      setGame(null);
+      setLoadError('Missing game slug in URL.');
+      return;
+    }
+    let cancelled = false;
+    setGame(undefined);
+    setLoadError(null);
+    (async () => {
+      const row = await fetchGameViewBySlug(slug.trim());
+      if (cancelled) {
+        return;
+      }
+      if (!row) {
+        setGame(null);
+        setLoadError('Game not found, or it is a draft (not on hub / vault).');
+        return;
+      }
+      const [verified] = await verifyGamePlayability([row]);
+      if (!cancelled) {
+        setGame(verified ?? row);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
 
   useEffect(() => {
     const preset = normalizeVisualPresetInput(game?.visual_preset);
@@ -25,7 +57,18 @@ export function GamePage() {
     };
   }, [game?.visual_preset]);
 
-  if (loading) {
+  useEffect(() => {
+    if (game?.immersive_layout) {
+      document.documentElement.dataset.immersiveLayout = 'on';
+    } else {
+      delete document.documentElement.dataset.immersiveLayout;
+    }
+    return () => {
+      delete document.documentElement.dataset.immersiveLayout;
+    };
+  }, [game?.immersive_layout]);
+
+  if (game === undefined) {
     return (
       <SiteChrome>
         <div className="empty-state">Loading…</div>
@@ -33,10 +76,10 @@ export function GamePage() {
     );
   }
 
-  if (error || !game) {
+  if (!game) {
     return (
       <SiteChrome>
-        <div className="empty-state">{error ?? 'Game not found.'}</div>
+        <div className="empty-state">{loadError ?? 'Game not found.'}</div>
         <p style={{ textAlign: 'center' }}>
           <Link to="/">← Back to hub</Link>
         </p>
@@ -46,9 +89,11 @@ export function GamePage() {
 
   const hasBlocks = game.sections.length > 0;
   const priceText = formatGamePriceLabel(game);
+  const cssId = `game-${game.slug}`;
 
   return (
-    <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
+    <SiteChrome navExtra={<Link to="/">← Hub</Link>} immersive={game.immersive_layout}>
+      <RouteScopedCss id={cssId} css={game.custom_mood_css} />
       <GameEmbedSection game={game} showPlayingLabel={false} />
 
       <article className="admin-panel page-article game-detail-article">
@@ -57,6 +102,7 @@ export function GamePage() {
         </h1>
         <p className="admin-muted" style={{ marginBottom: 24 }}>
           {game.type.toUpperCase()} · {game.slug} · {priceText}
+          {game.in_vault ? ' · Vault library' : ''}
         </p>
 
         {!game.isPlayable ? (

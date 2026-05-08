@@ -147,9 +147,13 @@ alter table site_settings enable row level security;
 alter table site_admin_domains enable row level security;
 alter table site_admin_emails enable row level security;
 
--- Public read published games
+-- Public read: main hub (published) OR vault catalog (in_vault), plus admins see drafts
 create policy site_games_public_read on site_games
-  for select using (published = true or is_site_admin());
+  for select using (
+    published = true
+    or coalesce(in_vault, false) = true
+    or is_site_admin()
+  );
 
 create policy site_games_admin_write on site_games
   for all using (is_site_admin()) with check (is_site_admin());
@@ -310,3 +314,10 @@ alter table site_settings add column if not exists custom_css text not null defa
 alter table site_settings add column if not exists fx_intensity text not null default 'normal';
 
 alter table site_pages add column if not exists visual_preset text;
+
+alter table site_games add column if not exists in_vault boolean not null default false;
+alter table site_games add column if not exists immersive_layout boolean not null default false;
+alter table site_games add column if not exists custom_mood_css text not null default '';
+
+alter table site_pages add column if not exists immersive_layout boolean not null default false;
+alter table site_pages add column if not exists custom_mood_css text not null default '';

@@ -21,6 +21,7 @@ import { PlayPage } from './pages/PlayPage';
 import { PurchaseSuccessPage } from './pages/PurchaseSuccessPage';
 import { PurchaseTermsPage } from './pages/PurchaseTermsPage';
 import { StaticPage } from './pages/StaticPage';
+import { VaultPage } from './pages/VaultPage';
 
 export function App() {
   return (
@@ -30,6 +31,7 @@ export function App() {
       <FxBackdrop />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/vault" element={<VaultPage />} />
         <Route path="/game/:slug" element={<GamePage />} />
         <Route path="/play/:slug" element={<PlayPage />} />
         <Route path="/devlog" element={<DevLogListPage />} />

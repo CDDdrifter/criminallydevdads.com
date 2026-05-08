@@ -255,6 +255,9 @@ async function buildGameFromFolder(
     pwyw_min_cents: Math.max(0, Math.round(Number(metadata.pwyw_min_cents ?? 0))),
     pwyw_suggested_cents: Math.max(0, Math.round(Number(metadata.pwyw_suggested_cents ?? 0))),
     donation_presets_cents: donationPresetsFromUnknown(metadata.donation_presets_cents),
+    in_vault: false,
+    immersive_layout: false,
+    custom_mood_css: '',
   };
 }
 

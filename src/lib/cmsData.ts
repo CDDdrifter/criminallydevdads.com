@@ -35,6 +35,8 @@ function normalizeSitePage(row: Record<string, unknown>): SitePage {
     show_in_nav: Boolean(row.show_in_nav ?? true),
     sort_order: Number(row.sort_order ?? 0),
     visual_preset: normalizeVisualPresetInput(String(row.visual_preset ?? '')) || null,
+    immersive_layout: Boolean(row.immersive_layout ?? false),
+    custom_mood_css: String(row.custom_mood_css ?? ''),
   };
 }
 
@@ -150,6 +152,9 @@ function recordToView(g: GameRecord): GameView {
     pwyw_min_cents: Math.max(0, Number(g.pwyw_min_cents ?? 0)),
     pwyw_suggested_cents: Math.max(0, Number(g.pwyw_suggested_cents ?? 0)),
     donation_presets_cents: donationPresetsFromUnknown(g.donation_presets_cents),
+    in_vault: Boolean(g.in_vault ?? false),
+    immersive_layout: Boolean(g.immersive_layout ?? false),
+    custom_mood_css: String(g.custom_mood_css ?? '').trim(),
   };
 }
 
@@ -168,6 +173,40 @@ export async function fetchPublishedGames(): Promise<GameView[]> {
   }
   const rows = data ?? [];
   return rows.map(recordToView);
+}
+
+/** Games flagged for the vault library (<code>/#/vault</code>). */
+export async function fetchVaultGames(): Promise<GameView[]> {
+  if (!supabaseConfigured || !supabase) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from('site_games')
+    .select('*')
+    .eq('in_vault', true)
+    .order('sort_order', { ascending: true });
+  if (error) {
+    console.error(error);
+    return [];
+  }
+  const rows = data ?? [];
+  return rows.map(recordToView);
+}
+
+/** Single game for detail/play routes (hub, vault, or admin-visible draft). */
+export async function fetchGameViewBySlug(slug: string): Promise<GameView | null> {
+  if (!slug.trim() || !supabaseConfigured || !supabase) {
+    return null;
+  }
+  const { data, error } = await supabase.from('site_games').select('*').eq('slug', slug.trim()).maybeSingle();
+  if (error) {
+    console.error(error);
+    return null;
+  }
+  if (!data) {
+    return null;
+  }
+  return recordToView(data as GameRecord);
 }
 
 export async function fetchAllGamesAdmin(): Promise<GameRecord[]> {
@@ -397,6 +436,8 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
     show_in_nav: row.show_in_nav ?? true,
     sort_order: Number(row.sort_order ?? 0),
     visual_preset: normalizeVisualPresetInput(String(row.visual_preset ?? '')) || null,
+    immersive_layout: Boolean(row.immersive_layout ?? false),
+    custom_mood_css: String(row.custom_mood_css ?? ''),
   };
   for (let attempt = 0; attempt < 8; attempt++) {
     const { error } = await supabase.from('site_pages').upsert(payload, { onConflict: 'slug' });

@@ -11,6 +11,7 @@ type Props = {
 
 const CORE_LINKS: HrefPickOption[] = [
   { value: '/', label: 'Home (hub)' },
+  { value: '/vault', label: 'Vault library' },
   { value: '/devlog', label: 'Dev log list' },
   { value: '/purchase/terms', label: 'Purchase terms' },
   { value: '/admin', label: 'Admin' },

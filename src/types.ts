@@ -73,6 +73,12 @@ export type GameRecord = {
   donation_presets_cents?: number[] | null;
   sort_order: number;
   published: boolean;
+  /** Listed on <code>/#/vault</code> (can be true while <code>published</code> is false). */
+  in_vault?: boolean | null;
+  /** Wider layout + lighter chrome; pair with custom CSS for a non-hub feel. */
+  immersive_layout?: boolean | null;
+  /** Extra CSS for this game’s detail + play routes (admin trust model). */
+  custom_mood_css?: string | null;
 };
 
 export type GameView = {
@@ -102,6 +108,9 @@ export type GameView = {
   pwyw_suggested_cents: number;
   /** USD cents; donation preset chip amounts. */
   donation_presets_cents: number[];
+  in_vault: boolean;
+  immersive_layout: boolean;
+  custom_mood_css: string;
 };
 
 export type SitePage = {
@@ -116,6 +125,8 @@ export type SitePage = {
   sort_order: number;
   /** Page-only mood; same keys as hub / game presets (Admin + index.css). */
   visual_preset?: string | null;
+  immersive_layout?: boolean | null;
+  custom_mood_css?: string | null;
 };
 
 export type NavItem = {

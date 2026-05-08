@@ -8,6 +8,7 @@ import { useAsyncMemo } from '../hooks/useAsyncMemo';
 
 const coreNav = [
   { label: 'Home', href: '/', external: false as const },
+  { label: 'Vault', href: '/vault', external: false as const },
   { label: 'Dev log', href: '/devlog', external: false as const },
 ];
 
@@ -43,9 +44,12 @@ export function useSiteNavLinks() {
 export function SiteChrome({
   children,
   navExtra,
+  immersive = false,
 }: {
   children: React.ReactNode;
   navExtra?: React.ReactNode;
+  /** Wider, lighter layout for game/page “world” views (pairs with global immersive CSS). */
+  immersive?: boolean;
 }) {
   const links = useSiteNavLinks();
   const auth = useAuth();
@@ -73,7 +77,7 @@ export function SiteChrome({
   }, []);
 
   return (
-    <div className="container">
+    <div className={immersive ? 'container container--immersive' : 'container'}>
       <nav className="top-nav">
         {links.map((l) =>
           l.external ? (
