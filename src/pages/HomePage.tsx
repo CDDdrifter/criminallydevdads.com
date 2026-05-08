@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteChrome } from '../components/SiteChrome';
 import { useGames } from '../hooks/useGames';
 import { gameCatalogMode } from '../lib/gameCatalog';
+import { activePromoEvents } from '../lib/promoEvents';
 import { supabaseConfigured } from '../lib/supabase';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 export function HomePage() {
   const { games, loading, error } = useGames();
-  const settings = useSiteSettings();
+  const { settings } = useSiteSettings();
   const [filter, setFilter] = useState<'all' | 'game' | 'asset'>('all');
 
   useEffect(() => {
@@ -17,6 +18,10 @@ export function HomePage() {
 
   const filtered =
     filter === 'all' ? games : games.filter((g) => g.type.toLowerCase() === filter);
+  const promos = useMemo(
+    () => activePromoEvents(settings.promo_events).filter((e) => e.title.trim()),
+    [settings.promo_events],
+  );
   const supportButtons = settings.support_buttons.map((btn) => {
     if (btn.id === 'donate' && settings.stripe_donation_url.trim()) {
       return { ...btn, href: settings.stripe_donation_url.trim(), external: true };
@@ -33,6 +38,30 @@ export function HomePage() {
         <div className="header-title">{settings.hero_title}</div>
         <div className="header-subtitle">{settings.hero_subtitle}</div>
       </header>
+
+      {promos.length > 0 ? (
+        <section className="promo-events" aria-label="Announcements">
+          {promos.map((ev) => (
+            <article key={ev.id} className="promo-card">
+              <div className="promo-card__title">{ev.title}</div>
+              {ev.body.trim() ? <div className="promo-card__body">{ev.body}</div> : null}
+              {ev.href.trim() ? (
+                <div className="promo-card__cta">
+                  {ev.external ? (
+                    <a href={ev.href.trim()} target="_blank" rel="noreferrer" className="promo-card__link">
+                      Learn more →
+                    </a>
+                  ) : (
+                    <Link to={ev.href.trim()} className="promo-card__link">
+                      Learn more →
+                    </Link>
+                  )}
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </section>
+      ) : null}
 
       <div className="filter-buttons">
         <button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>

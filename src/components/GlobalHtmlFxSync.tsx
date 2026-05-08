@@ -10,7 +10,7 @@ import { setDocumentFxFlags, setGlobalVisualPreset } from '../lib/siteFx';
 
 export function GlobalHtmlFxSync() {
   const { pathname } = useLocation();
-  const settings = useSiteSettings();
+  const { settings } = useSiteSettings();
 
   useEffect(() => {
     setDocumentFxFlags(settings);

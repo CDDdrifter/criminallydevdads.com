@@ -11,6 +11,7 @@
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { FxBackdrop } from './components/FxBackdrop';
 import { GlobalHtmlFxSync } from './components/GlobalHtmlFxSync';
+import { SiteCustomCss } from './components/SiteCustomCss';
 import { AdminPage } from './pages/AdminPage';
 import { DevLogListPage } from './pages/DevLogListPage';
 import { DevLogPostPage } from './pages/DevLogPostPage';
@@ -25,6 +26,7 @@ export function App() {
   return (
     <HashRouter>
       <GlobalHtmlFxSync />
+      <SiteCustomCss />
       <FxBackdrop />
       <Routes>
         <Route path="/" element={<HomePage />} />

@@ -61,6 +61,7 @@ body::before {
   mix-blend-mode: screen;
   animation: hueShift 8s infinite linear;
   z-index: 1;
+  opacity: 0.72;
 }
 
 .fx-scanlines,
@@ -109,6 +110,76 @@ html[data-fx-hue-shift='off'] body::before {
 }
 html[data-fx-cursor-spotlight='off'] body::after {
   display: none !important;
+}
+
+/* Site Settings → FX intensity (html[data-fx-intensity] from siteFx.ts). */
+html[data-fx-intensity='subtle'] .fx-scanlines {
+  opacity: 0.11 !important;
+}
+html[data-fx-intensity='subtle'] .fx-noise {
+  opacity: 0.035 !important;
+}
+html[data-fx-intensity='subtle'] body::before {
+  opacity: 0.38 !important;
+}
+html[data-fx-intensity='subtle'] body::after {
+  opacity: 0.55 !important;
+}
+html[data-fx-intensity='intense'] .fx-scanlines {
+  opacity: 0.32 !important;
+}
+html[data-fx-intensity='intense'] .fx-noise {
+  opacity: 0.095 !important;
+}
+html[data-fx-intensity='intense'] body::before {
+  opacity: 0.95 !important;
+}
+html[data-fx-intensity='intense'] body::after {
+  opacity: 1 !important;
+}
+
+.promo-events {
+  max-width: 1400px;
+  margin: 0 auto 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.promo-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+}
+
+.promo-card__title {
+  font-size: 0.95rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.promo-card__body {
+  margin-top: 8px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.promo-card__cta {
+  margin-top: 12px;
+}
+
+.promo-card__cta a,
+.promo-card__cta .promo-card__link {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
 }
 
 .container {
@@ -241,6 +312,27 @@ header::after {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 2px;
+}
+
+/* Full-app gate: shown until shared `fetchSiteSettings()` completes */
+.site-bootstrap-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(800px 600px at 85% 10%, rgba(166, 115, 255, 0.1), transparent 60%),
+    linear-gradient(130deg, var(--bg-0) 0%, var(--bg-1) 100%);
+  color: var(--muted);
+  font-family: 'Consolas', 'Space Mono', 'Courier New', monospace;
+}
+
+.site-bootstrap-splash__text {
+  font-size: 0.95rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
 
 .filter-buttons {

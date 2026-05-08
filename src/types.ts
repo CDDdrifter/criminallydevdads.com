@@ -14,6 +14,20 @@ export type SupportButton = {
   variant?: 'primary' | 'secondary';
 };
 
+/** Scheduled homepage promo / event strip (admin-editable). */
+export type SiteEvent = {
+  id: string;
+  title: string;
+  body: string;
+  href: string;
+  external: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  active: boolean;
+};
+
+export type FxIntensity = 'subtle' | 'normal' | 'intense';
+
 /**
  * Mirrors `site_games.pricing_model` when CMS is used.
  * - free: no Buy / no Edge checkout
@@ -145,6 +159,12 @@ export type SiteSettings = {
   fx_hue_shift: boolean;
   /** Mouse-following radial — `body::after` (uses --cursor-x/y from SiteChrome) */
   fx_cursor_spotlight: boolean;
+  /** Scales scanlines, grain, hue wash, spotlight in `index.css`. */
+  fx_intensity: FxIntensity;
+  /** Homepage announcement cards (optional start/end). */
+  promo_events: SiteEvent[];
+  /** Injected globally — powerful; admin trust model. */
+  custom_css: string;
 };
 
 export const defaultSiteSettings: SiteSettings = {
@@ -167,4 +187,7 @@ export const defaultSiteSettings: SiteSettings = {
   fx_vignette: true,
   fx_hue_shift: true,
   fx_cursor_spotlight: true,
+  fx_intensity: 'normal',
+  promo_events: [],
+  custom_css: '',
 };

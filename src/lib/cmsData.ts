@@ -1,11 +1,29 @@
-import type { DevLogPost, GameRecord, GameView, NavItem, SitePage, SiteSettings, SupportButton } from '../types';
+import type {
+  DevLogPost,
+  FxIntensity,
+  GameRecord,
+  GameView,
+  NavItem,
+  SitePage,
+  SiteSettings,
+  SupportButton,
+} from '../types';
 import { defaultSiteSettings } from '../types';
 import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePricing';
 import { supabase, supabaseConfigured } from './supabase';
 import { normalizePageSections } from './pageSections';
 import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
 import { fetchStaticJson } from './staticCms';
+import { normalizePromoEvents } from './promoEvents';
 import { normalizeVisualPresetInput } from './visualPresets';
+
+function normalizeFxIntensity(raw: unknown): FxIntensity {
+  const s = String(raw ?? '').toLowerCase();
+  if (s === 'subtle' || s === 'intense') {
+    return s;
+  }
+  return 'normal';
+}
 
 function normalizeSitePage(row: Record<string, unknown>): SitePage {
   return {
@@ -48,6 +66,9 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
     fx_vignette: siteSettingsBool(raw, 'fx_vignette', defaultSiteSettings.fx_vignette),
     fx_hue_shift: siteSettingsBool(raw, 'fx_hue_shift', defaultSiteSettings.fx_hue_shift),
     fx_cursor_spotlight: siteSettingsBool(raw, 'fx_cursor_spotlight', defaultSiteSettings.fx_cursor_spotlight),
+    fx_intensity: normalizeFxIntensity(raw.fx_intensity),
+    promo_events: normalizePromoEvents(raw.promo_events),
+    custom_css: String(raw.custom_css ?? defaultSiteSettings.custom_css),
   };
 }
 
@@ -192,6 +213,19 @@ export async function deleteGameBySlug(slug: string) {
 }
 
 export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
+  if (supabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('site_pages')
+      .select('*')
+      .eq('slug', slug)
+      .maybeSingle();
+    if (!error && data) {
+      return normalizeSitePage(data as Record<string, unknown>);
+    }
+    if (error) {
+      console.error(error);
+    }
+  }
   const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
   if (Array.isArray(staticPages)) {
     const row = staticPages.find((p) => typeof p === 'object' && p && String((p as Record<string, unknown>).slug) === slug);
@@ -199,60 +233,46 @@ export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
       return normalizeSitePage(row as Record<string, unknown>);
     }
   }
-  if (!supabaseConfigured || !supabase) {
-    return null;
-  }
-  const { data, error } = await supabase
-    .from('site_pages')
-    .select('*')
-    .eq('slug', slug)
-    .maybeSingle();
-  if (error) {
-    console.error(error);
-    return null;
-  }
-  return data ? normalizeSitePage(data as Record<string, unknown>) : null;
+  return null;
 }
 
 export async function fetchSitePages(): Promise<SitePage[]> {
+  if (supabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('site_pages')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (!error) {
+      const rows = data ?? [];
+      return rows.map(normalizeSitePage);
+    }
+    console.error(error);
+  }
   const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
   if (Array.isArray(staticPages) && staticPages.length > 0) {
     return staticPages
       .filter((p): p is Record<string, unknown> => Boolean(p && typeof p === 'object'))
       .map(normalizeSitePage);
   }
-  if (!supabaseConfigured || !supabase) {
-    return [];
-  }
-  const { data, error } = await supabase
-    .from('site_pages')
-    .select('*')
-    .order('sort_order', { ascending: true });
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  const rows = data ?? [];
-  return rows.map(normalizeSitePage);
+  return [];
 }
 
 export async function fetchNavItems(): Promise<NavItem[]> {
+  if (supabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('site_nav_items')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (!error) {
+      return data ?? [];
+    }
+    console.error(error);
+  }
   const staticNav = await fetchStaticJson<NavItem[]>('cms/site-nav.json');
   if (Array.isArray(staticNav) && staticNav.length > 0) {
     return staticNav;
   }
-  if (!supabaseConfigured || !supabase) {
-    return [];
-  }
-  const { data, error } = await supabase
-    .from('site_nav_items')
-    .select('*')
-    .order('sort_order', { ascending: true });
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return data ?? [];
+  return [];
 }
 
 export async function fetchDevLogBySlug(slug: string): Promise<DevLogPost | null> {
@@ -294,19 +314,21 @@ export async function fetchDevLogs(): Promise<DevLogPost[]> {
 }
 
 export async function fetchSiteSettings(): Promise<SiteSettings> {
+  if (supabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('site_settings').select('*').eq('id', 1).maybeSingle();
+    if (!error && data) {
+      return siteSettingsFromRow(data as Record<string, unknown>) ?? defaultSiteSettings;
+    }
+    if (error) {
+      console.error(error);
+    }
+  }
   const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
   const fromStatic = siteSettingsFromRow(staticRow);
   if (fromStatic) {
     return fromStatic;
   }
-  if (!supabaseConfigured || !supabase) {
-    return defaultSiteSettings;
-  }
-  const { data, error } = await supabase.from('site_settings').select('*').eq('id', 1).maybeSingle();
-  if (error || !data) {
-    return defaultSiteSettings;
-  }
-  return siteSettingsFromRow(data as Record<string, unknown>) ?? defaultSiteSettings;
+  return defaultSiteSettings;
 }
 
 export async function saveSiteSettings(patch: Partial<SiteSettings>) {
@@ -331,6 +353,9 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     fx_vignette: merged.fx_vignette,
     fx_hue_shift: merged.fx_hue_shift,
     fx_cursor_spotlight: merged.fx_cursor_spotlight,
+    fx_intensity: normalizeFxIntensity(merged.fx_intensity),
+    promo_events: merged.promo_events,
+    custom_css: merged.custom_css,
   };
   for (let attempt = 0; attempt < 8; attempt++) {
     const { error } = await supabase.from('site_settings').upsert(payload);
