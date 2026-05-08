@@ -75,6 +75,8 @@ function emptyPageDraft(): Partial<SitePage> & {
     show_in_nav: true,
     sort_order: 0,
     visual_preset: '',
+    immersive_layout: false,
+    custom_mood_css: '',
   };
 }
 
@@ -99,8 +101,11 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
   pwyw_min_cents: null,
   pwyw_suggested_cents: null,
   donation_presets_cents: [],
-  sort_order: 0,
-  published: true,
+    sort_order: 0,
+    published: true,
+    in_vault: false,
+    immersive_layout: false,
+    custom_mood_css: '',
 });
 
 const newSupportButton = (): SupportButton => ({
@@ -136,6 +141,25 @@ function copyPublicHashUrl(route: string) {
   }
 }
 
+/** URL segment from display title when slug is left blank (lowercase, hyphens). */
+function slugifyFromTitle(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+function effectiveGameSlug(draft: { slug: string; title: string }): string {
+  const manual = draft.slug.trim();
+  if (manual) {
+    return manual;
+  }
+  return slugifyFromTitle(draft.title);
+}
+
 function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: string }) {
   return {
     slug: draft.slug.trim(),
@@ -160,6 +184,9 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     donation_presets_cents: donationPresetsFromUnknown(draft.donation_presets_cents),
     sort_order: Number(draft.sort_order ?? 0),
     published: draft.published ?? true,
+    in_vault: draft.in_vault ?? false,
+    immersive_layout: draft.immersive_layout ?? false,
+    custom_mood_css: String(draft.custom_mood_css ?? ''),
   };
 }
 
@@ -172,8 +199,11 @@ function summarizeGameSave(p: ReturnType<typeof gameUpsertPayload>): string {
       ? `Commerce: ${p.pricing_model} (${p.price_cents ?? 0}¢)`
       : 'Commerce: free';
   const host = p.storage_slug ? 'Hosted: ZIP on Storage' : p.external_url?.trim() ? 'Play: external URL' : 'Play: local / repo path';
-  const vis = p.published === false ? 'Unpublished (hidden from hub)' : 'Published on hub';
-  return `Saved “${p.title}” (${p.slug}) · ${blocks} · ${commerce} · ${mood} · ${host} · ${vis}. All of these fields were written to the database.`;
+  const vis = p.published === false ? 'Hidden from main hub' : 'On main hub';
+  const vault = p.in_vault ? 'Listed in Vault (/vault)' : 'Not in Vault';
+  const imm = p.immersive_layout ? 'Immersive layout' : 'Standard layout';
+  const css = String(p.custom_mood_css ?? '').trim() ? 'Custom CSS attached' : 'No per-game CSS';
+  return `Saved “${p.title}” (${p.slug}) · ${blocks} · ${commerce} · ${mood} · ${host} · ${vis} · ${vault} · ${imm} · ${css}.`;
 }
 
 function summarizePageSave(args: {
@@ -183,12 +213,16 @@ function summarizePageSave(args: {
   hasBody: boolean;
   showInNav: boolean;
   mood: string;
+  immersive?: boolean;
+  hasCustomCss?: boolean;
 }): string {
   const mood = args.mood ? `Mood: ${args.mood}` : 'Mood: hub default';
   const blocks =
     args.sectionsLen > 0 ? `${args.sectionsLen} block(s)` : args.hasBody ? 'Legacy body only' : 'Empty body (add blocks or body)';
   const nav = args.showInNav ? 'Shown in top nav' : 'Secret page (URL only)';
-  return `Saved page “${args.title}” (${args.slug}) · ${blocks} · ${mood} · ${nav}.`;
+  const imm = args.immersive ? 'Immersive layout' : 'Standard layout';
+  const css = args.hasCustomCss ? 'Custom CSS' : 'No page CSS';
+  return `Saved page “${args.title}” (${args.slug}) · ${blocks} · ${mood} · ${nav} · ${imm} · ${css}.`;
 }
 
 export function AdminPage() {
@@ -202,13 +236,21 @@ export function AdminPage() {
   const settingsSaveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gameSaveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageSaveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navSaveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logSaveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [gameFieldErrors, setGameFieldErrors] = useState<Record<string, string>>({});
   const [gameSaveStatus, setGameSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [gameSaveDetail, setGameSaveDetail] = useState<string | null>(null);
   const [gameSaveSummary, setGameSaveSummary] = useState<string | null>(null);
   const [pageSaveStatus, setPageSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [pageSaveDetail, setPageSaveDetail] = useState<string | null>(null);
   const [pageSaveSummary, setPageSaveSummary] = useState<string | null>(null);
+  const [navSaveStatus, setNavSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [navSaveDetail, setNavSaveDetail] = useState<string | null>(null);
+  const [logSaveStatus, setLogSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [logSaveDetail, setLogSaveDetail] = useState<string | null>(null);
+  const [pageFieldErrors, setPageFieldErrors] = useState<Record<string, string>>({});
 
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [games, setGames] = useState<GameRecord[]>([]);
@@ -248,6 +290,8 @@ export function AdminPage() {
 
   const settingsLinkHints = useMemo(() => softSiteSettingsLinkHints(settings, pages), [settings, pages]);
 
+  const gameSlugEffective = useMemo(() => effectiveGameSlug(gameDraft), [gameDraft.slug, gameDraft.title]);
+
   const reload = useCallback(async () => {
     if (!supabaseConfigured || !auth.isAdmin) {
       return;
@@ -281,6 +325,12 @@ export function AdminPage() {
       if (pageSaveSuccessTimerRef.current) {
         clearTimeout(pageSaveSuccessTimerRef.current);
       }
+      if (navSaveSuccessTimerRef.current) {
+        clearTimeout(navSaveSuccessTimerRef.current);
+      }
+      if (logSaveSuccessTimerRef.current) {
+        clearTimeout(logSaveSuccessTimerRef.current);
+      }
     };
   }, []);
 
@@ -299,10 +349,46 @@ export function AdminPage() {
       setPageSaveDetail(null);
       setPageSaveSummary(null);
     }
+    if (tab !== 'nav') {
+      setNavSaveStatus('idle');
+      setNavSaveDetail(null);
+    }
+    if (tab !== 'devlogs') {
+      setLogSaveStatus('idle');
+      setLogSaveDetail(null);
+    }
+    if (tab !== 'games') {
+      setGameFieldErrors({});
+    }
+    if (tab !== 'pages') {
+      setPageFieldErrors({});
+    }
   }, [tab]);
 
   const clearSettingsFieldError = useCallback((key: string) => {
     setSettingsFieldErrors((prev) => {
+      if (!(key in prev)) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  const clearGameFieldError = useCallback((key: string) => {
+    setGameFieldErrors((prev) => {
+      if (!(key in prev)) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  const clearPageFieldError = useCallback((key: string) => {
+    setPageFieldErrors((prev) => {
       if (!(key in prev)) {
         return prev;
       }
@@ -363,16 +449,59 @@ export function AdminPage() {
   };
 
   const onSaveGame = async () => {
-    const slug = gameDraft.slug.trim();
-    if (!slug) {
-      flash('Slug is required.');
-      return;
-    }
-    const title = gameDraft.title.trim() || slug;
-    setBusy(true);
+    setGameFieldErrors({});
     setGameSaveDetail(null);
     setGameSaveSummary(null);
-    const payload = gameUpsertPayload({ ...gameDraft, title });
+
+    const title = gameDraft.title.trim();
+    if (!title) {
+      setGameSaveStatus('error');
+      setGameFieldErrors({ title: '✗ Title is required.' });
+      setGameSaveDetail('✗ Title is required.');
+      flash('Enter a game title.');
+      return;
+    }
+
+    let slug = gameDraft.slug.trim();
+    if (!slug) {
+      slug = slugifyFromTitle(title);
+    }
+    if (!slug) {
+      setGameSaveStatus('error');
+      setGameFieldErrors({ title: '✗ Use a title with letters or numbers so we can build a URL slug.' });
+      setGameSaveDetail('✗ Could not create a URL id from this title — add a slug manually.');
+      flash('Title needs readable characters for the URL.');
+      return;
+    }
+
+    const storageOk = Boolean(gameDraft.storage_slug?.trim());
+    const extOk = Boolean(gameDraft.external_url?.trim());
+    const isExisting = games.some((g) => g.slug === slug);
+    if (!isExisting && !storageOk && !extOk) {
+      setGameSaveStatus('error');
+      setGameFieldErrors({
+        play: '✗ Upload the Web export ZIP (below) or set External play URL — new games need a playable build.',
+      });
+      setGameSaveDetail(
+        '✗ New games need a ZIP on Storage or an external play URL. Upload a ZIP first, or paste an itch.io / host URL.',
+      );
+      flash('Add a ZIP or external play URL before saving a new game.');
+      return;
+    }
+
+    const mood = normalizeVisualPresetInput(gameDraft.visual_preset);
+    if (mood === 'custom' && !String(gameDraft.custom_mood_css ?? '').trim()) {
+      setGameSaveStatus('error');
+      setGameFieldErrors({
+        custom_mood_css: '✗ Custom mood needs CSS in the box below (or pick another mood).',
+      });
+      setGameSaveDetail('✗ Custom mood: add CSS, or change the mood dropdown.');
+      flash('Custom mood requires some CSS.');
+      return;
+    }
+
+    setBusy(true);
+    const payload = gameUpsertPayload({ ...gameDraft, slug, title });
     try {
       await upsertGame(payload);
       setGameDraft(emptyGame());
@@ -404,26 +533,31 @@ export function AdminPage() {
   };
 
   const onUploadGameZip = async () => {
-    const slug = gameDraft.slug.trim();
-    if (!slug) {
-      flash('Fill slug before uploading a ZIP.');
+    const title = gameDraft.title.trim();
+    if (!title) {
+      flash('Enter a game title first (we derive the storage folder from title or slug).');
+      return;
+    }
+    const slugRaw = gameDraft.slug.trim() || slugifyFromTitle(title);
+    if (!slugRaw) {
+      flash('Title must include letters or numbers for the game URL / storage folder.');
       return;
     }
     if (!gameZipFile) {
       flash('Choose a .zip file (Godot Web export folder).');
       return;
     }
-    const storageKey = sanitizeGameStorageSlug(gameDraft.slug);
+    const storageKey = sanitizeGameStorageSlug(slugRaw);
     if (!storageKey) {
       flash('Slug must include letters or numbers for cloud hosting.');
       return;
     }
-    const title = gameDraft.title.trim() || slug;
+    const titleSaved = title;
     setBusy(true);
     setZipUploadHint('Reading ZIP…');
     try {
       const { fileCount, exportRootLabel, indexCandidates, detectedEntry } = await uploadGameZip(
-        gameDraft.slug,
+        slugRaw,
         gameZipFile,
         true,
         (p) => {
@@ -457,15 +591,17 @@ export function AdminPage() {
       setZipEntryPick(chosenEntry);
       setGameDraft((prev) => ({
         ...prev,
+        slug: prev.slug.trim() || slugRaw,
         storage_slug: storageKey,
         storage_entry_in_zip: chosenEntry || null,
-        title: prev.title?.trim() ? prev.title : title,
+        title: prev.title?.trim() ? prev.title : titleSaved,
       }));
       try {
         await upsertGame({
           ...gameUpsertPayload({
             ...gameDraft,
-            title,
+            slug: slugRaw,
+            title: titleSaved,
             storage_entry_in_zip: chosenEntry || null,
           }),
           storage_slug: storageKey,
@@ -526,9 +662,9 @@ export function AdminPage() {
 
   const onUploadGameThumbnailFile = async (picked?: File) => {
     const file = picked ?? thumbFileRef.current?.files?.[0];
-    const slug = gameDraft.slug.trim();
+    const slug = gameSlugEffective;
     if (!slug) {
-      flash('Enter a game slug first (URL id).');
+      flash('Enter a title or slug first (URL id).');
       return;
     }
     if (!file) {
@@ -538,13 +674,14 @@ export function AdminPage() {
     const titleForRow = gameDraft.title.trim() || slug;
     setBusy(true);
     try {
-      const url = await uploadGameThumbnail(gameDraft.slug, file);
+      const url = await uploadGameThumbnail(slug, file);
       await upsertGame({
-        ...gameUpsertPayload({ ...gameDraft, title: titleForRow }),
+        ...gameUpsertPayload({ ...gameDraft, slug, title: titleForRow }),
         thumbnail_url: url,
       });
       setGameDraft((prev) => ({
         ...prev,
+        slug: prev.slug.trim() || slug,
         thumbnail_url: url,
         title: prev.title?.trim() ? prev.title : titleForRow,
       }));
@@ -563,9 +700,9 @@ export function AdminPage() {
 
   const onUploadGamePreviewVideoFile = async () => {
     const file = previewVideoFileRef.current?.files?.[0];
-    const slug = gameDraft.slug.trim();
+    const slug = gameSlugEffective;
     if (!slug) {
-      flash('Enter a game slug first (URL id).');
+      flash('Enter a title or slug first (URL id).');
       return;
     }
     if (!file) {
@@ -575,13 +712,14 @@ export function AdminPage() {
     const titleForRow = gameDraft.title.trim() || slug;
     setBusy(true);
     try {
-      const url = await uploadGamePreviewVideo(gameDraft.slug, file);
+      const url = await uploadGamePreviewVideo(slug, file);
       await upsertGame({
-        ...gameUpsertPayload({ ...gameDraft, title: titleForRow }),
+        ...gameUpsertPayload({ ...gameDraft, slug, title: titleForRow }),
         preview_video_url: url,
       });
       setGameDraft((prev) => ({
         ...prev,
+        slug: prev.slug.trim() || slug,
         preview_video_url: url,
         title: prev.title?.trim() ? prev.title : titleForRow,
       }));
@@ -599,8 +737,31 @@ export function AdminPage() {
   };
 
   const onSavePage = async () => {
-    if (!pageDraft.slug.trim() || !pageDraft.title.trim()) {
-      flash('Page slug and title required.');
+    setPageFieldErrors({});
+    setPageSaveDetail(null);
+    setPageSaveSummary(null);
+    if (!pageDraft.slug.trim()) {
+      setPageSaveStatus('error');
+      setPageFieldErrors({ slug: '✗ Slug is required — public URL is /#/p/{slug}.' });
+      setPageSaveDetail('✗ Slug is required — public URL is /#/p/{slug}.');
+      flash('Page slug required.');
+      return;
+    }
+    if (!pageDraft.title.trim()) {
+      setPageSaveStatus('error');
+      setPageFieldErrors({ title: '✗ Title is required.' });
+      setPageSaveDetail('✗ Title is required.');
+      flash('Page title required.');
+      return;
+    }
+    const moodPage = normalizeVisualPresetInput(pageDraft.visual_preset);
+    if (moodPage === 'custom' && !String(pageDraft.custom_mood_css ?? '').trim()) {
+      setPageSaveStatus('error');
+      setPageFieldErrors({
+        custom_mood_css: '✗ Custom mood needs CSS in the box below (or pick another mood).',
+      });
+      setPageSaveDetail('✗ Custom mood: add CSS, or change the mood dropdown.');
+      flash('Custom page mood requires CSS.');
       return;
     }
     const slugSaved = pageDraft.slug.trim();
@@ -608,10 +769,10 @@ export function AdminPage() {
     const sections = ensureSectionIds(pageDraft.sections ?? []);
     const bodySaved = pageDraft.body ?? '';
     const showNav = pageDraft.show_in_nav ?? true;
-    const moodRaw = normalizeVisualPresetInput(pageDraft.visual_preset);
+    const moodRaw = moodPage;
+    const immersivePage = Boolean(pageDraft.immersive_layout ?? false);
+    const customPageCss = String(pageDraft.custom_mood_css ?? '');
     setBusy(true);
-    setPageSaveDetail(null);
-    setPageSaveSummary(null);
     try {
       await upsertPage({
         slug: slugSaved,
@@ -621,6 +782,8 @@ export function AdminPage() {
         show_in_nav: showNav,
         sort_order: Number(pageDraft.sort_order ?? 0),
         visual_preset: moodRaw || null,
+        immersive_layout: immersivePage,
+        custom_mood_css: customPageCss,
       });
       const verify = await fetchPageBySlug(slugSaved);
       if (!verify) {
@@ -639,6 +802,8 @@ export function AdminPage() {
           hasBody: Boolean(bodySaved.trim()),
           showInNav: showNav,
           mood: moodRaw,
+          immersive: immersivePage,
+          hasCustomCss: Boolean(customPageCss.trim()),
         }),
       );
       flash(`Page saved. Public URL: /p/${slugSaved}`);
@@ -654,7 +819,7 @@ export function AdminPage() {
       const msg = e instanceof Error ? e.message : 'Save failed';
       setPageSaveStatus('error');
       setPageSaveDetail(
-        `${msg} If this mentions a missing column (e.g. visual_preset), run migration 012 in Supabase. If RLS, ensure admin policies allow insert/update on site_pages.`,
+        `${msg} If a column is missing, run migrations 012+013 in Supabase.`,
       );
       flash(msg);
     } finally {
@@ -663,8 +828,17 @@ export function AdminPage() {
   };
 
   const onSaveNav = async () => {
-    if (!navDraft.label.trim() || !navDraft.href.trim()) {
-      flash('Nav label and href required.');
+    setNavSaveDetail(null);
+    if (!navDraft.label.trim()) {
+      setNavSaveStatus('error');
+      setNavSaveDetail('✗ Label is required (button text in the top bar).');
+      flash('Nav label required.');
+      return;
+    }
+    if (!navDraft.href.trim()) {
+      setNavSaveStatus('error');
+      setNavSaveDetail('✗ Href is required (path like /vault or full https:// URL).');
+      flash('Nav href required.');
       return;
     }
     setBusy(true);
@@ -678,28 +852,53 @@ export function AdminPage() {
       });
       setNavDraft({ label: '', href: '', external: false, sort_order: 0 });
       await reload();
+      setNavSaveStatus('success');
+      setNavSaveDetail(
+        '✓ Saved. This adds a button to the top navigation bar (next to Home, Vault, Dev log, and any CMS pages you marked “show in nav”). Use sort order to arrange extras.',
+      );
       flash('Navigation link saved.');
+      if (navSaveSuccessTimerRef.current) {
+        clearTimeout(navSaveSuccessTimerRef.current);
+      }
+      navSaveSuccessTimerRef.current = setTimeout(() => {
+        setNavSaveStatus('idle');
+        navSaveSuccessTimerRef.current = null;
+      }, 12000);
     } catch (e) {
       console.error(e);
-      flash(e instanceof Error ? e.message : 'Save failed');
+      const msg = e instanceof Error ? e.message : 'Save failed';
+      setNavSaveStatus('error');
+      setNavSaveDetail(msg);
+      flash(msg);
     } finally {
       setBusy(false);
     }
   };
 
   const onSaveLog = async () => {
-    if (!logDraft.slug.trim() || !logDraft.title.trim()) {
-      flash('Log slug and title required.');
+    setLogSaveDetail(null);
+    if (!logDraft.slug.trim()) {
+      setLogSaveStatus('error');
+      setLogSaveDetail('✗ Dev log slug is required (URL segment).');
+      flash('Log slug required.');
       return;
     }
+    if (!logDraft.title.trim()) {
+      setLogSaveStatus('error');
+      setLogSaveDetail('✗ Title is required.');
+      flash('Log title required.');
+      return;
+    }
+    const savedLogSlug = logDraft.slug.trim();
+    const savedLogTitle = logDraft.title.trim();
     setBusy(true);
     try {
       const iso = logDraft.published_at
         ? new Date(logDraft.published_at).toISOString()
         : new Date().toISOString();
       await upsertDevLog({
-        slug: logDraft.slug.trim(),
-        title: logDraft.title.trim(),
+        slug: savedLogSlug,
+        title: savedLogTitle,
         body: logDraft.body ?? '',
         published_at: iso,
       });
@@ -710,10 +909,22 @@ export function AdminPage() {
         published_at: new Date().toISOString().slice(0, 16),
       });
       await reload();
+      setLogSaveStatus('success');
+      setLogSaveDetail(`✓ Saved dev log “${savedLogTitle}” — public path /#/devlog/${savedLogSlug}.`);
       flash('Dev log saved.');
+      if (logSaveSuccessTimerRef.current) {
+        clearTimeout(logSaveSuccessTimerRef.current);
+      }
+      logSaveSuccessTimerRef.current = setTimeout(() => {
+        setLogSaveStatus('idle');
+        logSaveSuccessTimerRef.current = null;
+      }, 12000);
     } catch (e) {
       console.error(e);
-      flash(e instanceof Error ? e.message : 'Save failed');
+      const msg = e instanceof Error ? e.message : 'Save failed';
+      setLogSaveStatus('error');
+      setLogSaveDetail(msg);
+      flash(msg);
     } finally {
       setBusy(false);
     }
@@ -1045,7 +1256,11 @@ export function AdminPage() {
               ['settings', 'Site settings', 'Hero, footer, support block'],
               ['games', 'Games', 'ZIP uploads (itch-style), itch links, repo folders'],
               ['pages', 'Pages & panels', 'Custom URLs with headings, text, panels, images'],
-              ['nav', 'Navigation', 'Extra header links'],
+              [
+                'nav',
+                'Navigation',
+                'Extra top-bar buttons after the built-in Home / Vault / Dev log links (e.g. Discord, press kit).',
+              ],
               ['devlogs', 'Dev logs', 'News and build notes'],
             ] as const
           ).map(([id, title, desc]) => (
@@ -1783,29 +1998,93 @@ export function AdminPage() {
               Add or update game
             </h2>
             <p className="admin-muted" style={{ lineHeight: 1.55 }}>
-              <strong>ZIP:</strong> Godot Web export → zip → upload (hosted under <code>game-builds/</code>).{' '}
-              <strong>External URL</strong> is used only when there is no ZIP. Repo copies live under{' '}
-              <code>games/&lt;folder&gt;/</code> and stay separate from uploaded builds.
+              <strong>Quick add:</strong> enter a <strong>title</strong>, upload the Godot Web <strong>.zip</strong> (or set an
+              external play URL). The URL slug is optional — if you leave it blank, we derive it from the title. Main game
+              hub is <code>/#/</code>; the <strong>secret library</strong> is <code>/#/vault</code> (check “List in Vault”
+              so the row appears there; uncheck “Published” to hide it from the main hub).
             </p>
             <div className="admin-field">
-              <label htmlFor="g_slug">Slug (URL id)</label>
-              <input
-                id="g_slug"
-                value={gameDraft.slug}
-                onChange={(e) => setGameDraft({ ...gameDraft, slug: e.target.value })}
-              />
-            </div>
-            <div className="admin-field">
-              <label htmlFor="g_title">Title</label>
+              <label htmlFor="g_title">Title (required)</label>
               <p className="admin-muted" style={{ margin: '0 0 6px', textTransform: 'none', fontSize: '0.8rem' }}>
-                If empty, we use the slug as the display name when you save or upload files.
+                Display name on cards and the game page. Saving and ZIP upload both require a title.
               </p>
               <input
                 id="g_title"
                 value={gameDraft.title}
-                onChange={(e) => setGameDraft({ ...gameDraft, title: e.target.value })}
+                onChange={(e) => {
+                  clearGameFieldError('title');
+                  setGameDraft({ ...gameDraft, title: e.target.value });
+                }}
+              />
+              {gameFieldErrors.title ? (
+                <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                  <span aria-hidden>✗ </span>
+                  {gameFieldErrors.title}
+                </p>
+              ) : null}
+            </div>
+            <div className="admin-field">
+              <label htmlFor="g_slug">Slug (optional — URL id)</label>
+              <p className="admin-muted" style={{ margin: '0 0 6px', textTransform: 'none', fontSize: '0.8rem' }}>
+                Override the address bar id. If empty, we build one from the title (lowercase, hyphens). Effective id now:{' '}
+                <code>{gameSlugEffective || '— fill title'}</code>
+              </p>
+              <input
+                id="g_slug"
+                value={gameDraft.slug}
+                onChange={(e) => {
+                  clearGameFieldError('play');
+                  setGameDraft({ ...gameDraft, slug: e.target.value });
+                }}
               />
             </div>
+            {gameSlugEffective ? (
+              <div
+                className="admin-panel"
+                style={{ borderStyle: 'dashed', marginTop: 4, padding: '12px 14px', fontSize: '0.82rem', lineHeight: 1.55 }}
+              >
+                <strong style={{ display: 'block', marginBottom: 8 }}>Public links (hash router)</strong>
+                <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <span>
+                    Detail <code>/#/game/{gameSlugEffective}</code>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (copyPublicHashUrl(`/game/${gameSlugEffective}`)) {
+                        flash('Copied detail URL.');
+                      }
+                    }}
+                  >
+                    Copy detail
+                  </button>
+                </div>
+                <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                  <span>
+                    Play <code>/#/play/{gameSlugEffective}</code>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (copyPublicHashUrl(`/play/${gameSlugEffective}`)) {
+                        flash('Copied play URL.');
+                      }
+                    }}
+                  >
+                    Copy play
+                  </button>
+                </div>
+                <p className="admin-muted" style={{ margin: '10px 0 0' }}>
+                  Vault catalog (all games flagged “List in Vault”): <code>/#/vault</code>
+                </p>
+              </div>
+            ) : null}
+            {gameFieldErrors.play ? (
+              <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                <span aria-hidden>✗ </span>
+                {gameFieldErrors.play}
+              </p>
+            ) : null}
             <div className="admin-field">
               <label htmlFor="g_type">Type</label>
               <select
@@ -1842,7 +2121,10 @@ export function AdminPage() {
               <select
                 id="g_visual_preset"
                 value={gameDraft.visual_preset ?? ''}
-                onChange={(e) => setGameDraft({ ...gameDraft, visual_preset: e.target.value })}
+                onChange={(e) => {
+                  clearGameFieldError('custom_mood_css');
+                  setGameDraft({ ...gameDraft, visual_preset: e.target.value });
+                }}
               >
                 {VISUAL_PRESET_OPTIONS.map((o) => (
                   <option key={o.value || 'default'} value={o.value} title={o.hint}>
@@ -1851,11 +2133,56 @@ export function AdminPage() {
                   </option>
                 ))}
               </select>
-              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
-                Applies on this game&apos;s <strong>detail</strong> and <strong>fullscreen play</strong> routes only.
-                FX layer on/off still comes from <strong>Site settings</strong> above.
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem', lineHeight: 1.5 }}>
+                Built-in palette library plus <strong>Custom (CSS)</strong> for your own variables and overrides. Applies on
+                this game&apos;s <strong>detail</strong> and <strong>play</strong> routes only. Global FX toggles still
+                come from <strong>Site settings</strong>.
               </p>
             </div>
+            <div className="admin-field">
+              <label htmlFor="g_custom_mood_css">Custom mood CSS</label>
+              <p className="admin-muted" style={{ margin: '0 0 8px', fontSize: '0.82rem', lineHeight: 1.45 }}>
+                Injected on this game&apos;s routes only (trust this CSS). Required when mood is <strong>Custom</strong>;
+                optional for other moods as an extra layer.
+              </p>
+              <textarea
+                id="g_custom_mood_css"
+                rows={8}
+                value={gameDraft.custom_mood_css ?? ''}
+                onChange={(e) => {
+                  clearGameFieldError('custom_mood_css');
+                  setGameDraft({ ...gameDraft, custom_mood_css: e.target.value });
+                }}
+                style={{
+                  width: '100%',
+                  fontFamily: 'ui-monospace, Consolas, monospace',
+                  fontSize: '0.82rem',
+                  lineHeight: 1.45,
+                }}
+              />
+              {gameFieldErrors.custom_mood_css ? (
+                <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                  <span aria-hidden>✗ </span>
+                  {gameFieldErrors.custom_mood_css}
+                </p>
+              ) : null}
+            </div>
+            <label className="admin-row" style={{ gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={gameDraft.in_vault ?? false}
+                onChange={(e) => setGameDraft({ ...gameDraft, in_vault: e.target.checked })}
+              />
+              List in Vault (<code>/#/vault</code>) — secret catalog, separate from the main hub grid
+            </label>
+            <label className="admin-row" style={{ gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={gameDraft.immersive_layout ?? false}
+                onChange={(e) => setGameDraft({ ...gameDraft, immersive_layout: e.target.checked })}
+              />
+              Immersive layout — wider “world” frame on detail + play (less hub-style chrome)
+            </label>
 
             <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 8 }}>
               Detail page blocks
@@ -1867,7 +2194,7 @@ export function AdminPage() {
             <PageSectionsForm
               sections={gameDraft.sections ?? []}
               onChange={(sections) => setGameDraft({ ...gameDraft, sections })}
-              pageSlug={gameDraft.slug}
+              pageSlug={gameSlugEffective}
               mediaStorageFolder="game-detail"
               formDisabled={busy}
               onNotify={flash}
@@ -1899,7 +2226,7 @@ export function AdminPage() {
                 ref={thumbFileRef}
                 type="file"
                 accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg"
-                disabled={busy || !gameDraft.slug.trim()}
+                disabled={busy || !gameSlugEffective}
                 style={{ display: 'none' }}
                 aria-hidden
                 onChange={(e) => {
@@ -1913,15 +2240,14 @@ export function AdminPage() {
               <button
                 type="button"
                 id="g_thumb_add_file"
-                disabled={busy || !gameDraft.slug.trim()}
+                disabled={busy || !gameSlugEffective}
                 onClick={() => thumbFileRef.current?.click()}
               >
                 Add file
               </button>
-              {!gameDraft.slug.trim() ? (
+              {!gameSlugEffective ? (
                 <p className="admin-muted" style={{ margin: '8px 0 0' }}>
-                  Enter the game slug above first, then Add file. (Title can be filled in later; we use the slug as a
-                  temporary title if needed.)
+                  Enter a <strong>title</strong> (or slug) first so media uploads know which game folder to use.
                 </p>
               ) : null}
               <div className="admin-field" style={{ marginTop: 16, marginBottom: 0 }}>
@@ -1954,12 +2280,12 @@ export function AdminPage() {
                 ref={previewVideoFileRef}
                 type="file"
                 accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
-                disabled={busy || !gameDraft.slug.trim()}
+                disabled={busy || !gameSlugEffective}
               />
               <div style={{ marginTop: 8 }}>
                 <button
                   type="button"
-                  disabled={busy || !gameDraft.slug.trim()}
+                  disabled={busy || !gameSlugEffective}
                   onClick={() => void onUploadGamePreviewVideoFile()}
                 >
                   Upload preview video & save
@@ -2188,7 +2514,7 @@ export function AdminPage() {
                   id="g_zip"
                   type="file"
                   accept=".zip,application/zip"
-                  disabled={busy || !gameDraft.slug.trim()}
+                  disabled={busy || !gameSlugEffective}
                   onChange={(e) => {
                     setGameZipFile(e.target.files?.[0] ?? null);
                     setZipUploadHint(null);
@@ -2234,7 +2560,11 @@ export function AdminPage() {
                 ) : null}
               </div>
               <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
-                <button type="button" disabled={busy || !gameZipFile || !gameDraft.slug.trim()} onClick={onUploadGameZip}>
+                <button
+                  type="button"
+                  disabled={busy || !gameZipFile || !gameSlugEffective}
+                  onClick={onUploadGameZip}
+                >
                   Upload ZIP & save game
                 </button>
                 <button
@@ -2284,10 +2614,10 @@ export function AdminPage() {
                 checked={gameDraft.published ?? true}
                 onChange={(e) => setGameDraft({ ...gameDraft, published: e.target.checked })}
               />
-              Published (visible on hub)
+              Published (show on main game hub — turn off for vault-only or unlisted games)
             </label>
             <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button type="button" disabled={busy || !gameDraft.slug.trim()} onClick={onSaveGame}>
+              <button type="button" disabled={busy || !gameDraft.title.trim()} onClick={onSaveGame}>
                 Save game
               </button>
               {gameSaveStatus === 'success' ? (
@@ -2329,9 +2659,26 @@ export function AdminPage() {
               {games.map((g) => (
                 <li key={g.slug} className="admin-row" style={{ justifyContent: 'space-between' }}>
                   <span>
-                    <strong>{g.title}</strong> <span className="admin-muted">({g.slug})</span>
+                    <strong>{g.title}</strong>{' '}
+                    <span className="admin-muted">
+                      ({g.slug})
+                      {g.in_vault ? ' · vault' : ''}
+                      {g.published === false ? ' · hidden from hub' : ''}
+                      {g.immersive_layout ? ' · immersive' : ''}
+                    </span>
                   </span>
                   <span className="admin-row">
+                    <button
+                      type="button"
+                      title="Copy play URL"
+                      onClick={() => {
+                        if (copyPublicHashUrl(`/play/${g.slug}`)) {
+                          flash('Copied play URL.');
+                        }
+                      }}
+                    >
+                      Copy play URL
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -2339,6 +2686,9 @@ export function AdminPage() {
                           ...g,
                           sections: ensureSectionIds(g.sections ?? []),
                           visual_preset: g.visual_preset ?? '',
+                          in_vault: Boolean(g.in_vault),
+                          immersive_layout: Boolean(g.immersive_layout),
+                          custom_mood_css: String(g.custom_mood_css ?? ''),
                           pricing_model: (g.pricing_model ?? 'free') as GamePricingModel,
                           donation_presets_cents: donationPresetsFromUnknown(g.donation_presets_cents),
                           pwyw_min_cents: g.pwyw_min_cents ?? null,
@@ -2390,30 +2740,73 @@ export function AdminPage() {
             <p className="admin-muted">
               Public URL: <code>/#/p/&lt;slug&gt;</code>. Stack headings, text, panels, and images. If you add
               no blocks, the legacy <strong>Body</strong> field is shown instead. Turn off <strong>Show in top nav</strong>{' '}
-              for a <strong>secret page</strong> (no header link — share the URL directly).
+              for a <strong>secret page</strong> (no header link — share the URL directly). Use <strong>Immersive</strong>{' '}
+              + mood / custom CSS so the page feels like its own “world” instead of the hub chrome.
             </p>
             <div className="admin-field">
               <label htmlFor="p_slug">Slug</label>
               <input
                 id="p_slug"
                 value={pageDraft.slug}
-                onChange={(e) => setPageDraft({ ...pageDraft, slug: e.target.value })}
+                onChange={(e) => {
+                  clearPageFieldError('slug');
+                  setPageDraft({ ...pageDraft, slug: e.target.value });
+                }}
               />
+              {pageFieldErrors.slug ? (
+                <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                  <span aria-hidden>✗ </span>
+                  {pageFieldErrors.slug}
+                </p>
+              ) : null}
             </div>
             <div className="admin-field">
               <label htmlFor="p_title">Title</label>
               <input
                 id="p_title"
                 value={pageDraft.title}
-                onChange={(e) => setPageDraft({ ...pageDraft, title: e.target.value })}
+                onChange={(e) => {
+                  clearPageFieldError('title');
+                  setPageDraft({ ...pageDraft, title: e.target.value });
+                }}
               />
+              {pageFieldErrors.title ? (
+                <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                  <span aria-hidden>✗ </span>
+                  {pageFieldErrors.title}
+                </p>
+              ) : null}
             </div>
+            {pageDraft.slug.trim() ? (
+              <div
+                className="admin-panel"
+                style={{ borderStyle: 'dashed', padding: '12px 14px', fontSize: '0.82rem', lineHeight: 1.55 }}
+              >
+                <strong style={{ display: 'block', marginBottom: 8 }}>Public link</strong>
+                <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <code>/#/p/{pageDraft.slug.trim()}</code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (copyPublicHashUrl(`/p/${pageDraft.slug.trim()}`)) {
+                        flash('Copied page URL.');
+                      }
+                    }}
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <div className="admin-field">
               <label htmlFor="p_visual_preset">Page mood (this route only)</label>
               <select
                 id="p_visual_preset"
                 value={pageDraft.visual_preset ?? ''}
-                onChange={(e) => setPageDraft({ ...pageDraft, visual_preset: e.target.value })}
+                onChange={(e) => {
+                  clearPageFieldError('custom_mood_css');
+                  setPageDraft({ ...pageDraft, visual_preset: e.target.value });
+                }}
               >
                 {VISUAL_PRESET_OPTIONS.map((o) => (
                   <option key={o.value || 'default'} value={o.value} title={o.hint}>
@@ -2423,9 +2816,33 @@ export function AdminPage() {
                 ))}
               </select>
               <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.8rem', lineHeight: 1.45 }}>
-                Same presets as site-wide mood and game pages. FX on/off still comes from Site settings; this only
-                recolors accents and spotlight for <code>/p/…</code>.
+                Built-in palette library plus <strong>Custom (CSS)</strong>. FX on/off still comes from Site settings; this
+                recolors accents for <code>/p/…</code>.
               </p>
+            </div>
+            <div className="admin-field">
+              <label htmlFor="p_custom_mood_css">Custom mood CSS</label>
+              <textarea
+                id="p_custom_mood_css"
+                rows={8}
+                value={pageDraft.custom_mood_css ?? ''}
+                onChange={(e) => {
+                  clearPageFieldError('custom_mood_css');
+                  setPageDraft({ ...pageDraft, custom_mood_css: e.target.value });
+                }}
+                style={{
+                  width: '100%',
+                  fontFamily: 'ui-monospace, Consolas, monospace',
+                  fontSize: '0.82rem',
+                  lineHeight: 1.45,
+                }}
+              />
+              {pageFieldErrors.custom_mood_css ? (
+                <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                  <span aria-hidden>✗ </span>
+                  {pageFieldErrors.custom_mood_css}
+                </p>
+              ) : null}
             </div>
             <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 8 }}>
               Page blocks
@@ -2461,6 +2878,14 @@ export function AdminPage() {
                 onChange={(e) => setPageDraft({ ...pageDraft, show_in_nav: e.target.checked })}
               />
               Show in top navigation (off = secret page)
+            </label>
+            <label className="admin-row" style={{ gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={pageDraft.immersive_layout ?? false}
+                onChange={(e) => setPageDraft({ ...pageDraft, immersive_layout: e.target.checked })}
+              />
+              Immersive layout — wider frame, lighter hub chrome on this page
             </label>
             <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button type="button" disabled={busy} onClick={onSavePage}>
@@ -2509,6 +2934,7 @@ export function AdminPage() {
                       /p/{p.slug}
                       {p.show_in_nav ? ' · in nav' : ' · secret'}
                       {p.visual_preset ? ` · ${p.visual_preset}` : ''}
+                      {p.immersive_layout ? ' · immersive' : ''}
                     </span>
                   </span>
                   <span className="admin-row">
@@ -2530,6 +2956,8 @@ export function AdminPage() {
                           ...p,
                           sections: p.sections ?? [],
                           visual_preset: p.visual_preset ?? '',
+                          immersive_layout: Boolean(p.immersive_layout),
+                          custom_mood_css: String(p.custom_mood_css ?? ''),
                         })
                       }
                     >
@@ -2569,18 +2997,23 @@ export function AdminPage() {
         <div className="admin-grid">
           <div className="admin-panel admin-grid">
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>
-              Navigation button
+              Navigation (top bar)
             </h2>
-            <p className="admin-muted">
-              Use internal paths like <code>/devlog</code> or <code>/p/about</code>, or full URLs for
-              off-site links (toggle external).
+            <p className="admin-muted" style={{ lineHeight: 1.55 }}>
+              The site header always includes <strong>Home</strong>, <strong>Vault</strong>, and <strong>Dev log</strong>, plus
+              any CMS pages you marked “show in nav”. <strong>This tab</strong> adds <em>extra</em> buttons (partners, Discord,
+              press kit, etc.). Use internal paths like <code>/p/about</code> or <code>/vault</code> (no <code>#</code>), or
+              full <code>https://</code> URLs with <em>External link</em> checked.
             </p>
             <div className="admin-field">
               <label htmlFor="n_label">Label</label>
               <input
                 id="n_label"
                 value={navDraft.label}
-                onChange={(e) => setNavDraft({ ...navDraft, label: e.target.value })}
+                onChange={(e) => {
+                  setNavSaveDetail(null);
+                  setNavDraft({ ...navDraft, label: e.target.value });
+                }}
               />
             </div>
             <div className="admin-field">
@@ -2588,7 +3021,10 @@ export function AdminPage() {
               <input
                 id="n_href"
                 value={navDraft.href}
-                onChange={(e) => setNavDraft({ ...navDraft, href: e.target.value })}
+                onChange={(e) => {
+                  setNavSaveDetail(null);
+                  setNavDraft({ ...navDraft, href: e.target.value });
+                }}
               />
               <HrefQuickPick
                 pages={pages.map((p) => ({ slug: p.slug, title: p.title }))}
@@ -2614,9 +3050,38 @@ export function AdminPage() {
               />
               External link
             </label>
-            <button type="button" disabled={busy} onClick={onSaveNav}>
-              Save link
-            </button>
+            <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button type="button" disabled={busy} onClick={onSaveNav}>
+                Save link
+              </button>
+              {navSaveStatus === 'success' ? (
+                <span style={{ color: '#3ecf8e', fontSize: '1.35rem', lineHeight: 1 }} title="Saved" aria-label="Saved">
+                  ✓
+                </span>
+              ) : null}
+              {navSaveStatus === 'error' ? (
+                <span
+                  style={{ color: 'var(--danger)', fontSize: '1.35rem', lineHeight: 1 }}
+                  title="Error"
+                  aria-label="Error"
+                >
+                  ✗
+                </span>
+              ) : null}
+            </div>
+            {navSaveDetail ? (
+              <p
+                style={{
+                  marginTop: 10,
+                  fontSize: '0.86rem',
+                  lineHeight: 1.45,
+                  color: navSaveStatus === 'error' ? 'var(--danger)' : 'var(--muted)',
+                }}
+                role={navSaveStatus === 'error' ? 'alert' : undefined}
+              >
+                {navSaveDetail}
+              </p>
+            ) : null}
           </div>
           <div className="admin-panel">
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>
@@ -2703,9 +3168,38 @@ export function AdminPage() {
                 onChange={(e) => setLogDraft({ ...logDraft, published_at: e.target.value })}
               />
             </div>
-            <button type="button" disabled={busy} onClick={onSaveLog}>
-              Save post
-            </button>
+            <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button type="button" disabled={busy} onClick={onSaveLog}>
+                Save post
+              </button>
+              {logSaveStatus === 'success' ? (
+                <span style={{ color: '#3ecf8e', fontSize: '1.35rem', lineHeight: 1 }} title="Saved" aria-label="Saved">
+                  ✓
+                </span>
+              ) : null}
+              {logSaveStatus === 'error' ? (
+                <span
+                  style={{ color: 'var(--danger)', fontSize: '1.35rem', lineHeight: 1 }}
+                  title="Error"
+                  aria-label="Error"
+                >
+                  ✗
+                </span>
+              ) : null}
+            </div>
+            {logSaveDetail ? (
+              <p
+                style={{
+                  marginTop: 10,
+                  fontSize: '0.86rem',
+                  lineHeight: 1.45,
+                  color: logSaveStatus === 'error' ? 'var(--danger)' : 'var(--muted)',
+                }}
+                role={logSaveStatus === 'error' ? 'alert' : undefined}
+              >
+                {logSaveDetail}
+              </p>
+            ) : null}
           </div>
           <div className="admin-panel">
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>

@@ -189,6 +189,27 @@ html[data-fx-intensity='intense'] body::after {
   z-index: 3;
 }
 
+/* Game/page “world” routes — pairs with SiteChrome `immersive` + html[data-immersive-layout='on']. */
+.container.container--immersive {
+  max-width: min(1680px, 100%);
+  padding-left: clamp(12px, 3vw, 32px);
+  padding-right: clamp(12px, 3vw, 32px);
+}
+
+html[data-immersive-layout='on'] header {
+  margin-bottom: 32px;
+}
+
+html[data-immersive-layout='on'] .top-nav {
+  margin-bottom: 14px;
+}
+
+/* Custom mood: baseline tokens before RouteScopedCss overrides */
+html[data-visual-preset='custom'] {
+  --accent: #73f8ff;
+  --accent-2: #a673ff;
+}
+
 /*
  * Optional page mood — keys must match src/lib/visualPresets.ts (Admin: Site mood + per-game mood).
  * Applied on <html data-visual-preset="…"> from GlobalHtmlFxSync / GamePage / PlayPage.

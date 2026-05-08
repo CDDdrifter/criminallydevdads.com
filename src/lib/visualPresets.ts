@@ -1,6 +1,7 @@
 /**
  * Visual “moods” for the hub: CSS lives in index.css under html[data-visual-preset='…'].
- * Keep this list in sync with those selectors; Admin + site settings + games + CMS pages use the same keys.
+ * Multiple named palettes + `custom` (admin “Custom mood CSS” on each game/page).
+ * Keep keys in sync with index.css; Admin, site settings, games, and CMS pages share this list.
  */
 export type VisualPresetId =
   | ''
@@ -14,7 +15,8 @@ export type VisualPresetId =
   | 'ocean'
   | 'bloodline'
   | 'chroma'
-  | 'sandstorm';
+  | 'sandstorm'
+  | 'custom';
 
 export const VISUAL_PRESET_OPTIONS: { value: VisualPresetId; label: string; hint: string }[] = [
   { value: '', label: 'Default', hint: 'Cyan / violet accents, full cursor glow (see Site settings toggles).' },
@@ -33,6 +35,11 @@ export const VISUAL_PRESET_OPTIONS: { value: VisualPresetId; label: string; hint
   { value: 'bloodline', label: 'Bloodline', hint: 'Deep red / crimson accents (still readable).' },
   { value: 'chroma', label: 'Chroma', hint: 'Magenta + cyan synth accents.' },
   { value: 'sandstorm', label: 'Sandstorm', hint: 'Warm sand / amber; desert HUD feel.' },
+  {
+    value: 'custom',
+    label: 'Custom (CSS)',
+    hint: 'No preset palette — style with the “Custom mood CSS” field on this game or page.',
+  },
 ];
 
 const ALLOWED = new Set(VISUAL_PRESET_OPTIONS.map((o) => o.value).filter(Boolean));
