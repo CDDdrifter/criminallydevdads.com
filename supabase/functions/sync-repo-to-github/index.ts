@@ -213,6 +213,10 @@ Deno.serve(async (req) => {
         if (pu) {
           entry.purchase_url = pu;
         }
+        const gr = String(row.gumroad_url ?? '').trim();
+        if (gr) {
+          entry.gumroad_url = gr;
+        }
         const priceId = String(row.stripe_price_id ?? '').trim();
         if (priceId) {
           entry.stripe_price_id = priceId;

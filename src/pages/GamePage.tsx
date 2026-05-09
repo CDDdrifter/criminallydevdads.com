@@ -6,7 +6,7 @@ import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchGameViewBySlug } from '../lib/cmsData';
-import { formatGamePriceLabel } from '../lib/gamePricing';
+import { formatGamePriceLabel, gameHasGumroadUrl } from '../lib/gamePricing';
 import { normalizeVisualPresetInput } from '../lib/visualPresets';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
 import type { GameView } from '../types';
@@ -120,17 +120,32 @@ export function GamePage() {
         ) : (
           <>
             {game.thumbnail ? (
-              <img
-                src={game.thumbnail}
-                alt=""
-                style={{
-                  width: '100%',
-                  maxHeight: 360,
-                  objectFit: 'cover',
-                  borderRadius: 8,
-                  marginBottom: 16,
-                }}
-              />
+              <div
+                className={gameHasGumroadUrl(game) ? 'game-detail-cover game-detail-cover--gumroad' : 'game-detail-cover'}
+                style={{ marginBottom: 16 }}
+              >
+                <img
+                  src={game.thumbnail}
+                  alt=""
+                  style={{
+                    width: '100%',
+                    maxHeight: 360,
+                    objectFit: 'cover',
+                    borderRadius: 8,
+                    display: 'block',
+                  }}
+                />
+                {gameHasGumroadUrl(game) ? (
+                  <span
+                    className="game-thumbnail__gumroad-star game-thumbnail__gumroad-star--detail"
+                    title="Available on Gumroad"
+                    role="img"
+                    aria-label="Gumroad"
+                  >
+                    ★
+                  </span>
+                ) : null}
+              </div>
             ) : null}
             {game.preview_video ? (
               <video

@@ -19,7 +19,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { GameView } from '../types';
-import { formatGamePriceLabel, gameOffersInternalCheckout, stripeMinimumUsdCents } from '../lib/gamePricing';
+import {
+  formatGamePriceLabel,
+  gameExternalStoreIsGumroad,
+  gameExternalStoreUrl,
+  gameOffersInternalCheckout,
+  stripeMinimumUsdCents,
+} from '../lib/gamePricing';
 import { startGameCheckout } from '../lib/stripeCheckout';
 
 type Props = { game: GameView };
@@ -29,7 +35,8 @@ export function GamePurchaseBlock({ game }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [amountDollars, setAmountDollars] = useState('5.00');
 
-  const externalUrl = game.purchase_url.trim();
+  const externalUrl = gameExternalStoreUrl(game);
+  const isGumroad = gameExternalStoreIsGumroad(game);
   const priceText = formatGamePriceLabel(game);
   const asset = game.type.toLowerCase() === 'asset';
 
@@ -58,9 +65,16 @@ export function GamePurchaseBlock({ game }: Props) {
   ]);
 
   if (externalUrl) {
+    const label = isGumroad
+      ? asset
+        ? 'Buy / download asset (Gumroad)'
+        : 'Buy / download (Gumroad)'
+      : asset
+        ? `Buy asset (${priceText})`
+        : `Buy (${priceText})`;
     return (
       <a className="btn-play" href={externalUrl} target="_blank" rel="noreferrer">
-        {asset ? `Buy asset (${priceText})` : `Buy (${priceText})`}
+        {label}
       </a>
     );
   }

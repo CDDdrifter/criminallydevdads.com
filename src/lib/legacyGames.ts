@@ -49,6 +49,7 @@ type LegacyMeta = {
   pricing_model?: string;
   price_cents?: number;
   purchase_url?: string;
+  gumroad_url?: string;
   stripe_price_id?: string;
   pwyw_min_cents?: number;
   pwyw_suggested_cents?: number;
@@ -251,6 +252,7 @@ async function buildGameFromFolder(
     pricing_model: gamePricingModelFromRecord(metadata.pricing_model, priceCents),
     price_cents: priceCents,
     purchase_url: String(metadata.purchase_url ?? '').trim(),
+    gumroad_url: String(metadata.gumroad_url ?? '').trim(),
     stripe_price_id: String(metadata.stripe_price_id ?? '').trim(),
     pwyw_min_cents: Math.max(0, Math.round(Number(metadata.pwyw_min_cents ?? 0))),
     pwyw_suggested_cents: Math.max(0, Math.round(Number(metadata.pwyw_suggested_cents ?? 0))),

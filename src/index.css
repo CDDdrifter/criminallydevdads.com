@@ -551,6 +551,35 @@ a.game-card--link {
   object-fit: cover;
 }
 
+.game-thumbnail--badged {
+  position: relative;
+}
+
+.game-thumbnail__gumroad-star {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #ffd60a;
+  text-shadow:
+    0 0 6px rgba(0, 0, 0, 1),
+    0 0 14px rgba(255, 214, 10, 0.55);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.game-thumbnail__gumroad-star--detail {
+  top: 10px;
+  right: 10px;
+  font-size: 1.85rem;
+}
+
+.game-detail-cover {
+  position: relative;
+  width: 100%;
+}
+
 .game-info {
   padding: 20px;
   flex: 1;

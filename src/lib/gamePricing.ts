@@ -13,8 +13,8 @@
  *
  * EXTERNAL VS INTERNAL CHECKOUT
  * -----------------------------
- * `purchase_url` on a game means “open this link” (itch, Gumroad, Stripe Payment Link). When set,
- * `gameOffersInternalCheckout` is false so we don’t double-offer Stripe.
+ * `gumroad_url` or `purchase_url` means “open this link” instead of built-in Stripe. Gumroad is explicit
+ * so the hub can show a ★ on thumbnails; when both are set, Gumroad wins for the buy button href.
  */
 import type { GamePricingModel, GameView } from '../types';
 
@@ -63,6 +63,9 @@ export function formatGamePriceLabel(game: GameView): string {
  * Fixed needs either >= $0.50 ad-hoc price or a Dashboard Price ID.
  */
 export function gameOffersInternalCheckout(game: GameView): boolean {
+  if (game.gumroad_url.trim()) {
+    return false;
+  }
   if (game.purchase_url.trim()) {
     return false;
   }
@@ -77,4 +80,18 @@ export function gameOffersInternalCheckout(game: GameView): boolean {
 
 export function stripeMinimumUsdCents(): number {
   return 50;
+}
+
+/** Hub card / badge: non-empty Gumroad listing URL. */
+export function gameHasGumroadUrl(game: Pick<GameView, 'gumroad_url'>): boolean {
+  return Boolean(game.gumroad_url?.trim());
+}
+
+/** External buy/download href: Gumroad first, then generic `purchase_url`. */
+export function gameExternalStoreUrl(game: GameView): string {
+  return (game.gumroad_url?.trim() || game.purchase_url?.trim() || '').trim();
+}
+
+export function gameExternalStoreIsGumroad(game: GameView): boolean {
+  return Boolean(game.gumroad_url?.trim());
 }

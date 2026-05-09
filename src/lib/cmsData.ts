@@ -149,6 +149,7 @@ function recordToView(g: GameRecord): GameView {
     pricing_model: gamePricingModelFromRecord(g.pricing_model, priceCents),
     price_cents: priceCents,
     purchase_url: String(g.purchase_url ?? '').trim(),
+    gumroad_url: String(g.gumroad_url ?? '').trim(),
     stripe_price_id: String(g.stripe_price_id ?? '').trim(),
     pwyw_min_cents: Math.max(0, Number(g.pwyw_min_cents ?? 0)),
     pwyw_suggested_cents: Math.max(0, Number(g.pwyw_suggested_cents ?? 0)),

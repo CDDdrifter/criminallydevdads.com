@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { GameCardThumbnail } from '../components/GameCardThumbnail';
 import { SiteChrome } from '../components/SiteChrome';
 import { useGames } from '../hooks/useGames';
 import { gameCatalogMode } from '../lib/gameCatalog';
@@ -122,13 +123,7 @@ export function HomePage() {
               className="game-card game-card--link"
               style={{ ['--i' as string]: index }}
             >
-              <div className="game-thumbnail">
-                {game.thumbnail ? (
-                  <img src={game.thumbnail} alt={game.title} />
-                ) : (
-                  '🎮'
-                )}
-              </div>
+              <GameCardThumbnail game={game} />
               <div className="game-info">
                 <div className="game-type">{game.type}</div>
                 <div className="game-title">{game.title}</div>

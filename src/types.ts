@@ -59,8 +59,10 @@ export type GameRecord = {
   visual_preset?: string | null;
   /** Asset sale price in cents (optional). */
   price_cents?: number | null;
-  /** Public checkout URL (Stripe payment link or your own checkout page). */
+  /** Public checkout URL (Stripe payment link, itch.io, etc.). Gumroad should use `gumroad_url` for the ★ badge. */
   purchase_url?: string | null;
+  /** Gumroad product or profile link — shows a star on hub thumbnails; takes precedence over `purchase_url` for the buy button. */
+  gumroad_url?: string | null;
   /** Optional Stripe Price ID for future direct Checkout API flow. */
   stripe_price_id?: string | null;
   /** How this title is sold when using built-in checkout (see docs/STRIPE_CHECKOUT.md). */
@@ -99,8 +101,10 @@ export type GameView = {
   /** Normalized for UI + checkout (legacy rows may infer `fixed` from price_cents). */
   pricing_model: GamePricingModel;
   price_cents: number;
-  /** If non-empty, GamePurchaseBlock links here and skips built-in Stripe (itch, Payment Link, etc.). */
+  /** If non-empty (and no `gumroad_url`), GamePurchaseBlock links here and skips built-in Stripe. */
   purchase_url: string;
+  /** Gumroad listing — ★ on cards; buy button prefers this URL when set. */
+  gumroad_url: string;
   stripe_price_id: string;
   /** USD cents; Stripe minimum still enforced server-side (50). */
   pwyw_min_cents: number;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { GameCardThumbnail } from '../components/GameCardThumbnail';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchVaultGames } from '../lib/cmsData';
 import { supabaseConfigured } from '../lib/supabase';
@@ -74,13 +75,7 @@ export function VaultPage() {
               className="game-card game-card--link"
               style={{ ['--i' as string]: index }}
             >
-              <div className="game-thumbnail">
-                {game.thumbnail ? (
-                  <img src={game.thumbnail} alt={game.title} />
-                ) : (
-                  '🎮'
-                )}
-              </div>
+              <GameCardThumbnail game={game} />
               <div className="game-info">
                 <div className="game-type">{game.type}</div>
                 <div className="game-title">{game.title}</div>

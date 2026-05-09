@@ -106,6 +106,7 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
   visual_preset: '',
   pricing_model: 'free',
   price_cents: 0,
+  gumroad_url: '',
   purchase_url: '',
   stripe_price_id: '',
   pwyw_min_cents: null,
@@ -186,6 +187,7 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     sections: ensureSectionIds(draft.sections ?? []),
     visual_preset: normalizeVisualPresetInput(draft.visual_preset) || null,
     price_cents: Number(draft.price_cents ?? 0),
+    gumroad_url: draft.gumroad_url?.trim() || null,
     purchase_url: draft.purchase_url?.trim() || null,
     stripe_price_id: draft.stripe_price_id?.trim() || null,
     pricing_model: draft.pricing_model ?? 'free',
@@ -204,10 +206,13 @@ function summarizeGameSave(p: ReturnType<typeof gameUpsertPayload>): string {
   const mood = p.visual_preset ? `Mood: ${p.visual_preset}` : 'Mood: hub default';
   const n = Array.isArray(p.sections) ? p.sections.length : 0;
   const blocks = n ? `${n} detail block(s)` : 'No detail blocks';
+  const gum = String(p.gumroad_url ?? '').trim();
   const commerce =
-    p.pricing_model && p.pricing_model !== 'free'
-      ? `Commerce: ${p.pricing_model} (${p.price_cents ?? 0}¢)`
-      : 'Commerce: free';
+    gum
+      ? `Gumroad: ${gum.slice(0, 48)}${gum.length > 48 ? '…' : ''}`
+      : p.pricing_model && p.pricing_model !== 'free'
+        ? `Commerce: ${p.pricing_model} (${p.price_cents ?? 0}¢)`
+        : 'Commerce: free (no Gumroad)';
   const host = p.storage_slug ? 'Hosted: ZIP on Storage' : p.external_url?.trim() ? 'Play: external URL' : 'Play: local / repo path';
   const vis = p.published === false ? 'Hidden from main hub' : 'On main hub';
   const vault = p.in_vault ? 'Listed in Vault (/vault)' : 'Not in Vault';
@@ -2189,7 +2194,14 @@ export function AdminPage() {
                 Cover image for the hub card and game page. PNG, JPG, GIF, WebP, or SVG — max 5 MB.
               </p>
               {gameDraft.thumbnail_url?.trim() ? (
-                <div style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    marginBottom: 12,
+                    position: 'relative',
+                    display: 'inline-block',
+                    maxWidth: '100%',
+                  }}
+                >
                   <img
                     src={gameDraft.thumbnail_url}
                     alt=""
@@ -2200,8 +2212,20 @@ export function AdminPage() {
                       borderRadius: 6,
                       border: '1px solid var(--border)',
                       background: '#070b12',
+                      display: 'block',
                     }}
                   />
+                  {gameDraft.gumroad_url?.trim() ? (
+                    <span
+                      className="game-thumbnail__gumroad-star"
+                      style={{ fontSize: '1.1rem', top: 4, right: 4 }}
+                      title="Gumroad link set — hub will show this star on the card"
+                      role="img"
+                      aria-label="Gumroad preview"
+                    >
+                      ★
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
               <input
@@ -2287,9 +2311,24 @@ export function AdminPage() {
                 onChange={(e) => setGameDraft({ ...gameDraft, external_url: e.target.value })}
               />
             </div>
-            {/* Commerce columns on site_games — GamePurchaseBlock + Edge create-checkout-session. External URL wins over built-in Stripe. */}
+            {/* Commerce: Gumroad / external URL vs built-in Stripe (Edge create-checkout-session). */}
             <div className="admin-field">
-              <label htmlFor="g_pricing_model">Pricing</label>
+              <label htmlFor="g_gumroad_url">Gumroad URL (optional)</label>
+              <input
+                id="g_gumroad_url"
+                type="url"
+                placeholder="https://yourstudio.gumroad.com/l/…"
+                value={gameDraft.gumroad_url ?? ''}
+                onChange={(e) => setGameDraft({ ...gameDraft, gumroad_url: e.target.value })}
+              />
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
+                When set, the hub shows a <strong>★</strong> on this game&apos;s cover image and the buy button opens
+                Gumroad (download / purchase there). Built-in <strong>Stripe Checkout</strong> below is skipped while
+                this URL is filled — you can still configure Stripe for other games later.
+              </p>
+            </div>
+            <div className="admin-field">
+              <label htmlFor="g_pricing_model">Pricing (Stripe on this site)</label>
               <select
                 id="g_pricing_model"
                 value={(gameDraft.pricing_model ?? 'free') as GamePricingModel}
@@ -2300,14 +2339,15 @@ export function AdminPage() {
                   })
                 }
               >
-                <option value="free">Free (no checkout on this site)</option>
+                <option value="free">Free (no Stripe checkout on this site)</option>
                 <option value="fixed">Fixed price — Stripe Checkout</option>
                 <option value="pwyw">Pay what you want — Stripe Checkout</option>
                 <option value="donation">Donation / support — Stripe Checkout</option>
               </select>
               <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
-                Built-in checkout uses the Edge Function <code>create-checkout-session</code> (see{' '}
-                <strong>docs/STRIPE_CHECKOUT.md</strong>). Minimum charge is <strong>$0.50 USD</strong> (Stripe rule).
+                Used only when <strong>Gumroad</strong> and <strong>Other external checkout</strong> below are empty.
+                Requires the Edge Function <code>create-checkout-session</code> (see{' '}
+                <strong>docs/STRIPE_CHECKOUT.md</strong>). Minimum charge <strong>$0.50 USD</strong> (Stripe rule).
               </p>
             </div>
             {gameDraft.pricing_model === 'fixed' ? (
@@ -2392,15 +2432,16 @@ export function AdminPage() {
               </div>
             ) : null}
             <div className="admin-field">
-              <label htmlFor="g_purchase_url">External checkout URL (optional)</label>
+              <label htmlFor="g_purchase_url">Other external checkout URL (optional)</label>
               <input
                 id="g_purchase_url"
-                placeholder="https://buy.stripe.com/... or itch.io / Gumroad"
+                placeholder="https://buy.stripe.com/... or itch.io / your store"
                 value={gameDraft.purchase_url ?? ''}
                 onChange={(e) => setGameDraft({ ...gameDraft, purchase_url: e.target.value })}
               />
               <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
-                If set, the game page uses this link instead of built-in Stripe Checkout (e.g. third-party store).
+                If set (and Gumroad is empty), the game page links here instead of Stripe Checkout. Use{' '}
+                <strong>Gumroad URL</strong> above for Gumroad so the ★ badge appears on the card.
               </p>
             </div>
             <div className="admin-field">
@@ -2672,6 +2713,7 @@ export function AdminPage() {
                           in_vault: Boolean(g.in_vault),
                           immersive_layout: Boolean(g.immersive_layout),
                           custom_mood_css: String(g.custom_mood_css ?? ''),
+                          gumroad_url: String(g.gumroad_url ?? ''),
                           pricing_model: (g.pricing_model ?? 'free') as GamePricingModel,
                           donation_presets_cents: donationPresetsFromUnknown(g.donation_presets_cents),
                           pwyw_min_cents: g.pwyw_min_cents ?? null,

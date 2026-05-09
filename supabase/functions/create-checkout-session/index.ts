@@ -16,7 +16,7 @@
  *   Uses `stripe_price_id` if set, else `price_cents` as ad-hoc `price_data` (min $0.50 USD).
  * - **pwyw** / **donation**: `amount_cents` is required; validated against admin minimum and Stripe floor.
  *
- * If `purchase_url` is set on the row, the hub should link externally only; this function returns 400
+ * If `gumroad_url` or `purchase_url` is set, the hub should link externally only; this function returns 400
  * if someone calls it anyway (defense in depth).
  *
  * ENVIRONMENT (Supabase Dashboard → Edge Functions → Secrets)
@@ -80,6 +80,7 @@ type GameRow = {
   pricing_model: string;
   price_cents: number | null;
   purchase_url: string | null;
+  gumroad_url: string | null;
   stripe_price_id: string | null;
   pwyw_min_cents: number | null;
   pwyw_suggested_cents: number | null;
@@ -168,7 +169,7 @@ Deno.serve(async (req) => {
     const { data: row, error: qErr } = await admin
       .from('site_games')
       .select(
-        'slug,title,published,pricing_model,price_cents,purchase_url,stripe_price_id,pwyw_min_cents,pwyw_suggested_cents',
+        'slug,title,published,pricing_model,price_cents,purchase_url,gumroad_url,stripe_price_id,pwyw_min_cents,pwyw_suggested_cents',
       )
       .eq('slug', slug)
       .eq('published', true)
@@ -183,9 +184,9 @@ Deno.serve(async (req) => {
     }
 
     const game = row as GameRow;
-    if (String(game.purchase_url ?? '').trim()) {
+    if (String(game.gumroad_url ?? '').trim() || String(game.purchase_url ?? '').trim()) {
       return jsonResponse({
-        error: 'This game uses an external checkout URL; open it from the game page link instead',
+        error: 'This game uses an external store URL; open it from the game page link instead',
       }, 400);
     }
 
