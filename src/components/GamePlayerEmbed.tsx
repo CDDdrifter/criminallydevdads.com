@@ -82,15 +82,16 @@ export function GamePlayerEmbed({ title, src }: Props) {
         allow="fullscreen; gamepad; autoplay"
         allowFullScreen
       />
-      {fsSupported ? (
+      {/* While fullscreen: no on-screen exit control — browser/OS uses Esc (desktop) or back gesture (phone). */}
+      {fsSupported && !fs ? (
         <button
           type="button"
           className="game-embed-fs-btn"
           onClick={() => void toggleFullscreen()}
-          aria-pressed={fs}
-          aria-label={fs ? 'Exit fullscreen' : 'Enter fullscreen'}
+          aria-pressed={false}
+          aria-label="Enter fullscreen"
         >
-          {fs ? 'Exit fullscreen' : '⛶ Fullscreen'}
+          ⛶ Fullscreen
         </button>
       ) : null}
     </div>
