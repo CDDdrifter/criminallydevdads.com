@@ -1,16 +1,27 @@
 import type {
+  AccessibilityConfig,
+  AnimationsConfig,
+  AudioConfig,
   BehaviorConfig,
+  BrandingConfig,
   ComponentsConfig,
+  CursorConfig,
   DevLogPost,
   EffectsConfig,
   FxIntensity,
+  GameCardsConfig,
   GameRecord,
   GameView,
+  HeroConfig,
   LayoutConfig,
   NavItem,
+  ParticlesConfig,
+  PerformanceConfig,
   SeoConfig,
+  SharingConfig,
   SitePage,
   SiteSettings,
+  SocialConfig,
   SupportButton,
   ThemeConfig,
   ThemePreset,
@@ -18,11 +29,22 @@ import type {
 } from '../types';
 import { defaultSiteSettings } from '../types';
 import {
+  defaultAccessibilityConfig,
+  defaultAnimationsConfig,
+  defaultAudioConfig,
   defaultBehaviorConfig,
+  defaultBrandingConfig,
   defaultComponentsConfig,
+  defaultCursorConfig,
   defaultEffectsConfig,
+  defaultGameCardsConfig,
+  defaultHeroConfig,
   defaultLayoutConfig,
+  defaultParticlesConfig,
+  defaultPerformanceConfig,
   defaultSeoConfig,
+  defaultSharingConfig,
+  defaultSocialConfig,
   defaultThemeConfig,
   defaultTypographyConfig,
 } from './themeDefaults';
@@ -157,6 +179,18 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
     seo: mergeDeep<SeoConfig>(defaultSeoConfig(), raw.seo),
     custom_head_html: String(raw.custom_head_html ?? ''),
     theme_presets: normalizeThemePresets(raw.theme_presets),
+    // Studio expansion (migration 017).
+    animations: mergeDeep<AnimationsConfig>(defaultAnimationsConfig(), raw.animations),
+    audio: mergeDeep<AudioConfig>(defaultAudioConfig(), raw.audio),
+    cursor: mergeDeep<CursorConfig>(defaultCursorConfig(), raw.cursor),
+    particles: mergeDeep<ParticlesConfig>(defaultParticlesConfig(), raw.particles),
+    social: mergeDeep<SocialConfig>(defaultSocialConfig(), raw.social),
+    hero: mergeDeep<HeroConfig>(defaultHeroConfig(), raw.hero),
+    game_cards: mergeDeep<GameCardsConfig>(defaultGameCardsConfig(), raw.game_cards),
+    branding: mergeDeep<BrandingConfig>(defaultBrandingConfig(), raw.branding),
+    performance: mergeDeep<PerformanceConfig>(defaultPerformanceConfig(), raw.performance),
+    accessibility: mergeDeep<AccessibilityConfig>(defaultAccessibilityConfig(), raw.accessibility),
+    sharing: mergeDeep<SharingConfig>(defaultSharingConfig(), raw.sharing),
   };
 }
 
@@ -494,6 +528,18 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     seo: merged.seo,
     custom_head_html: merged.custom_head_html,
     theme_presets: merged.theme_presets,
+    // Studio expansion (migration 017). Unknown columns drop on retry.
+    animations: merged.animations,
+    audio: merged.audio,
+    cursor: merged.cursor,
+    particles: merged.particles,
+    social: merged.social,
+    hero: merged.hero,
+    game_cards: merged.game_cards,
+    branding: merged.branding,
+    performance: merged.performance,
+    accessibility: merged.accessibility,
+    sharing: merged.sharing,
   };
   for (let attempt = 0; attempt < 16; attempt++) {
     const { error } = await supabase.from('site_settings').upsert(payload);

@@ -4,6 +4,7 @@ import { GameEmbedSection } from '../components/GameEmbedSection';
 import { GamePurchaseBlock } from '../components/GamePurchaseBlock';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
+import { ShareStrip } from '../components/ShareStrip';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchGameViewBySlug } from '../lib/cmsData';
 import { formatGamePriceLabel, gameHasGumroadUrl } from '../lib/gamePricing';
@@ -104,6 +105,8 @@ export function GamePage() {
           {game.type.toUpperCase()} · {game.slug} · {priceText}
           {game.in_vault ? ' · Vault library' : ''}
         </p>
+
+        <ShareStrip title={game.title} surface="game" />
 
         {!game.isPlayable ? (
           <div className="admin-panel danger-zone" style={{ marginBottom: 24 }}>

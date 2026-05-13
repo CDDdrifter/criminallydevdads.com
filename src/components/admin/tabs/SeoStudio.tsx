@@ -10,6 +10,7 @@
  */
 import type { SiteSettings } from '../../../types';
 import {
+  AssetUploadField,
   ColorField,
   FieldGroup,
   SelectField,
@@ -52,7 +53,7 @@ export function SeoStudio({ settings, setSettings }: Props) {
           onChange={(default_meta_description) => set({ default_meta_description })}
           help="Shown by Google + Twitter + Discord when there’s no per-page override."
         />
-        <TextField
+        <AssetUploadField
           label="OpenGraph image URL"
           value={s.og_image_url}
           onChange={(og_image_url) => set({ og_image_url })}
@@ -65,7 +66,7 @@ export function SeoStudio({ settings, setSettings }: Props) {
           onChange={(twitter_handle) => set({ twitter_handle })}
           placeholder="@criminallydevdads"
         />
-        <TextField
+        <AssetUploadField
           label="Favicon URL"
           value={s.favicon_url}
           onChange={(favicon_url) => set({ favicon_url })}

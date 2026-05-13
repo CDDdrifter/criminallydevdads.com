@@ -24,7 +24,8 @@
  * theming automatically.
  */
 import type { ChangeEvent, ReactNode } from 'react';
-import { useCallback, useId, useMemo } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
+import { uploadStudioAsset } from '../../lib/gameStorageUpload';
 
 // ---------------------------------------------------------------------------
 // Field group — dashed panel used by every studio section.
@@ -445,6 +446,117 @@ export function TextAreaField({
       />
       {help ? (
         <p className="admin-muted" style={{ marginTop: 6, fontSize: '0.78rem' }}>{help}</p>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AssetUploadField — text URL input PLUS an "Upload" button that uploads to
+// Supabase Storage and pastes the resulting public URL into the input.
+//
+// This is the "I should be able to upload anything I need" widget.
+// Any studio field that takes a URL (logo, watermark, music, hero image, …)
+// can be upgraded by swapping `TextField` → `AssetUploadField`.
+// ---------------------------------------------------------------------------
+export function AssetUploadField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  help,
+  accept = 'image/*',
+  kind = 'image',
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  help?: ReactNode;
+  /** Native `<input accept>` filter. */
+  accept?: string;
+  kind?: 'image' | 'audio' | 'video' | 'other';
+}) {
+  const id = useId();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onFile = useCallback(
+    async (file: File) => {
+      setBusy(true);
+      setError(null);
+      try {
+        const url = await uploadStudioAsset(file, { kind });
+        onChange(url);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Upload failed.';
+        setError(message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [kind, onChange],
+  );
+
+  return (
+    <div className="admin-field">
+      <label htmlFor={id}>{label}</label>
+      <div className="admin-row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <input
+          id={id}
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          style={{ flex: 1, minWidth: 220 }}
+        />
+        <label
+          className="btn-support"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 10px',
+            cursor: busy ? 'wait' : 'pointer',
+            opacity: busy ? 0.6 : 1,
+            fontSize: '0.85rem',
+          }}
+        >
+          {busy ? 'Uploading…' : 'Upload'}
+          <input
+            type="file"
+            accept={accept}
+            style={{ display: 'none' }}
+            disabled={busy}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void onFile(file);
+              // Reset so re-selecting the same file triggers another upload.
+              e.target.value = '';
+            }}
+          />
+        </label>
+        {value ? (
+          <button type="button" onClick={() => onChange('')}>
+            Clear
+          </button>
+        ) : null}
+      </div>
+      {value && /^https?:\/\//.test(value) && kind === 'image' ? (
+        <img
+          src={value}
+          alt=""
+          style={{ marginTop: 8, maxHeight: 72, borderRadius: 4, background: '#0006' }}
+        />
+      ) : null}
+      {error ? (
+        <p style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: 6 }} role="alert">
+          {error}
+        </p>
+      ) : null}
+      {help ? (
+        <p className="admin-muted" style={{ marginTop: 6, fontSize: '0.78rem' }}>
+          {help}
+        </p>
       ) : null}
     </div>
   );

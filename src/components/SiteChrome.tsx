@@ -6,6 +6,7 @@ import { showAdminNavLink } from '../lib/envPublic';
 import { supabaseConfigured } from '../lib/supabase';
 import { useAsyncMemo } from '../hooks/useAsyncMemo';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { SiteSocialFollow } from './SiteSocialFollow';
 
 const coreNav = [
   { label: 'Home', href: '/', external: false as const },
@@ -95,26 +96,59 @@ export function SiteChrome({
     };
   }, []);
 
+  // Branding & a11y skip-link surface through the Studio.
+  const brand = settings.branding;
+  const skipLinkEnabled = settings.accessibility?.skip_link_enabled;
+
   return (
     <div className={immersive ? 'container container--immersive' : 'container'}>
-      <nav className="top-nav">
-        {links.map((l) =>
-          l.external ? (
-            <a key={l.href + l.label} href={l.href} target="_blank" rel="noreferrer">
-              {l.label}
-            </a>
-          ) : (
-            <Link key={l.href + l.label} to={l.href}>
-              {l.label}
-            </Link>
-          ),
-        )}
-        {navExtra}
-        {adminLinkVisible ? (
-          <Link to="/admin">{auth.isAdmin ? 'Admin' : 'Team login'}</Link>
-        ) : null}
+      {skipLinkEnabled ? (
+        <a href="#main-content" className="studio-skip-link">
+          Skip to content
+        </a>
+      ) : null}
+      {/* Optional header logo + tagline strip — only renders when the admin
+          set a logo URL or tagline in the Brand studio. */}
+      {brand.header_logo_url || brand.header_tagline ? (
+        <div
+          className="site-header-brand"
+          style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}
+        >
+          {brand.header_logo_url ? (
+            <img
+              src={brand.header_logo_url}
+              alt={brand.site_name}
+              style={{ height: brand.header_logo_height_px || 32 }}
+            />
+          ) : null}
+          {brand.header_tagline ? (
+            <span className="admin-muted" style={{ fontSize: '0.85rem' }}>
+              {brand.header_tagline}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      <nav className="top-nav" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: 1 }}>
+          {links.map((l) =>
+            l.external ? (
+              <a key={l.href + l.label} href={l.href} target="_blank" rel="noreferrer">
+                {l.label}
+              </a>
+            ) : (
+              <Link key={l.href + l.label} to={l.href}>
+                {l.label}
+              </Link>
+            ),
+          )}
+          {navExtra}
+          {adminLinkVisible ? (
+            <Link to="/admin">{auth.isAdmin ? 'Admin' : 'Team login'}</Link>
+          ) : null}
+        </div>
+        <SiteSocialFollow slot="header" />
       </nav>
-      {children}
+      <div id="main-content">{children}</div>
     </div>
   );
 }

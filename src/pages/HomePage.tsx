@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { GameCardThumbnail } from '../components/GameCardThumbnail';
 import { SiteChrome } from '../components/SiteChrome';
+import { SiteSocialFollow } from '../components/SiteSocialFollow';
 import { useGames } from '../hooks/useGames';
 import { gameCatalogMode } from '../lib/gameCatalog';
 import { activePromoEvents } from '../lib/promoEvents';
@@ -52,9 +53,86 @@ export function HomePage() {
         />
       ) : null}
 
-      <header>
-        <div className="header-title">{settings.hero_title}</div>
-        <div className="header-subtitle">{settings.hero_subtitle}</div>
+      {/* Hero — pulls in Studio hero config (badge / logo / CTAs / scroll
+          indicator) layered on top of the original title + subtitle. */}
+      <header style={{ position: 'relative' }}>
+        {settings.hero?.badge?.enabled && settings.hero.badge.text.trim() ? (
+          <div
+            className="hero-badge"
+            style={{
+              display: 'inline-block',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              padding: '4px 10px',
+              borderRadius: 999,
+              marginBottom: 12,
+            }}
+          >
+            {settings.hero.badge.text}
+          </div>
+        ) : null}
+        {settings.hero?.logo_image_url ? (
+          <img
+            src={settings.hero.logo_image_url}
+            alt={settings.hero_title || settings.branding?.site_name || 'Site logo'}
+            className="hero-logo"
+            style={{ display: 'block', margin: '0 auto 16px', maxWidth: '100%' }}
+          />
+        ) : null}
+        {settings.hero?.show_title !== false ? (
+          <div className="header-title">{settings.hero_title}</div>
+        ) : null}
+        {settings.hero?.show_subtitle !== false ? (
+          <div className="header-subtitle">{settings.hero_subtitle}</div>
+        ) : null}
+        {settings.hero?.tagline?.trim() ? (
+          <div className="hero-tagline admin-muted" style={{ marginTop: 6 }}>
+            {settings.hero.tagline}
+          </div>
+        ) : null}
+        {settings.hero?.buttons && settings.hero.buttons.length > 0 ? (
+          <div className="hero-cta-row" style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+            {settings.hero.buttons.map((b) => {
+              const variantStyles =
+                b.variant === 'primary'
+                  ? { background: 'var(--accent)', color: '#06070d' }
+                  : b.variant === 'secondary'
+                    ? { background: 'var(--panel)', color: 'var(--text)' }
+                    : { background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)' };
+              const style: React.CSSProperties = {
+                padding: '10px 18px',
+                borderRadius: 8,
+                fontWeight: 600,
+                textDecoration: 'none',
+                ...variantStyles,
+              };
+              return b.external ? (
+                <a key={b.id} href={b.href} target="_blank" rel="noreferrer" style={style}>
+                  {b.label}
+                </a>
+              ) : (
+                <Link key={b.id} to={b.href || '/'} style={style}>
+                  {b.label}
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
+        {settings.hero?.scroll_indicator?.enabled ? (
+          <div
+            className="hero-scroll-indicator"
+            aria-hidden
+            style={{
+              textAlign: 'center',
+              marginTop: 28,
+              fontSize: '1.4rem',
+              animation: 'studio-pulse 1.6s ease-in-out infinite',
+            }}
+          >
+            {settings.hero.scroll_indicator.emoji || '↓'}
+          </div>
+        ) : null}
       </header>
 
       {promos.length > 0 ? (
@@ -186,7 +264,25 @@ export function HomePage() {
         </div>
       ) : null}
 
-      {showFooter ? <footer>{settings.footer_text}</footer> : null}
+      {showFooter ? (
+        <footer style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+          {settings.footer_text ? <div>{settings.footer_text}</div> : null}
+          {/* Auto-copyright — only renders when Brand studio enables it. */}
+          {settings.branding?.footer_show_auto_copyright ? (
+            <div className="admin-muted" style={{ fontSize: '0.82rem' }}>
+              {settings.branding.footer_copyright_template
+                .replace('{year}', String(new Date().getFullYear()))
+                .replace('{name}', settings.branding.site_name || 'Site')}
+            </div>
+          ) : null}
+          {settings.branding?.show_made_with ? (
+            <div className="admin-muted" style={{ fontSize: '0.78rem' }}>
+              Made with ❤ by indie devs.
+            </div>
+          ) : null}
+          <SiteSocialFollow slot="footer" />
+        </footer>
+      ) : null}
     </SiteChrome>
   );
 }

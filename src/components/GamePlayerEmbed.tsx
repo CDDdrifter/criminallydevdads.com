@@ -1,9 +1,16 @@
 /**
- * Game iframe + fullscreen control.
+ * GamePlayerEmbed — game iframe + fullscreen control.
  *
- * We request fullscreen on the *wrapper* (this shell), not the iframe’s document, because cross-origin
- * games cannot be fullscreen’d from the parent via the iframe’s API. Expanding the shell gives a clean
- * “whole player” fullscreen for every hosted game (local games/ or external URL).
+ * Cross-origin embedded games can't be fullscreen'd through the iframe's own
+ * API, so we fullscreen the *shell* div instead. That works on desktop +
+ * Android + iPadOS, but **iOS Safari on iPhone removed `requestFullscreen`
+ * on non-`<video>` elements**, so the native API check fails there and the
+ * button used to vanish entirely.
+ *
+ * Fix: detect iPhone and fall back to a CSS-only "pseudo fullscreen" that
+ * `position: fixed`s the shell over the whole viewport and locks body scroll.
+ * The button is always visible now — native API when possible, CSS fallback
+ * otherwise — so iPhone users get a real fullscreen-feeling experience.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -12,30 +19,75 @@ type Props = {
   src: string;
 };
 
+// Browsers that expose fullscreen with the webkit prefix (older Safari).
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+};
+
+type FullscreenElement = HTMLDivElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+};
+
 function getFullscreenElement(): Element | null {
-  const doc = document as Document & {
-    webkitFullscreenElement?: Element | null;
-  };
+  const doc = document as FullscreenDocument;
   return document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+}
+
+/**
+ * Native fullscreen on the shell. Returns `true` if it actually started a
+ * request (so callers know whether to fall back to pseudo-fullscreen).
+ */
+function tryNativeEnter(el: FullscreenElement): boolean {
+  try {
+    if (typeof el.requestFullscreen === 'function') {
+      void el.requestFullscreen();
+      return true;
+    }
+    if (typeof el.webkitRequestFullscreen === 'function') {
+      void el.webkitRequestFullscreen();
+      return true;
+    }
+  } catch {
+    // Some Safari versions throw synchronously if called outside a user gesture.
+  }
+  return false;
+}
+
+function tryNativeExit(): boolean {
+  const doc = document as FullscreenDocument;
+  try {
+    if (typeof doc.exitFullscreen === 'function') {
+      void doc.exitFullscreen();
+      return true;
+    }
+    if (typeof doc.webkitExitFullscreen === 'function') {
+      void doc.webkitExitFullscreen();
+      return true;
+    }
+  } catch {
+    /* nothing to do — pseudo-fullscreen takeover still works. */
+  }
+  return false;
+}
+
+/** iPhone (and iPod) report iOS in UA — iPad now reports as Mac, treat separately. */
+function isIPhone(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /iPhone|iPod/.test(ua);
 }
 
 export function GamePlayerEmbed({ title, src }: Props) {
   const shellRef = useRef<HTMLDivElement>(null);
+  /** Native fullscreen state (Element-based API). */
   const [fs, setFs] = useState(false);
-  const [fsSupported, setFsSupported] = useState(true);
+  /** Pseudo-fullscreen takeover state (iPhone fallback). */
+  const [pseudoFs, setPseudoFs] = useState(false);
 
   useEffect(() => {
-    const el = shellRef.current;
-    if (!el) {
-      return;
-    }
-    const can =
-      typeof el.requestFullscreen === 'function' ||
-      typeof (el as unknown as { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen === 'function';
-    setFsSupported(can);
-
     const sync = () => {
-      setFs(getFullscreenElement() === el);
+      setFs(getFullscreenElement() === shellRef.current);
     };
     document.addEventListener('fullscreenchange', sync);
     document.addEventListener('webkitfullscreenchange', sync as EventListener);
@@ -45,55 +97,62 @@ export function GamePlayerEmbed({ title, src }: Props) {
     };
   }, []);
 
-  const toggleFullscreen = useCallback(async () => {
-    const el = shellRef.current;
-    if (!el) {
-      return;
-    }
-    try {
-      if (getFullscreenElement() === el) {
-        const doc = document as Document & {
-          exitFullscreen?: () => Promise<void>;
-          webkitExitFullscreen?: () => void;
-        };
-        if (doc.exitFullscreen) {
-          await doc.exitFullscreen();
-        } else {
-          doc.webkitExitFullscreen?.();
-        }
-      } else {
-        if (el.requestFullscreen) {
-          await el.requestFullscreen();
-        } else {
-          const w = el as unknown as { webkitRequestFullscreen?: () => void };
-          w.webkitRequestFullscreen?.();
-        }
-      }
-    } catch (e) {
-      console.warn('Fullscreen not available', e);
+  // Body-scroll lock + Esc handling while in pseudo-fullscreen.
+  useEffect(() => {
+    if (!pseudoFs) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPseudoFs(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [pseudoFs]);
+
+  const enter = useCallback(() => {
+    const el = shellRef.current as FullscreenElement | null;
+    if (!el) return;
+    // iPhone Safari refuses fullscreen on non-<video>; skip straight to fallback
+    // so users still get the takeover experience.
+    if (isIPhone() || !tryNativeEnter(el)) {
+      setPseudoFs(true);
     }
   }, []);
 
+  const exit = useCallback(() => {
+    if (pseudoFs) setPseudoFs(false);
+    if (fs) tryNativeExit();
+  }, [fs, pseudoFs]);
+
+  const isActuallyFull = fs || pseudoFs;
+
   return (
-    <div className="game-embed-shell" ref={shellRef}>
+    <div
+      className={`game-embed-shell${pseudoFs ? ' game-embed-shell--pseudo-fs' : ''}`}
+      ref={shellRef}
+    >
       <iframe
         title={title}
         src={src}
-        allow="fullscreen; gamepad; autoplay"
+        // `fullscreen` permission lets the game request native FS from inside the iframe too
+        // (e.g. Godot's HTML5 templates). On iPhone the game itself usually exposes its own
+        // landscape button — our shell takeover gives them an aligned full-viewport stage.
+        allow="fullscreen; gamepad; autoplay; gyroscope; accelerometer; xr-spatial-tracking"
         allowFullScreen
       />
-      {/* While fullscreen: no on-screen exit control — browser/OS uses Esc (desktop) or back gesture (phone). */}
-      {fsSupported && !fs ? (
-        <button
-          type="button"
-          className="game-embed-fs-btn"
-          onClick={() => void toggleFullscreen()}
-          aria-pressed={false}
-          aria-label="Enter fullscreen"
-        >
-          ⛶ Fullscreen
-        </button>
-      ) : null}
+      {/* Always visible. We toggle between Enter (when not full) and Exit (when full). */}
+      <button
+        type="button"
+        className="game-embed-fs-btn"
+        onClick={isActuallyFull ? exit : enter}
+        aria-pressed={isActuallyFull}
+        aria-label={isActuallyFull ? 'Exit fullscreen' : 'Enter fullscreen'}
+      >
+        {isActuallyFull ? '✕ Exit' : '⛶ Fullscreen'}
+      </button>
     </div>
   );
 }

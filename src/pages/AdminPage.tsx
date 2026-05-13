@@ -50,10 +50,15 @@ import { unknownColumnFromPostgrestMessage } from '../lib/postgrestUnknownColumn
 import { formatSupabaseWriteError, isRlsOrPermissionError } from '../lib/supabaseWriteError';
 import { VISUAL_PRESET_OPTIONS, normalizeVisualPresetInput } from '../lib/visualPresets';
 import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
+import { BrandHeroStudio } from '../components/admin/tabs/BrandHeroStudio';
 import { ComponentsStudio } from '../components/admin/tabs/ComponentsStudio';
 import { EffectsStudio } from '../components/admin/tabs/EffectsStudio';
 import { LayoutStudio } from '../components/admin/tabs/LayoutStudio';
+import { MediaStudio } from '../components/admin/tabs/MediaStudio';
+import { MotionStudio } from '../components/admin/tabs/MotionStudio';
 import { SeoStudio } from '../components/admin/tabs/SeoStudio';
+import { SocialStudio } from '../components/admin/tabs/SocialStudio';
+import { SystemStudio } from '../components/admin/tabs/SystemStudio';
 import { ThemeStudio } from '../components/admin/tabs/ThemeStudio';
 import { TypographyStudio } from '../components/admin/tabs/TypographyStudio';
 import type {
@@ -91,7 +96,13 @@ type Tab =
   | 'layout'
   | 'components'
   | 'behavior'
-  | 'seo';
+  | 'seo'
+  // Studio expansion (migration 017).
+  | 'brand'
+  | 'social'
+  | 'motion'
+  | 'media'
+  | 'system';
 
 function describeAdminWriteFailure(err: unknown): string {
   const core = formatSupabaseWriteError(err);
@@ -1269,6 +1280,12 @@ export function AdminPage() {
             ['components', 'Components'],
             ['behavior', 'Behavior'],
             ['seo', 'SEO + Head'],
+            // Studio expansion (migration 017).
+            ['brand', 'Brand + Hero'],
+            ['social', 'Social + Sharing'],
+            ['motion', 'Motion + Cards'],
+            ['media', 'Audio + Cursor + Particles'],
+            ['system', 'Performance + A11y'],
           ] as const
         ).map(([t, label]) => (
           <button
@@ -1311,6 +1328,11 @@ export function AdminPage() {
               ['components', '🧩 Components', 'Buttons, cards, panels, modals — radii, shadows, padding.'],
               ['behavior', '🎛 Behavior', 'Feature flags, maintenance mode, default filter, hover effect.'],
               ['seo', '🔍 SEO + Head', 'Meta description, OG image, favicon, analytics, custom <head>.'],
+              ['brand', '🪪 Brand + Hero', 'Site name, header logo, footer, watermark, hero CTA buttons.'],
+              ['social', '🌐 Social + Sharing', 'Follow icons in header/footer + share buttons on game pages.'],
+              ['motion', '🎬 Motion + Cards', 'Animations, page entrance, card layout, NEW ribbon.'],
+              ['media', '🎵 Audio + Cursor + Particles', 'Bg music, hover sounds, custom cursor, floating particles.'],
+              ['system', '♿ Performance + A11y', 'Animation kill-switches, focus ring, font scaling, high contrast.'],
             ] as const
           ).map(([id, title, desc]) => (
             <button
@@ -2819,6 +2841,41 @@ export function AdminPage() {
 
       {tab === 'pages' && (
         <div className="admin-grid">
+          {/* ---- Pages vs Nav explainer ----------------------------------
+              A frequent source of confusion: "Pages" and "Nav" both put
+              buttons in the top bar. The crucial difference is **where the
+              content lives** — a Page owns content + URL + (optional) nav
+              link; a Nav item is just a link, pointing wherever you want.
+          ---------------------------------------------------------------- */}
+          <div
+            className="admin-panel"
+            style={{
+              borderStyle: 'dashed',
+              borderColor: 'rgba(115, 248, 255, 0.45)',
+              background: 'rgba(115, 248, 255, 0.04)',
+            }}
+          >
+            <strong style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', color: 'var(--accent)' }}>
+              Pages vs Nav — what goes where?
+            </strong>
+            <ul className="admin-muted" style={{ paddingLeft: 18, lineHeight: 1.6, fontSize: '0.85rem', margin: 0 }}>
+              <li>
+                <strong>Page</strong> = an actual page at <code>/#/p/&lt;slug&gt;</code> with content blocks
+                you compose here (headings, text, panels, images). Toggle <em>Show in top nav</em> to also
+                auto-add a button to the header for it. Turn that off for a hidden / unlisted page.
+              </li>
+              <li>
+                <strong>Nav</strong> = ONLY a top-bar button. Pick anywhere it points: a CMS page, a game,
+                an external URL (Discord, itch, press kit), or even a section anchor. Use this when you
+                want a header link to something you didn't author as a page (or want a second link to a
+                page using a different label).
+              </li>
+              <li>
+                Rule of thumb: <em>create a Page</em> if you're writing content;{' '}
+                <em>create a Nav item</em> if you only need a link.
+              </li>
+            </ul>
+          </div>
           <div className="admin-panel admin-grid">
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>
               Custom page (blocks)
@@ -3081,6 +3138,36 @@ export function AdminPage() {
 
       {tab === 'nav' && (
         <div className="admin-grid">
+          {/* See the matching note in the Pages tab — keep both panels in sync. */}
+          <div
+            className="admin-panel"
+            style={{
+              borderStyle: 'dashed',
+              borderColor: 'rgba(166, 115, 255, 0.45)',
+              background: 'rgba(166, 115, 255, 0.04)',
+            }}
+          >
+            <strong style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', color: 'var(--accent-2)' }}>
+              Nav vs Pages — am I in the right place?
+            </strong>
+            <ul className="admin-muted" style={{ paddingLeft: 18, lineHeight: 1.6, fontSize: '0.85rem', margin: 0 }}>
+              <li>
+                Use a <strong>Nav</strong> item when you just need a button in the top bar. It only stores
+                the label + URL — no content. Perfect for external links (Discord, itch, press kit), section
+                anchors, or duplicate links to existing pages with a different label.
+              </li>
+              <li>
+                Use a <strong>Page</strong> (in the <em>Pages</em> tab) when you're writing actual content. A
+                Page can <em>also</em> auto-generate a nav button (toggle “Show in top nav”). Hide that
+                toggle to make a “secret page” at <code>/p/&lt;slug&gt;</code> shared only by URL.
+              </li>
+              <li>
+                The header always starts with the built-in Home / Vault / Dev log links (each can be hidden
+                from the <strong>Behavior</strong> studio), then every nav-on Page, then every Nav item from
+                this tab.
+              </li>
+            </ul>
+          </div>
           <div className="admin-panel admin-grid">
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>
               Navigation (top bar)
@@ -3344,7 +3431,12 @@ export function AdminPage() {
         tab === 'layout' ||
         tab === 'components' ||
         tab === 'behavior' ||
-        tab === 'seo') && (
+        tab === 'seo' ||
+        tab === 'brand' ||
+        tab === 'social' ||
+        tab === 'motion' ||
+        tab === 'media' ||
+        tab === 'system') && (
         <>
           {tab === 'theme' && (
             <ThemeStudio
@@ -3364,6 +3456,11 @@ export function AdminPage() {
           {tab === 'components' && <ComponentsStudio settings={settings} setSettings={setSettings} />}
           {tab === 'behavior' && <BehaviorStudio settings={settings} setSettings={setSettings} />}
           {tab === 'seo' && <SeoStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'brand' && <BrandHeroStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'social' && <SocialStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'motion' && <MotionStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'media' && <MediaStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'system' && <SystemStudio settings={settings} setSettings={setSettings} />}
 
           {/* Shared save bar — sticky at the bottom of the studio shell. */}
           <div

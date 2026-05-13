@@ -692,3 +692,34 @@ export async function uploadPageSectionVideo(
   }
   return publicStorageObjectUrl(GAME_VIDEOS_BUCKET, objectPath);
 }
+
+// ---------------------------------------------------------------------------
+// Generic studio asset uploader (migration 017 Admin Studio).
+//
+// Re-uses the existing public Storage buckets (`game-thumbnails` for images,
+// `game-videos` for audio/video) and namespaces uploads under
+// `/_studio/<timestamp>-<safe-name>` so they never collide with per-game
+// covers. Returns a public URL the admin can paste into any URL field
+// (header logo, watermark, hero logo, music URL, cursor image, …).
+// ---------------------------------------------------------------------------
+
+const STUDIO_ASSET_PREFIX = '_studio';
+
+export async function uploadStudioAsset(
+  file: File,
+  opts: { kind?: 'image' | 'audio' | 'video' | 'other' } = {},
+): Promise<string> {
+  if (!supabase) throw new Error('Supabase not configured');
+  const kind = opts.kind ?? 'image';
+  const bucket = kind === 'image' ? GAME_THUMBNAILS_BUCKET : GAME_VIDEOS_BUCKET;
+  // Force a Storage-safe name: alphanum + dot + dash only.
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, '-').toLowerCase();
+  const objectPath = `${STUDIO_ASSET_PREFIX}/${Date.now()}-${safeName}`;
+  const { error } = await supabase.storage.from(bucket).upload(objectPath, file, {
+    upsert: false,
+    contentType: file.type || guessContentType(file.name) || 'application/octet-stream',
+    cacheControl: '3600',
+  });
+  if (error) throw new Error(error.message);
+  return publicStorageObjectUrl(bucket, objectPath);
+}

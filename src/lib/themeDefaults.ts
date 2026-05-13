@@ -20,12 +20,23 @@
  */
 
 import type {
+  AccessibilityConfig,
+  AnimationsConfig,
+  AudioConfig,
   BehaviorConfig,
+  BrandingConfig,
   ComponentsConfig,
+  CursorConfig,
   EffectsConfig,
+  GameCardsConfig,
   Gradient,
+  HeroConfig,
   LayoutConfig,
+  ParticlesConfig,
+  PerformanceConfig,
   SeoConfig,
+  SharingConfig,
+  SocialConfig,
   ThemeBackgrounds,
   ThemeColors,
   ThemeConfig,
@@ -331,5 +342,172 @@ export function defaultSeoConfig(): SeoConfig {
     analytics_id: '',
     analytics_script_src: '',
     theme_color: '#0d111a',
+  };
+}
+
+// ===========================================================================
+// Studio expansion (migration 017). One default-factory per JSONB column.
+// Every option is opt-in: defaults are conservative so flipping the column
+// on doesn't suddenly change the live site until the admin picks values.
+// ===========================================================================
+
+// Animations -----------------------------------------------------------------
+export function defaultAnimationsConfig(): AnimationsConfig {
+  return {
+    enabled: true,
+    page_entrance: 'fade-in',
+    page_entrance_duration_ms: 320,
+    route_fade_ms: 200,
+    card_entrance: 'none', // legacy `effects.card_in_animation` already handles this; opt-in here.
+    card_entrance_stagger_ms: 35,
+    hero_idle: 'none',
+    hero_idle_period_s: 6,
+    button_hover: 'none',
+    promo_entrance: 'slide-down',
+  };
+}
+
+// Audio ----------------------------------------------------------------------
+export function defaultAudioConfig(): AudioConfig {
+  return {
+    master_volume: 0.5,
+    muted: false,
+    background_music_url: '',
+    background_music_volume: 0.3,
+    background_music_autoplay: false,
+    background_music_loop: true,
+    hover_sound_url: '',
+    hover_sound_volume: 0.4,
+    ambient_loop_url: '',
+    ambient_loop_volume: 0.2,
+    show_mute_toggle: false,
+  };
+}
+
+// Cursor ---------------------------------------------------------------------
+export function defaultCursorConfig(): CursorConfig {
+  return {
+    enabled: false,
+    style: 'default',
+    emoji: '👑',
+    image_url: '',
+    size_px: 28,
+    trail: { enabled: false, color: 'rgba(115, 248, 255, 0.5)', length: 6, size_px: 10 },
+    click_ripple: { enabled: false, color: 'rgba(166, 115, 255, 0.45)', size_px: 80 },
+    hide_os_cursor: false,
+  };
+}
+
+// Particles ------------------------------------------------------------------
+export function defaultParticlesConfig(): ParticlesConfig {
+  return {
+    enabled: false,
+    kind: 'stars',
+    count: 60,
+    color: 'rgba(255, 255, 255, 0.65)',
+    speed_min: 0.1,
+    speed_max: 0.6,
+    size_min_px: 1,
+    size_max_px: 3,
+    direction: 'down',
+    z_index: 'behind',
+    opacity: 0.8,
+    respect_reduce_motion: true,
+  };
+}
+
+// Social ---------------------------------------------------------------------
+export function defaultSocialConfig(): SocialConfig {
+  return {
+    show_in_header: false,
+    show_in_footer: true,
+    style: 'monochrome',
+    size_px: 20,
+    links: [],
+  };
+}
+
+// Hero -----------------------------------------------------------------------
+export function defaultHeroConfig(): HeroConfig {
+  return {
+    logo_image_url: '',
+    logo_max_height_px: 96,
+    show_title: true,
+    show_subtitle: true,
+    tagline: '',
+    badge: { enabled: false, text: 'OPEN BETA', color: '#06070d', bg: '#fcc419' },
+    scroll_indicator: { enabled: false, emoji: '↓', color: 'var(--accent)' },
+    buttons: [],
+  };
+}
+
+// Game cards -----------------------------------------------------------------
+export function defaultGameCardsConfig(): GameCardsConfig {
+  return {
+    show_thumbnail: true,
+    show_type_tag: true,
+    show_description: true,
+    show_price: true,
+    title_case: 'none',
+    new_ribbon: { enabled: false, text: 'NEW', color: '#06070d', bg: '#3ecf8e', days: 7 },
+    badge: { enabled: false, symbol: '★', color: '#ffd166' },
+    layout: 'standard',
+  };
+}
+
+// Branding -------------------------------------------------------------------
+export function defaultBrandingConfig(): BrandingConfig {
+  return {
+    site_name: 'Criminally Dev Dads',
+    header_logo_url: '',
+    header_logo_height_px: 32,
+    header_tagline: '',
+    footer_copyright_template: '© {year} {name} — All rights reserved.',
+    footer_show_auto_copyright: false,
+    watermark_text: '',
+    watermark_url: '',
+    show_made_with: false,
+  };
+}
+
+// Performance ----------------------------------------------------------------
+export function defaultPerformanceConfig(): PerformanceConfig {
+  return {
+    disable_all_animations: false,
+    disable_backdrop_filter: false,
+    disable_blur_effects: false,
+    image_lazy_load: true,
+    prefetch_nav: false,
+    battery_saver: false,
+  };
+}
+
+// Accessibility --------------------------------------------------------------
+export function defaultAccessibilityConfig(): AccessibilityConfig {
+  return {
+    focus_ring_color: '#73f8ff',
+    focus_ring_width_px: 2,
+    focus_ring_style: 'solid',
+    font_size_scale: 1,
+    dyslexia_friendly_font: false,
+    always_underline_links: false,
+    high_contrast_mode: false,
+    skip_link_enabled: false,
+  };
+}
+
+// Sharing --------------------------------------------------------------------
+export function defaultSharingConfig(): SharingConfig {
+  return {
+    show_on_games: false,
+    show_on_pages: false,
+    twitter: true,
+    reddit: true,
+    bluesky: false,
+    facebook: false,
+    hacker_news: false,
+    copy_link: true,
+    email: false,
+    text_template: 'Check out {title} on {site}',
   };
 }

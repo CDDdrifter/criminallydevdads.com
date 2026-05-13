@@ -337,3 +337,16 @@ alter table site_settings add column if not exists behavior jsonb not null defau
 alter table site_settings add column if not exists seo jsonb not null default '{}'::jsonb;
 alter table site_settings add column if not exists custom_head_html text not null default '';
 alter table site_settings add column if not exists theme_presets jsonb not null default '[]'::jsonb;
+
+-- Migration 017 — second wave Admin Studio JSONB columns.
+alter table site_settings add column if not exists animations jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists audio jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists cursor jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists particles jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists social jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists hero jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists game_cards jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists branding jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists performance jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists accessibility jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists sharing jsonb not null default '{}'::jsonb;

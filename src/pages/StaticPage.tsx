@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
+import { ShareStrip } from '../components/ShareStrip';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchPageBySlug } from '../lib/cmsData';
 import { normalizeVisualPresetInput } from '../lib/visualPresets';
@@ -88,6 +89,7 @@ export function StaticPage() {
         <h1 className="header-title" style={{ fontSize: '2.2rem', textAlign: 'left' }}>
           {page.title}
         </h1>
+        <ShareStrip title={page.title} surface="page" />
         {page.sections.length > 0 ? (
           <div style={{ marginTop: 24 }}>
             <PageSectionsView sections={page.sections} />

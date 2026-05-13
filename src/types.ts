@@ -456,6 +456,258 @@ export type SeoConfig = {
   theme_color: string;
 };
 
+// ---------------------------------------------------------------------------
+// Studio expansion (migration 017). All optional / merge-on-load so older
+// settings rows keep working. Defaults live in `lib/themeDefaults.ts`.
+// ---------------------------------------------------------------------------
+
+/** Reusable animation that can be assigned to entrance / hover / idle. */
+export type AnimationKey =
+  | 'none'
+  | 'fade-in'
+  | 'slide-up'
+  | 'slide-down'
+  | 'slide-left'
+  | 'slide-right'
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'flip-in'
+  | 'wobble'
+  | 'pulse'
+  | 'shake'
+  | 'glitch'
+  | 'shimmer';
+
+export type AnimationsConfig = {
+  /** Master kill-switch (forces every studio animation to none). */
+  enabled: boolean;
+  /** Page-load animations for top-level blocks. */
+  page_entrance: AnimationKey;
+  page_entrance_duration_ms: number;
+  /** Routing fade (set 0 to disable). */
+  route_fade_ms: number;
+  /** Game cards entrance (overrides effects.card_in_animation when not 'none'). */
+  card_entrance: AnimationKey;
+  card_entrance_stagger_ms: number;
+  /** Hero title idle / loop animation. */
+  hero_idle: AnimationKey;
+  /** Idle animation period in seconds. */
+  hero_idle_period_s: number;
+  /** Button hover animation. */
+  button_hover: AnimationKey;
+  /** Promo card entrance (homepage announcements). */
+  promo_entrance: AnimationKey;
+};
+
+export type AudioConfig = {
+  /** Master gain for every studio audio clip (0..1). */
+  master_volume: number;
+  /** When true, all studio audio is muted regardless of per-clip volume. */
+  muted: boolean;
+  /** Looping background music. URL of an .mp3/.ogg/.wav. */
+  background_music_url: string;
+  background_music_volume: number;
+  /** Try to autoplay on user gesture (many browsers will block until then). */
+  background_music_autoplay: boolean;
+  /** Loops back to start automatically. */
+  background_music_loop: boolean;
+  /** Short clip played when hovering nav buttons / cards. Leave empty to disable. */
+  hover_sound_url: string;
+  hover_sound_volume: number;
+  /** Ambient pad / loop that mixes underneath music (e.g. wind, rain). */
+  ambient_loop_url: string;
+  ambient_loop_volume: number;
+  /** Show a floating mute toggle. */
+  show_mute_toggle: boolean;
+};
+
+export type CursorConfig = {
+  enabled: boolean;
+  /** What appears under the actual mouse. `default` = no override. */
+  style: 'default' | 'emoji' | 'image' | 'reticle' | 'crosshair' | 'pointer' | 'none';
+  /** Emoji string (only used when style==='emoji'). */
+  emoji: string;
+  /** Image URL (only used when style==='image'). 32x32 recommended. */
+  image_url: string;
+  /** Cursor visual size in px. */
+  size_px: number;
+  /** Coloured pulsing trail behind the cursor. */
+  trail: { enabled: boolean; color: string; length: number; size_px: number };
+  /** Click-ripple effect. */
+  click_ripple: { enabled: boolean; color: string; size_px: number };
+  /** Hide the OS cursor when a studio cursor is active. */
+  hide_os_cursor: boolean;
+};
+
+export type ParticlesConfig = {
+  enabled: boolean;
+  /** Particle kind — picks a renderer + default colours. */
+  kind:
+    | 'stars'
+    | 'snow'
+    | 'sparks'
+    | 'ash'
+    | 'matrix'
+    | 'dots'
+    | 'fireflies'
+    | 'bubbles'
+    | 'rain'
+    | 'leaves';
+  count: number;
+  color: string;
+  /** Min / max pixel speed per frame. */
+  speed_min: number;
+  speed_max: number;
+  size_min_px: number;
+  size_max_px: number;
+  /** Flow direction. */
+  direction: 'up' | 'down' | 'left' | 'right' | 'random';
+  /** Where to paint relative to content (behind / above main scroll). */
+  z_index: 'behind' | 'above';
+  /** Overall opacity (multiplied with kind-default). */
+  opacity: number;
+  /** Honour OS reduce-motion when on. */
+  respect_reduce_motion: boolean;
+};
+
+export type SocialLink = {
+  id: string;
+  platform:
+    | 'discord'
+    | 'twitter'
+    | 'bluesky'
+    | 'mastodon'
+    | 'youtube'
+    | 'twitch'
+    | 'tiktok'
+    | 'itch'
+    | 'github'
+    | 'patreon'
+    | 'kofi'
+    | 'instagram'
+    | 'email'
+    | 'rss'
+    | 'custom';
+  url: string;
+  /** Visible label override; falls back to platform name. */
+  label: string;
+};
+
+export type SocialConfig = {
+  show_in_header: boolean;
+  show_in_footer: boolean;
+  style: 'monochrome' | 'colour' | 'text';
+  size_px: number;
+  links: SocialLink[];
+};
+
+/** Hero call-to-action button (separate from `support_buttons`). */
+export type HeroButton = {
+  id: string;
+  label: string;
+  href: string;
+  external: boolean;
+  variant: 'primary' | 'secondary' | 'ghost';
+};
+
+export type HeroConfig = {
+  /** Optional logo image painted above the title. */
+  logo_image_url: string;
+  logo_max_height_px: number;
+  /** Toggle the textual title / subtitle on or off independently of layout. */
+  show_title: boolean;
+  show_subtitle: boolean;
+  /** Optional tagline shown under the subtitle. */
+  tagline: string;
+  /** Small badge / ribbon over the hero (e.g. "Open beta", "v2.0"). */
+  badge: { enabled: boolean; text: string; color: string; bg: string };
+  /** "Scroll" arrow at the bottom of the hero. */
+  scroll_indicator: { enabled: boolean; emoji: string; color: string };
+  /** CTA buttons under the hero subtitle. */
+  buttons: HeroButton[];
+};
+
+export type GameCardsConfig = {
+  show_thumbnail: boolean;
+  show_type_tag: boolean;
+  show_description: boolean;
+  show_price: boolean;
+  /** Title transform on cards. */
+  title_case: 'upper' | 'lower' | 'capitalize' | 'none';
+  /** Highlight new games with a ribbon. */
+  new_ribbon: { enabled: boolean; text: string; color: string; bg: string; days: number };
+  /** Optional star/symbol painted on bottom-right of cover. */
+  badge: { enabled: boolean; symbol: string; color: string };
+  /** Card layout style. `standard` = current grid; `compact` shrinks padding; `media` puts a big cover. */
+  layout: 'standard' | 'compact' | 'media' | 'minimal';
+};
+
+export type BrandingConfig = {
+  /** Display name used in title template + footer auto-copyright. */
+  site_name: string;
+  /** Image URL used in the top nav (next to the link list). */
+  header_logo_url: string;
+  header_logo_height_px: number;
+  /** A short tagline rendered under the logo in the top nav. */
+  header_tagline: string;
+  /** Footer copyright template — supports `{year}` and `{name}` placeholders. */
+  footer_copyright_template: string;
+  footer_show_auto_copyright: boolean;
+  /** Tiny watermark on every page (bottom-right). Leave empty for none. */
+  watermark_text: string;
+  watermark_url: string;
+  /** Show "Made with ❤" on footer (community / open source signal). */
+  show_made_with: boolean;
+};
+
+export type PerformanceConfig = {
+  /** Master kill-switch — every studio animation goes off. */
+  disable_all_animations: boolean;
+  /** Drops `backdrop-filter: blur(*)` site-wide. */
+  disable_backdrop_filter: boolean;
+  /** Drops `filter: blur(*)` on FX layers. */
+  disable_blur_effects: boolean;
+  /** Adds `loading="lazy"` to game thumbnails. */
+  image_lazy_load: boolean;
+  /** Prefetches nav routes when admin is online (uses `<link rel="prefetch">`). */
+  prefetch_nav: boolean;
+  /** Caps the hero glow / hue-shift on low-end devices. */
+  battery_saver: boolean;
+};
+
+export type AccessibilityConfig = {
+  /** Visible focus ring (keyboard a11y). */
+  focus_ring_color: string;
+  focus_ring_width_px: number;
+  focus_ring_style: 'solid' | 'dashed' | 'double';
+  /** Multiplies the base font size (1 = default). */
+  font_size_scale: number;
+  /** Swap body font for OpenDyslexic when on (Google Fonts URL). */
+  dyslexia_friendly_font: boolean;
+  /** Force all links underlined for clarity (overrides typography setting). */
+  always_underline_links: boolean;
+  /** High contrast pass: forces stronger text + thicker borders. */
+  high_contrast_mode: boolean;
+  /** Skip-to-content link visible to screen readers / keyboard. */
+  skip_link_enabled: boolean;
+};
+
+export type SharingConfig = {
+  /** Shows a strip on game detail pages. */
+  show_on_games: boolean;
+  show_on_pages: boolean;
+  /** Which platform buttons to render. */
+  twitter: boolean;
+  reddit: boolean;
+  bluesky: boolean;
+  facebook: boolean;
+  hacker_news: boolean;
+  copy_link: boolean;
+  email: boolean;
+  /** Template — `{title}` / `{url}` / `{site}` substituted at render. */
+  text_template: string;
+};
+
 /** User-saved or built-in theme preset. */
 export type ThemePreset = {
   id: string;
@@ -517,6 +769,29 @@ export type SiteSettings = {
   custom_head_html: string;
   /** Saved palettes admins can swap into. */
   theme_presets: ThemePreset[];
+  // ----- Studio expansion (migration 017) --------------------------------
+  /** Page / card / hero animation library + assignments. */
+  animations: AnimationsConfig;
+  /** Background music + hover sound + ambient loop + master volume. */
+  audio: AudioConfig;
+  /** Custom cursor, trail, click ripple. */
+  cursor: CursorConfig;
+  /** Floating particle layer (stars / snow / sparks / matrix / …). */
+  particles: ParticlesConfig;
+  /** Social media links bar in header + footer. */
+  social: SocialConfig;
+  /** Hero section — logo, badge, scroll arrow, CTA buttons. */
+  hero: HeroConfig;
+  /** Game card display flags (description / type / ribbons / layout). */
+  game_cards: GameCardsConfig;
+  /** Branding — site name, header logo, footer auto-copyright, watermark. */
+  branding: BrandingConfig;
+  /** Performance + battery saver toggles. */
+  performance: PerformanceConfig;
+  /** Accessibility — focus ring, font scaling, dyslexia font, high contrast. */
+  accessibility: AccessibilityConfig;
+  /** Share-button strip on game detail pages. */
+  sharing: SharingConfig;
 };
 
 // ---------------------------------------------------------------------------
@@ -527,11 +802,22 @@ export type SiteSettings = {
 // helpers here.
 // ---------------------------------------------------------------------------
 import {
+  defaultAccessibilityConfig,
+  defaultAnimationsConfig,
+  defaultAudioConfig,
   defaultBehaviorConfig,
+  defaultBrandingConfig,
   defaultComponentsConfig,
+  defaultCursorConfig,
   defaultEffectsConfig,
+  defaultGameCardsConfig,
+  defaultHeroConfig,
   defaultLayoutConfig,
+  defaultParticlesConfig,
+  defaultPerformanceConfig,
   defaultSeoConfig,
+  defaultSharingConfig,
+  defaultSocialConfig,
   defaultThemeConfig,
   defaultTypographyConfig,
 } from './lib/themeDefaults';
@@ -568,4 +854,15 @@ export const defaultSiteSettings: SiteSettings = {
   seo: defaultSeoConfig(),
   custom_head_html: '',
   theme_presets: [],
+  animations: defaultAnimationsConfig(),
+  audio: defaultAudioConfig(),
+  cursor: defaultCursorConfig(),
+  particles: defaultParticlesConfig(),
+  social: defaultSocialConfig(),
+  hero: defaultHeroConfig(),
+  game_cards: defaultGameCardsConfig(),
+  branding: defaultBrandingConfig(),
+  performance: defaultPerformanceConfig(),
+  accessibility: defaultAccessibilityConfig(),
+  sharing: defaultSharingConfig(),
 };

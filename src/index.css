@@ -1083,6 +1083,47 @@ body.scrolling .container {
   height: 100%;
 }
 
+/* iPhone fallback — Safari refuses native fullscreen on non-<video> elements
+   on iOS 12+ phones, so GamePlayerEmbed adds `--pseudo-fs` to position the
+   shell over the entire viewport (including under the iOS toolbar via
+   `100dvh`) and body scroll is locked from JS. */
+.game-embed-shell--pseudo-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  /* dvh accounts for Safari's collapsing URL bar — keeps the iframe to the
+     real visible area instead of falling behind the chrome. */
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #000;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+  /* Respect the iPhone notch + bottom indicator. */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.game-embed-shell--pseudo-fs iframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.game-embed-shell--pseudo-fs .game-embed-fs-btn {
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  z-index: 10000;
+}
+
 .game-embed-fs-btn {
   position: absolute;
   right: 12px;

@@ -16,10 +16,15 @@
  */
 
 import type {
+  AccessibilityConfig,
+  AnimationsConfig,
   EffectsConfig,
+  GameCardsConfig,
   Gradient,
   GradientStop,
+  HeroConfig,
   LayoutConfig,
+  PerformanceConfig,
   SiteSettings,
   ThemeBackgrounds,
   ThemeColors,
@@ -674,6 +679,156 @@ function applyOgImage(url: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Studio expansion (migration 017) — CSS builders for animations, hero,
+// game-card display flags, performance, accessibility. Runtime-only pieces
+// (audio, particles, cursor) are handled in their own components.
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders the studio animation library + per-element assignments.
+ *
+ * We always emit the @keyframes definitions so admins can switch on / off
+ * without re-laying out the stylesheet, then only emit assignment rules
+ * when the admin picked a non-`none` value.
+ */
+function buildAnimationsCss(a: AnimationsConfig): string {
+  if (!a.enabled) return '';
+  // Library: each animation maps to a @keyframes block.
+  const lib = `
+@keyframes studio-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes studio-slide-up { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes studio-slide-down { from { opacity: 0; transform: translateY(-16px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes studio-slide-left { from { opacity: 0; transform: translateX(16px) } to { opacity: 1; transform: translateX(0) } }
+@keyframes studio-slide-right { from { opacity: 0; transform: translateX(-16px) } to { opacity: 1; transform: translateX(0) } }
+@keyframes studio-zoom-in { from { opacity: 0; transform: scale(0.9) } to { opacity: 1; transform: scale(1) } }
+@keyframes studio-zoom-out { from { opacity: 0; transform: scale(1.1) } to { opacity: 1; transform: scale(1) } }
+@keyframes studio-flip-in { from { opacity: 0; transform: rotateX(70deg) } to { opacity: 1; transform: rotateX(0) } }
+@keyframes studio-wobble { 0%, 100% { transform: translateX(0) } 20% { transform: translateX(-6px) rotate(-1deg) } 40% { transform: translateX(6px) rotate(1deg) } 60% { transform: translateX(-3px) } 80% { transform: translateX(3px) } }
+@keyframes studio-pulse { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.04) } }
+@keyframes studio-shake { 0%, 100% { transform: translateX(0) } 25% { transform: translateX(-2px) } 75% { transform: translateX(2px) } }
+@keyframes studio-glitch { 0%, 95%, 100% { transform: translate(0) } 96% { transform: translate(-1px, 0) } 97% { transform: translate(1px, -1px) } 98% { transform: translate(-1px, 1px) } 99% { transform: translate(0, 0) } }
+@keyframes studio-shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
+`;
+  const assignKey = (target: string, key: AnimationsConfig['page_entrance'], duration: number) => {
+    if (key === 'none') return '';
+    return `${target} { animation: studio-${key} ${duration}ms ease both; }`;
+  };
+  const cardEntrance = a.card_entrance === 'none'
+    ? ''
+    : `.game-card { animation: studio-${a.card_entrance} ${a.page_entrance_duration_ms}ms ease both; animation-delay: calc(var(--i, 0) * ${a.card_entrance_stagger_ms}ms); }`;
+  const heroIdle = a.hero_idle === 'none'
+    ? ''
+    : `.header-title { animation: studio-${a.hero_idle} ${a.hero_idle_period_s}s ease-in-out infinite; }`;
+  const buttonHover = a.button_hover === 'none'
+    ? ''
+    : `button:hover, .btn-play:hover, .btn-download:hover, .btn-support:hover { animation: studio-${a.button_hover} 0.5s ease both; }`;
+  // The route fade is rendered by `<RouteFade>` (component-level). It still
+  // reads the duration via a CSS variable so the timing is one source of truth.
+  return `
+${lib}
+:root { --studio-route-fade-ms: ${a.route_fade_ms}ms; }
+${assignKey('.container > *', a.page_entrance, a.page_entrance_duration_ms)}
+${assignKey('.promo-card', a.promo_entrance, a.page_entrance_duration_ms)}
+${cardEntrance}
+${heroIdle}
+${buttonHover}
+`;
+}
+
+/**
+ * Hero studio — logo, badge, scroll indicator. The CTA buttons render as
+ * regular HTML inside `<HomePage>` (so they can use react-router links).
+ */
+function buildHeroCss(h: HeroConfig): string {
+  const logoRule = h.logo_image_url.trim()
+    ? `.hero-logo { max-height: ${h.logo_max_height_px}px; }`
+    : '';
+  const badgeRule = h.badge.enabled
+    ? `.hero-badge { background: ${h.badge.bg}; color: ${h.badge.color}; }`
+    : '';
+  const scrollRule = h.scroll_indicator.enabled
+    ? `.hero-scroll-indicator { color: ${h.scroll_indicator.color}; }`
+    : '';
+  return [logoRule, badgeRule, scrollRule].join('\n');
+}
+
+/** Game-card display flags translate to a few visibility rules. */
+function buildGameCardsCss(g: GameCardsConfig): string {
+  const rules: string[] = [];
+  if (!g.show_thumbnail) rules.push('.game-thumbnail { display: none !important; }');
+  if (!g.show_type_tag) rules.push('.game-type { display: none !important; }');
+  if (!g.show_description) rules.push('.game-description { display: none !important; }');
+  // Title case
+  if (g.title_case !== 'none') rules.push(`.game-title { text-transform: ${g.title_case === 'upper' ? 'uppercase' : g.title_case === 'lower' ? 'lowercase' : g.title_case === 'capitalize' ? 'capitalize' : 'none'}; }`);
+  // Layout variants
+  if (g.layout === 'compact') {
+    rules.push('.game-info { padding: 12px 14px; }');
+    rules.push('.game-thumbnail { height: 140px; }');
+  } else if (g.layout === 'minimal') {
+    rules.push('.game-card { border: 1px solid var(--card-border); box-shadow: none; }');
+    rules.push('.game-thumbnail { height: 120px; }');
+    rules.push('.game-description { display: none; }');
+  } else if (g.layout === 'media') {
+    rules.push('.game-thumbnail { height: 320px; }');
+    rules.push('.game-info { padding: 24px; }');
+  }
+  // NEW ribbon rule — the ribbon span is added by `GameCardThumbnail` and the
+  // homepage adds it only when the game falls within the date window.
+  if (g.new_ribbon.enabled) {
+    rules.push(`.game-card__new-ribbon { background: ${g.new_ribbon.bg}; color: ${g.new_ribbon.color}; }`);
+  }
+  return rules.join('\n');
+}
+
+/** Performance kill-switches. */
+function buildPerformanceCss(p: PerformanceConfig): string {
+  const rules: string[] = [];
+  if (p.disable_all_animations) {
+    rules.push(`*, *::before, *::after { animation: none !important; transition: none !important; }`);
+  }
+  if (p.disable_backdrop_filter) {
+    rules.push(`* { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }`);
+  }
+  if (p.disable_blur_effects) {
+    rules.push(`* { filter: none !important; }`);
+  }
+  if (p.battery_saver) {
+    rules.push(`body::before, body::after { animation-play-state: paused !important; opacity: 0.3 !important; }`);
+  }
+  return rules.join('\n');
+}
+
+/** Accessibility — focus ring, font-scale, dyslexia font, high contrast. */
+function buildAccessibilityCss(a: AccessibilityConfig): string {
+  const rules: string[] = [
+    `:focus-visible { outline: ${a.focus_ring_width_px}px ${a.focus_ring_style} ${a.focus_ring_color}; outline-offset: 2px; }`,
+    // Font scaling is applied via a CSS variable so studio overrides cascade.
+    `html { font-size: ${(a.font_size_scale * 100).toFixed(0)}%; }`,
+  ];
+  if (a.dyslexia_friendly_font) {
+    // Loaded via the head injector when the toggle is on.
+    rules.push(`body, p, .game-description, .prose, .admin-muted { font-family: "OpenDyslexic", "Atkinson Hyperlegible", "Inter", system-ui, sans-serif !important; }`);
+  }
+  if (a.always_underline_links) {
+    rules.push(`a { text-decoration: underline !important; }`);
+  }
+  if (a.high_contrast_mode) {
+    rules.push(`
+      :root { --text: #ffffff; --muted: #d0d3da; --border: #ffffff; }
+      body { background: #000 !important; }
+      .game-card, header, .admin-panel { border-width: 2px !important; }
+    `);
+  }
+  if (a.skip_link_enabled) {
+    rules.push(`
+      .studio-skip-link { position: absolute; left: -9999px; top: 0; padding: 8px 12px; background: var(--accent); color: #000; z-index: 99999; }
+      .studio-skip-link:focus { left: 8px; top: 8px; }
+    `);
+  }
+  return rules.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Public API.
 // ---------------------------------------------------------------------------
 
@@ -700,6 +855,12 @@ export function applyStudioTheme(settings: SiteSettings) {
     buildEffectsCss(settings.effects),
     buildBehaviorCss(settings.behavior),
     buildHoverEffectCss(settings.behavior.game_card_hover_effect),
+    // Studio expansion (migration 017).
+    buildAnimationsCss(settings.animations),
+    buildHeroCss(settings.hero),
+    buildGameCardsCss(settings.game_cards),
+    buildPerformanceCss(settings.performance),
+    buildAccessibilityCss(settings.accessibility),
   ];
   style.textContent = parts.filter(Boolean).join('\n\n');
 
@@ -707,10 +868,51 @@ export function applyStudioTheme(settings: SiteSettings) {
   applyGoogleFonts(settings.typography.google_fonts_url.trim());
   applyAnalytics(settings.seo);
   applyHeadHtml(settings.custom_head_html);
-  applyFavicon(settings.seo.favicon_url);
+  applyFavicon(settings.seo.favicon_url || settings.branding.header_logo_url);
   applyThemeColor(settings.seo.theme_color);
   applyMetaDescription(settings.seo.default_meta_description);
   applyOgImage(settings.seo.og_image_url);
+  applyDyslexiaFont(settings.accessibility.dyslexia_friendly_font);
+  applyDocumentTitleBranding(settings.branding.site_name, settings.seo.title_template);
+}
+
+// ---------------------------------------------------------------------------
+// Extra side effects for migration 017.
+// ---------------------------------------------------------------------------
+
+const DYSLEXIA_LINK_ID = 'studio-dyslexia-font';
+
+function applyDyslexiaFont(enabled: boolean) {
+  if (typeof document === 'undefined') return;
+  const existing = document.getElementById(DYSLEXIA_LINK_ID);
+  if (!enabled) {
+    existing?.remove();
+    return;
+  }
+  if (existing) return;
+  const link = document.createElement('link');
+  link.id = DYSLEXIA_LINK_ID;
+  link.rel = 'stylesheet';
+  // Atkinson Hyperlegible is hosted on Google Fonts and is widely recommended
+  // for readability — works as a graceful drop-in for OpenDyslexic which is
+  // not on a CDN we can guarantee.
+  link.href = 'https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap';
+  document.head.appendChild(link);
+}
+
+/**
+ * The branding `site_name` becomes the part of the `<title>` we substitute
+ * for `%s` in the seo `title_template`. Pages set `document.title` directly
+ * — this is just the fallback for when the homepage loads.
+ */
+function applyDocumentTitleBranding(siteName: string, template: string) {
+  if (typeof document === 'undefined') return;
+  if (!siteName.trim()) return;
+  // Only rewrite if the page title still matches the default — don't trash
+  // a per-page set title set by a `<Helmet>`-style component.
+  if (document.title === 'Loading…' || document.title === '') {
+    document.title = template.replace('%s', siteName);
+  }
 }
 
 /** Removes everything `applyStudioTheme` set. Useful for tests / unmounts. */

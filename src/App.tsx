@@ -13,8 +13,12 @@ import { ClickSound } from './components/ClickSound';
 import { FxBackdrop } from './components/FxBackdrop';
 import { GlobalHtmlFxSync } from './components/GlobalHtmlFxSync';
 import { MaintenanceGate } from './components/MaintenanceGate';
+import { SiteAudio } from './components/SiteAudio';
+import { SiteCursor } from './components/SiteCursor';
 import { SiteCustomCss } from './components/SiteCustomCss';
+import { SiteParticles } from './components/SiteParticles';
 import { SiteThemeApply } from './components/SiteThemeApply';
+import { SiteWatermark } from './components/SiteWatermark';
 import { AdminPage } from './pages/AdminPage';
 import { DevLogListPage } from './pages/DevLogListPage';
 import { DevLogPostPage } from './pages/DevLogPostPage';
@@ -33,7 +37,11 @@ export function App() {
       <SiteThemeApply />
       <SiteCustomCss />
       <ClickSound />
+      <SiteAudio />
+      <SiteCursor />
+      <SiteParticles />
       <FxBackdrop />
+      <SiteWatermark />
       <MaintenanceGate>
       <Routes>
         <Route path="/" element={<HomePage />} />
