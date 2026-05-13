@@ -11,7 +11,14 @@ import { useSiteSettings } from '../hooks/useSiteSettings';
 export function HomePage() {
   const { games, loading, error } = useGames();
   const { settings } = useSiteSettings();
-  const [filter, setFilter] = useState<'all' | 'game' | 'asset'>('all');
+  // Default filter — admin can pin a non-"all" filter from the Behavior tab.
+  const [filter, setFilter] = useState<'all' | 'game' | 'asset'>(
+    settings.behavior?.default_game_filter ?? 'all',
+  );
+  const showFilterBtns = settings.behavior?.show_filter_buttons !== false;
+  const showSupport = settings.behavior?.show_support_section !== false;
+  const showFooter = settings.behavior?.show_footer !== false;
+  const intro = settings.behavior?.homepage_intro;
 
   useEffect(() => {
     delete document.documentElement.dataset.visualPreset;
@@ -35,6 +42,16 @@ export function HomePage() {
 
   return (
     <SiteChrome>
+      {/* Optional admin-managed HTML banner (Behavior → Homepage intro). */}
+      {intro?.enabled && intro.html.trim() ? (
+        <section
+          className="admin-panel"
+          style={{ marginBottom: 16 }}
+          // Trusted admin content — same trust model as `custom_css` / `custom_head_html`.
+          dangerouslySetInnerHTML={{ __html: intro.html }}
+        />
+      ) : null}
+
       <header>
         <div className="header-title">{settings.hero_title}</div>
         <div className="header-subtitle">{settings.hero_subtitle}</div>
@@ -64,25 +81,27 @@ export function HomePage() {
         </section>
       ) : null}
 
-      <div className="filter-buttons">
-        <button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
-          ALL
-        </button>
-        <button
-          type="button"
-          className={filter === 'game' ? 'active' : ''}
-          onClick={() => setFilter('game')}
-        >
-          GAMES
-        </button>
-        <button
-          type="button"
-          className={filter === 'asset' ? 'active' : ''}
-          onClick={() => setFilter('asset')}
-        >
-          ASSETS
-        </button>
-      </div>
+      {showFilterBtns ? (
+        <div className="filter-buttons">
+          <button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
+            ALL
+          </button>
+          <button
+            type="button"
+            className={filter === 'game' ? 'active' : ''}
+            onClick={() => setFilter('game')}
+          >
+            GAMES
+          </button>
+          <button
+            type="button"
+            className={filter === 'asset' ? 'active' : ''}
+            onClick={() => setFilter('asset')}
+          >
+            ASSETS
+          </button>
+        </div>
+      ) : null}
 
       {loading && <div className="empty-state">Loading catalog…</div>}
       {error && <div className="empty-state">Error: {error}</div>}
@@ -134,38 +153,40 @@ export function HomePage() {
         </div>
       )}
 
-      <div className="support-section">
-        <div className="support-title">{settings.support_title}</div>
-        <p style={{ marginBottom: 30, color: '#aaa', fontSize: '0.95rem' }} className="prose">
-          {settings.support_body}
-        </p>
-        <div className="support-buttons">
-          {supportButtons.map((btn) => {
-            const href = btn.href.trim();
-            if (!href) {
+      {showSupport ? (
+        <div className="support-section">
+          <div className="support-title">{settings.support_title}</div>
+          <p style={{ marginBottom: 30, color: '#aaa', fontSize: '0.95rem' }} className="prose">
+            {settings.support_body}
+          </p>
+          <div className="support-buttons">
+            {supportButtons.map((btn) => {
+              const href = btn.href.trim();
+              if (!href) {
+                return (
+                  <button key={btn.id} type="button" className="btn-support" disabled style={{ opacity: 0.5 }}>
+                    {btn.label}
+                  </button>
+                );
+              }
+              if (btn.external) {
+                return (
+                  <a key={btn.id} href={href} target="_blank" rel="noreferrer" className="btn-support">
+                    {btn.label}
+                  </a>
+                );
+              }
               return (
-                <button key={btn.id} type="button" className="btn-support" disabled style={{ opacity: 0.5 }}>
+                <Link key={btn.id} to={href} className="btn-support">
                   {btn.label}
-                </button>
+                </Link>
               );
-            }
-            if (btn.external) {
-              return (
-                <a key={btn.id} href={href} target="_blank" rel="noreferrer" className="btn-support">
-                  {btn.label}
-                </a>
-              );
-            }
-            return (
-              <Link key={btn.id} to={href} className="btn-support">
-                {btn.label}
-              </Link>
-            );
-          })}
+            })}
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <footer>{settings.footer_text}</footer>
+      {showFooter ? <footer>{settings.footer_text}</footer> : null}
     </SiteChrome>
   );
 }

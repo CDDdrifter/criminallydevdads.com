@@ -149,6 +149,322 @@ export type DevLogPost = {
   published_at: string;
 };
 
+// ---------------------------------------------------------------------------
+// Admin Studio — Theme system
+// ---------------------------------------------------------------------------
+//
+// The "Studio" admin tabs (Theme, Effects, Typography, Layout, Components,
+// Behavior, SEO) drive these nested configs. They are persisted as JSONB on
+// `site_settings` (migration 016) and applied to the live document by
+// `lib/themeApply.ts` via the `<SiteThemeApply />` component.
+//
+// IMPORTANT: every field is optional in the *Partial variants. The frontend
+// uses `mergeThemeConfig()` / `themeDefaults` to fill missing fields so that
+// older settings rows (or rows written before migration 016) keep working.
+// ---------------------------------------------------------------------------
+
+/** Single colour stop inside a gradient (position 0..100). */
+export type GradientStop = {
+  id: string;
+  color: string;
+  /** 0..100 along the gradient axis (linear) or radius (radial/conic). */
+  position: number;
+};
+
+/** Gradient definition the studio can build / render to CSS. */
+export type Gradient = {
+  type: 'linear' | 'radial' | 'conic';
+  /** Degrees for `linear` / `conic` (ignored for `radial`). */
+  angle: number;
+  /** Sized as `<radius_x> <radius_y>` for `radial`. e.g. `'1100px 700px'`. */
+  size: string;
+  /** Position for `radial` / `conic`. e.g. `'85% 10%'`. */
+  position: string;
+  /** Ordered colour stops (sorted by `position` when rendered). */
+  stops: GradientStop[];
+};
+
+/** Theme tokens — every named colour the site can paint. */
+export type ThemeColors = {
+  bg_0: string;
+  bg_1: string;
+  panel: string;
+  panel_strong: string;
+  text: string;
+  text_strong: string;
+  muted: string;
+  accent: string;
+  accent_2: string;
+  danger: string;
+  success: string;
+  warning: string;
+  border: string;
+  /** Hyperlinks and inline `<a>` elements. */
+  link: string;
+  link_hover: string;
+  /** Game card / panel chrome. */
+  card_bg_a: string;
+  card_bg_b: string;
+  card_border: string;
+  card_hover_border: string;
+  /** Header (hero block) chrome. */
+  header_bg: string;
+  header_border: string;
+  header_title_color: string;
+  header_subtitle_color: string;
+  /** Footer text colour. */
+  footer_text_color: string;
+  /** Top nav button colours. */
+  nav_button_bg: string;
+  nav_button_text: string;
+  nav_button_border: string;
+  nav_button_hover_bg_a: string;
+  nav_button_hover_bg_b: string;
+  nav_button_hover_text: string;
+  /** Generic button colours (filter / form buttons). */
+  button_bg: string;
+  button_text: string;
+  button_border: string;
+  button_hover_bg_a: string;
+  button_hover_bg_b: string;
+  /** Game type pill on cards. */
+  tag_bg_a: string;
+  tag_bg_b: string;
+  tag_text: string;
+  /** Play / download buttons on game cards. */
+  play_btn_a: string;
+  play_btn_b: string;
+  play_btn_text: string;
+  download_btn_a: string;
+  download_btn_b: string;
+  download_btn_text: string;
+  /** Big homepage "support" call-to-action button. */
+  support_btn_a: string;
+  support_btn_b: string;
+  support_btn_text: string;
+};
+
+/** Body background: a base gradient plus optional radial accent overlay and image. */
+export type ThemeBackgrounds = {
+  body_gradient: Gradient;
+  body_radial_accent: {
+    enabled: boolean;
+    color: string;
+    opacity: number;
+    size: string;
+    position: string;
+    falloff: number;
+  };
+  /** Optional background image URL (rendered behind FX layers). */
+  body_image_url: string;
+  body_image_size: 'cover' | 'contain' | 'auto' | 'repeat';
+  body_image_blend:
+    | 'normal'
+    | 'screen'
+    | 'overlay'
+    | 'multiply'
+    | 'difference'
+    | 'soft-light'
+    | 'hard-light';
+  body_image_opacity: number;
+  body_image_fixed: boolean;
+  /** Tertiary radial flare in the header. */
+  header_glow: {
+    enabled: boolean;
+    color: string;
+    opacity: number;
+    size: string;
+    position: string;
+  };
+};
+
+export type ThemeConfig = {
+  /** Master toggle: when off, the studio theme is ignored and the legacy preset CSS applies. */
+  enabled: boolean;
+  colors: ThemeColors;
+  background: ThemeBackgrounds;
+  /** A short label admin sees in the Theme tab heading. */
+  display_name: string;
+};
+
+/** Fine-grained per-effect controls. The legacy `fx_*` booleans gate visibility; these tune look. */
+export type EffectsConfig = {
+  scanlines: {
+    enabled: boolean;
+    opacity: number;
+    line_color: string;
+    gap_color: string;
+    spacing_px: number;
+  };
+  noise: {
+    enabled: boolean;
+    opacity: number;
+    size_px: number;
+    speed_s: number;
+    color: string;
+  };
+  vignette: {
+    enabled: boolean;
+    opacity: number;
+    inner_stop: number;
+    color: string;
+  };
+  hue_shift: {
+    enabled: boolean;
+    opacity: number;
+    speed_s: number;
+    color_a: string;
+    color_b: string;
+    color_c: string;
+    blend: 'screen' | 'overlay' | 'multiply' | 'soft-light' | 'hard-light' | 'normal';
+  };
+  cursor_spotlight: {
+    enabled: boolean;
+    color: string;
+    opacity: number;
+    radius_x_px: number;
+    radius_y_px: number;
+  };
+  title_glitch: { enabled: boolean; intensity_px: number; period_s: number };
+  card_in_animation: { enabled: boolean; duration_ms: number; stagger_ms: number };
+  card_hover: {
+    enabled: boolean;
+    lift_px: number;
+    skew_deg: number;
+    glow_color: string;
+    glow_strength: number;
+    shine: boolean;
+  };
+  scroll_jitter: { enabled: boolean };
+  edge_sweep: { enabled: boolean; color: string; period_s: number };
+  reduce_motion: { honor_prefers: boolean };
+  /** Optional extra CSS appended after all generated theme rules (advanced). */
+  custom_css: string;
+};
+
+export type TypographyConfig = {
+  /** Imported with `<link href=…>` before any other stylesheet. Leave empty to disable. */
+  google_fonts_url: string;
+  font_family_base: string;
+  font_family_heading: string;
+  font_family_mono: string;
+  base_font_size_px: number;
+  base_line_height: number;
+  letter_spacing_em: number;
+  heading_letter_spacing_em: number;
+  heading_text_transform: 'uppercase' | 'none' | 'lowercase' | 'capitalize';
+  heading_weight: number;
+  body_weight: number;
+  hero_title_size_rem: number;
+  hero_subtitle_size_rem: number;
+  card_title_size_rem: number;
+  link_underline: 'always' | 'hover' | 'never';
+  /** CSS `text-shadow` value applied to the hero title. */
+  heading_text_shadow: string;
+};
+
+export type LayoutConfig = {
+  container_max_width_px: number;
+  container_padding_px: number;
+  base_padding_px: number;
+  border_radius_panel_px: number;
+  border_radius_card_px: number;
+  border_radius_button_px: number;
+  card_min_width_px: number;
+  card_gap_px: number;
+  /** Card image height in pixels (rendered with `object-fit: cover`). */
+  card_thumbnail_height_px: number;
+  /** Forced grid columns (0 = auto-fill from `card_min_width_px`). */
+  card_force_columns: number;
+  header_padding_v_px: number;
+  header_padding_h_px: number;
+  header_margin_bottom_px: number;
+  header_text_align: 'left' | 'center' | 'right';
+  nav_alignment: 'flex-start' | 'center' | 'flex-end' | 'space-between';
+  nav_gap_px: number;
+  nav_position: 'top' | 'sticky';
+  footer_text_align: 'left' | 'center' | 'right';
+  footer_padding_px: number;
+};
+
+export type ComponentsConfig = {
+  card: {
+    shadow: string;
+    hover_shadow: string;
+    border_width_px: number;
+    padding_px: number;
+    title_letter_spacing_em: number;
+  };
+  button: {
+    padding_v_px: number;
+    padding_h_px: number;
+    font_size_rem: number;
+    text_transform: 'uppercase' | 'none' | 'lowercase';
+    /** Y-translation in px on `:hover` (mirrors `.btn-play:hover`). */
+    hover_translate_y_px: number;
+    border_width_px: number;
+    letter_spacing_em: number;
+  };
+  panel: {
+    blur_px: number;
+    border_width_px: number;
+    shadow: string;
+  };
+  modal: {
+    backdrop_blur_px: number;
+    backdrop_color: string;
+    width_max_px: number;
+  };
+  promo_card: {
+    accent_border: boolean;
+    title_uppercase: boolean;
+  };
+};
+
+export type BehaviorConfig = {
+  show_vault_link: boolean;
+  show_devlog_link: boolean;
+  show_filter_buttons: boolean;
+  show_support_section: boolean;
+  show_footer: boolean;
+  show_admin_link_in_nav: boolean;
+  /** Default tab in homepage filter. */
+  default_game_filter: 'all' | 'game' | 'asset';
+  /** When true, all hub routes show the maintenance page below. */
+  maintenance_mode: { enabled: boolean; title: string; message: string; allow_admin_bypass: boolean };
+  /** Optional HTML banner shown above the hero (trusted content). */
+  homepage_intro: { enabled: boolean; html: string };
+  /** Picks one of several CSS hover effects for game cards. */
+  game_card_hover_effect: 'lift' | 'shine' | 'glow' | 'tilt' | 'pulse' | 'none';
+  /** Auto-play preview videos on the homepage cards. */
+  homepage_autoplay_previews: boolean;
+  /** Sound that plays when nav / play buttons are clicked (URL). Leave empty to disable. */
+  click_sound_url: string;
+  click_sound_volume: number;
+};
+
+export type SeoConfig = {
+  /** `%s` is replaced with the page title; e.g. `"%s — Criminally Dev Dads"`. */
+  title_template: string;
+  default_meta_description: string;
+  og_image_url: string;
+  twitter_handle: string;
+  favicon_url: string;
+  analytics_provider: 'none' | 'umami' | 'plausible' | 'ga4' | 'custom';
+  analytics_id: string;
+  analytics_script_src: string;
+  theme_color: string;
+};
+
+/** User-saved or built-in theme preset. */
+export type ThemePreset = {
+  id: string;
+  name: string;
+  description: string;
+  /** Snapshot of the theme tokens; merged into ThemeConfig when applied. */
+  theme: Pick<ThemeConfig, 'colors' | 'background' | 'display_name'>;
+};
+
 export type SiteSettings = {
   hero_title: string;
   hero_subtitle: string;
@@ -182,7 +498,43 @@ export type SiteSettings = {
   promo_events: SiteEvent[];
   /** Injected globally — powerful; admin trust model. */
   custom_css: string;
+  // ----- Admin Studio (migration 016) ------------------------------------
+  /** Full theme tokens — driven by Theme + Backgrounds studio tabs. */
+  theme: ThemeConfig;
+  /** Per-effect fine controls — driven by Effects studio tab. */
+  effects: EffectsConfig;
+  /** Typography — driven by Typography studio tab. */
+  typography: TypographyConfig;
+  /** Layout dimensions — driven by Layout studio tab. */
+  layout: LayoutConfig;
+  /** Component look — driven by Components studio tab. */
+  components: ComponentsConfig;
+  /** Feature flags + maintenance mode + on-page behavior. */
+  behavior: BehaviorConfig;
+  /** SEO meta + analytics provider config. */
+  seo: SeoConfig;
+  /** Raw HTML injected into <head>. Trusted admin content. */
+  custom_head_html: string;
+  /** Saved palettes admins can swap into. */
+  theme_presets: ThemePreset[];
 };
+
+// ---------------------------------------------------------------------------
+// Defaults live in `lib/themeDefaults.ts` for tree-shake friendliness — but
+// `defaultSiteSettings` needs to be constructible from this file alone (the
+// SiteSettingsProvider imports it as a fallback when Supabase is offline).
+// Keep `themeDefaults.ts` as the source of truth and re-export the *Default
+// helpers here.
+// ---------------------------------------------------------------------------
+import {
+  defaultBehaviorConfig,
+  defaultComponentsConfig,
+  defaultEffectsConfig,
+  defaultLayoutConfig,
+  defaultSeoConfig,
+  defaultThemeConfig,
+  defaultTypographyConfig,
+} from './lib/themeDefaults';
 
 export const defaultSiteSettings: SiteSettings = {
   hero_title: '⚔️ CRIMINALLY DEV DADS',
@@ -207,4 +559,13 @@ export const defaultSiteSettings: SiteSettings = {
   fx_intensity: 'normal',
   promo_events: [],
   custom_css: '',
+  theme: defaultThemeConfig(),
+  effects: defaultEffectsConfig(),
+  typography: defaultTypographyConfig(),
+  layout: defaultLayoutConfig(),
+  components: defaultComponentsConfig(),
+  behavior: defaultBehaviorConfig(),
+  seo: defaultSeoConfig(),
+  custom_head_html: '',
+  theme_presets: [],
 };

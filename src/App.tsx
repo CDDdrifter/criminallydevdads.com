@@ -9,9 +9,12 @@
  * Dynamic CMS-backed pages use `/p/:slug` → StaticPage (content from DB when configured).
  */
 import { HashRouter, Route, Routes } from 'react-router-dom';
+import { ClickSound } from './components/ClickSound';
 import { FxBackdrop } from './components/FxBackdrop';
 import { GlobalHtmlFxSync } from './components/GlobalHtmlFxSync';
+import { MaintenanceGate } from './components/MaintenanceGate';
 import { SiteCustomCss } from './components/SiteCustomCss';
+import { SiteThemeApply } from './components/SiteThemeApply';
 import { AdminPage } from './pages/AdminPage';
 import { DevLogListPage } from './pages/DevLogListPage';
 import { DevLogPostPage } from './pages/DevLogPostPage';
@@ -27,8 +30,11 @@ export function App() {
   return (
     <HashRouter>
       <GlobalHtmlFxSync />
+      <SiteThemeApply />
       <SiteCustomCss />
+      <ClickSound />
       <FxBackdrop />
+      <MaintenanceGate>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/vault" element={<VaultPage />} />
@@ -42,6 +48,7 @@ export function App() {
         <Route path="/purchase/terms" element={<PurchaseTermsPage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
+      </MaintenanceGate>
     </HashRouter>
   );
 }

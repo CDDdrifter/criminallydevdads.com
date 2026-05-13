@@ -322,3 +322,18 @@ alter table site_games add column if not exists custom_mood_css text not null de
 
 alter table site_pages add column if not exists immersive_layout boolean not null default false;
 alter table site_pages add column if not exists custom_mood_css text not null default '';
+
+-- ===========================================================================
+-- Admin Studio (migration 016) — see supabase/migrations/016_admin_overhaul.sql
+-- All columns are JSONB blobs with sensible defaults so the upgrade is
+-- additive. Shapes live in src/types.ts (ThemeConfig, EffectsConfig, …).
+-- ===========================================================================
+alter table site_settings add column if not exists theme jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists effects jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists typography jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists layout jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists components jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists behavior jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists seo jsonb not null default '{}'::jsonb;
+alter table site_settings add column if not exists custom_head_html text not null default '';
+alter table site_settings add column if not exists theme_presets jsonb not null default '[]'::jsonb;

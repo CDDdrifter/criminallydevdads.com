@@ -1,14 +1,31 @@
 import type {
+  BehaviorConfig,
+  ComponentsConfig,
   DevLogPost,
+  EffectsConfig,
   FxIntensity,
   GameRecord,
   GameView,
+  LayoutConfig,
   NavItem,
+  SeoConfig,
   SitePage,
   SiteSettings,
   SupportButton,
+  ThemeConfig,
+  ThemePreset,
+  TypographyConfig,
 } from '../types';
 import { defaultSiteSettings } from '../types';
+import {
+  defaultBehaviorConfig,
+  defaultComponentsConfig,
+  defaultEffectsConfig,
+  defaultLayoutConfig,
+  defaultSeoConfig,
+  defaultThemeConfig,
+  defaultTypographyConfig,
+} from './themeDefaults';
 import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePricing';
 import { supabase, supabaseConfigured } from './supabase';
 import { normalizePageSections } from './pageSections';
@@ -17,6 +34,64 @@ import { fetchStaticJson } from './staticCms';
 import { normalizePromoEvents } from './promoEvents';
 import { normalizeVisualPresetInput } from './visualPresets';
 import { unknownColumnFromPostgrestMessage } from './postgrestUnknownColumn';
+
+// ---------------------------------------------------------------------------
+// Studio config normalization helpers.
+//
+// Each studio config is stored as a JSONB blob in `site_settings`. When the
+// CMS row was written before migration 016 (or simply omits a field), we want
+// to fall back to the canonical defaults from `themeDefaults.ts` so the front
+// end never crashes on a missing key.
+//
+// `mergeDeep` is intentionally shallow-per-key — JSONB studio configs are
+// nested but never reach more than 2-3 levels deep, and we don't want to
+// silently merge arrays. Top-level objects are merged; primitives + arrays
+// from the source overwrite the destination.
+// ---------------------------------------------------------------------------
+function mergeDeep<T>(defaults: T, override: unknown): T {
+  if (!override || typeof override !== 'object' || Array.isArray(override)) {
+    return defaults;
+  }
+  if (!defaults || typeof defaults !== 'object') {
+    return (override as T) ?? defaults;
+  }
+  const out: Record<string, unknown> = { ...(defaults as Record<string, unknown>) };
+  for (const [k, v] of Object.entries(override as Record<string, unknown>)) {
+    const dv = (defaults as Record<string, unknown>)[k];
+    if (v && typeof v === 'object' && !Array.isArray(v) && dv && typeof dv === 'object' && !Array.isArray(dv)) {
+      out[k] = mergeDeep(dv, v);
+    } else if (v !== undefined && v !== null) {
+      out[k] = v;
+    }
+  }
+  return out as T;
+}
+
+function normalizeThemePresets(raw: unknown): ThemePreset[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ThemePreset[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const r = item as Record<string, unknown>;
+    const id = String(r.id ?? '').trim();
+    const name = String(r.name ?? '').trim() || 'Untitled preset';
+    if (!id) continue;
+    const themeBlob = r.theme as Record<string, unknown> | undefined;
+    if (!themeBlob || typeof themeBlob !== 'object') continue;
+    const themeBase = defaultThemeConfig();
+    out.push({
+      id,
+      name,
+      description: String(r.description ?? ''),
+      theme: {
+        display_name: String((themeBlob as { display_name?: unknown }).display_name ?? name),
+        colors: mergeDeep(themeBase.colors, (themeBlob as { colors?: unknown }).colors),
+        background: mergeDeep(themeBase.background, (themeBlob as { background?: unknown }).background),
+      },
+    });
+  }
+  return out;
+}
 
 function normalizeFxIntensity(raw: unknown): FxIntensity {
   const s = String(raw ?? '').toLowerCase();
@@ -73,6 +148,15 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
     fx_intensity: normalizeFxIntensity(raw.fx_intensity),
     promo_events: normalizePromoEvents(raw.promo_events),
     custom_css: String(raw.custom_css ?? defaultSiteSettings.custom_css),
+    theme: mergeDeep<ThemeConfig>(defaultThemeConfig(), raw.theme),
+    effects: mergeDeep<EffectsConfig>(defaultEffectsConfig(), raw.effects),
+    typography: mergeDeep<TypographyConfig>(defaultTypographyConfig(), raw.typography),
+    layout: mergeDeep<LayoutConfig>(defaultLayoutConfig(), raw.layout),
+    components: mergeDeep<ComponentsConfig>(defaultComponentsConfig(), raw.components),
+    behavior: mergeDeep<BehaviorConfig>(defaultBehaviorConfig(), raw.behavior),
+    seo: mergeDeep<SeoConfig>(defaultSeoConfig(), raw.seo),
+    custom_head_html: String(raw.custom_head_html ?? ''),
+    theme_presets: normalizeThemePresets(raw.theme_presets),
   };
 }
 
@@ -398,6 +482,18 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     fx_intensity: normalizeFxIntensity(merged.fx_intensity),
     promo_events: merged.promo_events,
     custom_css: merged.custom_css,
+    // Studio columns (migration 016). The retry loop below silently drops
+    // any of these if the DB hasn't been migrated yet, so this is forward-
+    // compatible without forcing the user to run the SQL immediately.
+    theme: merged.theme,
+    effects: merged.effects,
+    typography: merged.typography,
+    layout: merged.layout,
+    components: merged.components,
+    behavior: merged.behavior,
+    seo: merged.seo,
+    custom_head_html: merged.custom_head_html,
+    theme_presets: merged.theme_presets,
   };
   for (let attempt = 0; attempt < 16; attempt++) {
     const { error } = await supabase.from('site_settings').upsert(payload);

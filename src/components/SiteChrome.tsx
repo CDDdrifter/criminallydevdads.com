@@ -5,6 +5,7 @@ import { fetchNavItems, fetchSitePages } from '../lib/cmsData';
 import { showAdminNavLink } from '../lib/envPublic';
 import { supabaseConfigured } from '../lib/supabase';
 import { useAsyncMemo } from '../hooks/useAsyncMemo';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const coreNav = [
   { label: 'Home', href: '/', external: false as const },
@@ -12,7 +13,17 @@ const coreNav = [
   { label: 'Dev log', href: '/devlog', external: false as const },
 ];
 
+/**
+ * Builds the top-nav link list.
+ *
+ * Behaviour flags from `SiteSettings.behavior` can hide the built-in Vault /
+ * Dev log entries — handy when those routes aren't ready for the public yet.
+ * CMS pages with `show_in_nav` and custom nav items always render regardless.
+ */
 export function useSiteNavLinks() {
+  const { settings } = useSiteSettings();
+  const showVault = settings.behavior?.show_vault_link !== false;
+  const showDevlog = settings.behavior?.show_devlog_link !== false;
   const computed = useAsyncMemo(async () => {
     const [nav, pages] = await Promise.all([fetchNavItems(), fetchSitePages()]);
     const fromPages = pages
@@ -23,12 +34,17 @@ export function useSiteNavLinks() {
       href: n.href,
       external: n.external,
     }));
+    const filteredCore = coreNav.filter((item) => {
+      if (item.href === '/vault') return showVault;
+      if (item.href === '/devlog') return showDevlog;
+      return true;
+    });
     if (!supabaseConfigured || (nav.length === 0 && fromPages.length === 0)) {
-      return coreNav;
+      return filteredCore;
     }
     const seen = new Set<string>();
     const out: { label: string; href: string; external: boolean }[] = [];
-    for (const item of [...coreNav, ...fromPages, ...custom]) {
+    for (const item of [...filteredCore, ...fromPages, ...custom]) {
       const key = `${item.href}|${item.label}`;
       if (seen.has(key)) {
         continue;
@@ -37,7 +53,7 @@ export function useSiteNavLinks() {
       out.push(item);
     }
     return out;
-  }, []);
+  }, [showVault, showDevlog]);
   return useMemo(() => computed ?? coreNav, [computed]);
 }
 
@@ -53,6 +69,9 @@ export function SiteChrome({
 }) {
   const links = useSiteNavLinks();
   const auth = useAuth();
+  const { settings } = useSiteSettings();
+  // Either the build-time env flag OR the runtime CMS toggle reveals the admin link.
+  const adminLinkVisible = showAdminNavLink() || settings.behavior?.show_admin_link_in_nav === true;
 
   useEffect(() => {
     const onMove = (event: MouseEvent) => {
@@ -91,7 +110,7 @@ export function SiteChrome({
           ),
         )}
         {navExtra}
-        {showAdminNavLink() ? (
+        {adminLinkVisible ? (
           <Link to="/admin">{auth.isAdmin ? 'Admin' : 'Team login'}</Link>
         ) : null}
       </nav>

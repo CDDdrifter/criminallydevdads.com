@@ -1,14 +1,58 @@
 :root {
+  /* Legacy palette — Admin Studio (`SiteThemeApply`) overrides these at
+     runtime via `<html style="--…">`. Keep these defaults in sync with
+     `lib/themeDefaults.ts → defaultThemeColors()` so an unconfigured
+     site still renders the original cyber-violet hub. */
   --bg-0: #05070d;
   --bg-1: #0d111a;
   --panel: rgba(18, 24, 36, 0.82);
   --panel-strong: rgba(16, 21, 33, 0.92);
   --text: #d6deff;
+  --text-strong: #eaf0ff;
   --muted: #7f8ba7;
   --accent: #73f8ff;
   --accent-2: #a673ff;
   --danger: #ff5fbf;
+  --success: #3ecf8e;
+  --warning: #f8d36b;
   --border: rgba(115, 248, 255, 0.3);
+  --link: #73f8ff;
+  --link-hover: #ffffff;
+  /* Component / region tokens — used by `lib/themeApply.ts` so a single
+     change in the studio repaints the whole site without reloads. */
+  --card-bg-a: var(--panel);
+  --card-bg-b: var(--panel-strong);
+  --card-border: var(--border);
+  --card-hover-border: rgba(166, 115, 255, 0.7);
+  --header-bg: var(--panel);
+  --header-border: var(--border);
+  --header-title-color: #eaf0ff;
+  --header-subtitle-color: var(--muted);
+  --footer-text-color: #66708a;
+  --nav-button-bg: rgba(11, 16, 25, 0.85);
+  --nav-button-text: var(--accent);
+  --nav-button-border: var(--border);
+  --nav-button-hover-bg-a: rgba(115, 248, 255, 0.25);
+  --nav-button-hover-bg-b: rgba(166, 115, 255, 0.25);
+  --nav-button-hover-text: #ffffff;
+  --button-bg: rgba(11, 16, 25, 0.85);
+  --button-text: var(--accent);
+  --button-border: var(--border);
+  --button-hover-bg-a: rgba(115, 248, 255, 0.25);
+  --button-hover-bg-b: rgba(166, 115, 255, 0.25);
+  --tag-bg-a: rgba(115, 248, 255, 0.9);
+  --tag-bg-b: rgba(166, 115, 255, 0.9);
+  --tag-text: #070b12;
+  --play-btn-a: rgba(115, 248, 255, 0.82);
+  --play-btn-b: rgba(166, 115, 255, 0.82);
+  --play-btn-text: #061019;
+  --download-btn-a: rgba(255, 95, 191, 0.86);
+  --download-btn-b: rgba(166, 115, 255, 0.82);
+  --download-btn-text: #f6f8ff;
+  --support-btn-a: rgba(115, 248, 255, 0.85);
+  --support-btn-b: rgba(166, 115, 255, 0.85);
+  --support-btn-text: #08101a;
+  /* Mouse position for cursor spotlight (set by SiteChrome). */
   --cursor-x: 50vw;
   --cursor-y: 50vh;
 }

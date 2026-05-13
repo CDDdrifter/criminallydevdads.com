@@ -49,6 +49,13 @@ import { donationPresetsFromUnknown } from '../lib/gamePricing';
 import { unknownColumnFromPostgrestMessage } from '../lib/postgrestUnknownColumn';
 import { formatSupabaseWriteError, isRlsOrPermissionError } from '../lib/supabaseWriteError';
 import { VISUAL_PRESET_OPTIONS, normalizeVisualPresetInput } from '../lib/visualPresets';
+import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
+import { ComponentsStudio } from '../components/admin/tabs/ComponentsStudio';
+import { EffectsStudio } from '../components/admin/tabs/EffectsStudio';
+import { LayoutStudio } from '../components/admin/tabs/LayoutStudio';
+import { SeoStudio } from '../components/admin/tabs/SeoStudio';
+import { ThemeStudio } from '../components/admin/tabs/ThemeStudio';
+import { TypographyStudio } from '../components/admin/tabs/TypographyStudio';
 import type {
   DevLogPost,
   GamePricingModel,
@@ -59,10 +66,32 @@ import type {
   SitePage,
   SiteSettings,
   SupportButton,
+  ThemePreset,
 } from '../types';
 import { defaultSiteSettings } from '../types';
 
-type Tab = 'overview' | 'settings' | 'games' | 'pages' | 'nav' | 'devlogs';
+/**
+ * Tabs in the Admin shell.
+ *
+ * The first batch (`overview` → `devlogs`) is the original CMS surface.
+ * The second batch (`theme` → `seo`) is the new "Studio" layer added in
+ * migration 016 — every tab reads/writes one slice of `SiteSettings` and
+ * `SiteThemeApply` repaints the live page from those slices.
+ */
+type Tab =
+  | 'overview'
+  | 'settings'
+  | 'games'
+  | 'pages'
+  | 'nav'
+  | 'devlogs'
+  | 'theme'
+  | 'effects'
+  | 'typography'
+  | 'layout'
+  | 'components'
+  | 'behavior'
+  | 'seo';
 
 function describeAdminWriteFailure(err: unknown): string {
   const core = formatSupabaseWriteError(err);
@@ -1222,9 +1251,34 @@ export function AdminPage() {
       )}
 
       <div className="admin-tabs">
+        {/* Original CMS tabs */}
         {(['overview', 'settings', 'games', 'pages', 'nav', 'devlogs'] as Tab[]).map((t) => (
           <button key={t} type="button" className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
             {t === 'devlogs' ? 'dev logs' : t}
+          </button>
+        ))}
+        {/* Visual separator between CMS and the Studio (migration 016). */}
+        <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 4px' }} />
+        {/* Studio tabs */}
+        {(
+          [
+            ['theme', 'Theme'],
+            ['effects', 'Effects'],
+            ['typography', 'Typography'],
+            ['layout', 'Layout'],
+            ['components', 'Components'],
+            ['behavior', 'Behavior'],
+            ['seo', 'SEO + Head'],
+          ] as const
+        ).map(([t, label]) => (
+          <button
+            key={t}
+            type="button"
+            className={tab === t ? 'active' : ''}
+            onClick={() => setTab(t)}
+            style={{ borderColor: 'rgba(166, 115, 255, 0.5)' }}
+          >
+            {label}
           </button>
         ))}
       </div>
@@ -1250,6 +1304,13 @@ export function AdminPage() {
                 'Extra top-bar buttons after the built-in Home / Vault / Dev log links (e.g. Discord, press kit).',
               ],
               ['devlogs', 'Dev logs', 'News and build notes'],
+              ['theme', '🎨 Theme Studio', 'Repaint every colour, gradient, and background. Built-in presets included.'],
+              ['effects', '⚡ Effects Studio', 'Scanlines, noise, vignette, glow, card hover — every knob.'],
+              ['typography', '🔤 Typography', 'Fonts (including Google Fonts), sizes, weights, spacing.'],
+              ['layout', '📐 Layout', 'Container width, padding, grid, header / nav / footer alignment.'],
+              ['components', '🧩 Components', 'Buttons, cards, panels, modals — radii, shadows, padding.'],
+              ['behavior', '🎛 Behavior', 'Feature flags, maintenance mode, default filter, hover effect.'],
+              ['seo', '🔍 SEO + Head', 'Meta description, OG image, favicon, analytics, custom <head>.'],
             ] as const
           ).map(([id, title, desc]) => (
             <button
@@ -3269,6 +3330,73 @@ export function AdminPage() {
             </ul>
           </div>
         </div>
+      )}
+
+      {/* =====================================================================
+          STUDIO TABS — added in migration 016 (`supabase/migrations/016_…`).
+          Each tab edits one slice of `SiteSettings` and `SiteThemeApply`
+          repaints the page live as the admin types. Save persists the whole
+          settings row, so the studio shares one save button with this panel.
+          ===================================================================== */}
+      {(tab === 'theme' ||
+        tab === 'effects' ||
+        tab === 'typography' ||
+        tab === 'layout' ||
+        tab === 'components' ||
+        tab === 'behavior' ||
+        tab === 'seo') && (
+        <>
+          {tab === 'theme' && (
+            <ThemeStudio
+              settings={settings}
+              setSettings={setSettings}
+              onSavePreset={(preset: ThemePreset) =>
+                setSettings({
+                  ...settings,
+                  theme_presets: [...(settings.theme_presets ?? []), preset],
+                })
+              }
+            />
+          )}
+          {tab === 'effects' && <EffectsStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'typography' && <TypographyStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'layout' && <LayoutStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'components' && <ComponentsStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'behavior' && <BehaviorStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'seo' && <SeoStudio settings={settings} setSettings={setSettings} />}
+
+          {/* Shared save bar — sticky at the bottom of the studio shell. */}
+          <div
+            className="admin-panel"
+            style={{
+              position: 'sticky',
+              bottom: 16,
+              marginTop: 16,
+              zIndex: 4,
+              borderColor: 'rgba(115, 248, 255, 0.45)',
+              background: 'rgba(11, 16, 25, 0.95)',
+            }}
+          >
+            <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button type="button" disabled={busy} onClick={onSaveSettings}>
+                Save studio settings
+              </button>
+              {settingsSaveStatus === 'success' ? (
+                <span style={{ color: '#3ecf8e', fontSize: '1.35rem', lineHeight: 1 }} aria-label="Saved">
+                  ✓ Saved
+                </span>
+              ) : null}
+              {settingsSaveStatus === 'error' ? (
+                <span style={{ color: 'var(--danger)', fontSize: '1.0rem', lineHeight: 1 }} role="alert">
+                  ✗ {settingsSaveDetail ?? 'Save failed.'}
+                </span>
+              ) : null}
+              <span className="admin-muted" style={{ fontSize: '0.78rem', lineHeight: 1.4 }}>
+                Studio changes preview live as you edit; this button persists them so other visitors see them.
+              </span>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
