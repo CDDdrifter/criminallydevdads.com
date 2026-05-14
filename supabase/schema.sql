@@ -363,3 +363,11 @@ alter table site_games add column if not exists controls jsonb not null default 
 alter table site_games add column if not exists credits jsonb not null default '[]'::jsonb;
 alter table site_games add column if not exists changelog jsonb not null default '[]'::jsonb;
 alter table site_games add column if not exists system_requirements jsonb not null default '[]'::jsonb;
+
+-- Migration 019 — HTML app pages + unlisted / apps hub listing.
+alter table site_pages add column if not exists page_mode text not null default 'blocks';
+alter table site_pages add column if not exists raw_html text not null default '';
+alter table site_pages add column if not exists unlisted boolean not null default false;
+alter table site_pages add column if not exists show_on_apps_hub boolean not null default true;
+alter table site_pages add column if not exists html_app_summary text not null default '';
+alter table site_pages add column if not exists html_iframe_compat boolean not null default false;

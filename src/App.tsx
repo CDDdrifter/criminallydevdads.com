@@ -20,6 +20,7 @@ import { SiteParticles } from './components/SiteParticles';
 import { SiteThemeApply } from './components/SiteThemeApply';
 import { SiteWatermark } from './components/SiteWatermark';
 import { AdminPage } from './pages/AdminPage';
+import { AppsHubPage } from './pages/AppsHubPage';
 import { DevLogListPage } from './pages/DevLogListPage';
 import { DevLogPostPage } from './pages/DevLogPostPage';
 import { GamePage } from './pages/GamePage';
@@ -45,6 +46,7 @@ export function App() {
       <MaintenanceGate>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/apps" element={<AppsHubPage />} />
         <Route path="/vault" element={<VaultPage />} />
         <Route path="/game/:slug" element={<GamePage />} />
         <Route path="/play/:slug" element={<PlayPage />} />

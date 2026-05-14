@@ -459,6 +459,56 @@ a:hover {
   box-shadow: 0 0 20px rgba(115, 248, 255, 0.28);
 }
 
+/* HTML app embed (CMS `page_mode === 'html_app'`) */
+.html-app-embed {
+  display: block;
+  width: 100%;
+  min-height: min(85vh, 920px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #070b12;
+}
+
+.page-article--html-app {
+  max-width: 100%;
+}
+
+.apps-hub-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.apps-hub-card {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.apps-hub-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(115, 248, 255, 0.45);
+}
+
+.apps-hub-card-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--accent);
+}
+
+.apps-hub-card-slug {
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+}
+
+.apps-hub-card-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 header {
   text-align: center;
   margin-bottom: 60px;

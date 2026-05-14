@@ -112,7 +112,7 @@ function describeAdminWriteFailure(err: unknown): string {
   if (isRlsOrPermissionError(err)) {
     return `${core}\n\nRow security / permission: you must be signed in as an allowed editor. In Supabase, check site_admin_domains and site_admin_emails for this project. Try Sign out, then sign in again.`;
   }
-  return `${core}\n\nIf a database column is missing, run supabase/migrations/014_ensure_admin_write_schema.sql once in the Supabase SQL Editor.`;
+  return `${core}\n\nIf a database column is missing, run supabase/migrations/014_ensure_admin_write_schema.sql and 019_site_pages_html_apps_and_unlisted.sql once in the Supabase SQL Editor.`;
 }
 
 function emptyPageDraft(): Partial<SitePage> & {
@@ -130,6 +130,12 @@ function emptyPageDraft(): Partial<SitePage> & {
     visual_preset: '',
     immersive_layout: false,
     custom_mood_css: '',
+    page_mode: 'blocks',
+    raw_html: '',
+    unlisted: false,
+    show_on_apps_hub: true,
+    html_app_summary: '',
+    html_iframe_compat: false,
   };
 }
 
@@ -293,14 +299,27 @@ function summarizePageSave(args: {
   mood: string;
   immersive?: boolean;
   hasCustomCss?: boolean;
+  pageMode?: 'blocks' | 'html_app';
+  unlisted?: boolean;
+  htmlBytes?: number;
 }): string {
   const mood = args.mood ? `Mood: ${args.mood}` : 'Mood: hub default';
+  const mode = args.pageMode === 'html_app' ? 'HTML app' : 'Blocks page';
   const blocks =
-    args.sectionsLen > 0 ? `${args.sectionsLen} block(s)` : args.hasBody ? 'Legacy body only' : 'Empty body (add blocks or body)';
-  const nav = args.showInNav ? 'Shown in top nav' : 'Secret page (URL only)';
+    args.pageMode === 'html_app'
+      ? args.htmlBytes
+        ? `HTML paste (~${args.htmlBytes} chars)`
+        : 'HTML app (empty body)'
+      : args.sectionsLen > 0
+        ? `${args.sectionsLen} block(s)`
+        : args.hasBody
+          ? 'Legacy body only'
+          : 'Empty body (add blocks or body)';
+  const nav = args.showInNav ? 'Shown in top nav' : 'Secret page (URL only — no auto nav link)';
+  const idx = args.unlisted ? ' · noindex for crawlers' : '';
   const imm = args.immersive ? 'Immersive layout' : 'Standard layout';
   const css = args.hasCustomCss ? 'Custom CSS' : 'No page CSS';
-  return `Saved page “${args.title}” (${args.slug}) · ${blocks} · ${mood} · ${nav} · ${imm} · ${css}.`;
+  return `Saved page “${args.title}” (${args.slug}) · ${mode} · ${blocks} · ${mood} · ${nav}${idx} · ${imm} · ${css}.`;
 }
 
 export function AdminPage() {
@@ -819,6 +838,14 @@ export function AdminPage() {
       flash('Page title required.');
       return;
     }
+    const pageMode = pageDraft.page_mode === 'html_app' ? 'html_app' : 'blocks';
+    if (pageMode === 'html_app' && !(pageDraft.raw_html ?? '').trim()) {
+      setPageSaveStatus('error');
+      setPageFieldErrors({ raw_html: '✗ Paste HTML or load a .html file.' });
+      setPageSaveDetail('✗ HTML app mode needs non-empty raw HTML.');
+      flash('HTML app: paste your exported HTML or use Load .html file.');
+      return;
+    }
     const moodPage = normalizeVisualPresetInput(pageDraft.visual_preset);
     const slugSaved = pageDraft.slug.trim();
     const titleSaved = pageDraft.title.trim();
@@ -828,18 +855,29 @@ export function AdminPage() {
     const moodRaw = moodPage;
     const immersivePage = Boolean(pageDraft.immersive_layout ?? false);
     const customPageCss = String(pageDraft.custom_mood_css ?? '');
+    const rawHtmlSaved = String(pageDraft.raw_html ?? '');
+    const unlistedPage = Boolean(pageDraft.unlisted);
+    const showOnAppsHub = pageDraft.show_on_apps_hub !== false;
+    const htmlSummary = String(pageDraft.html_app_summary ?? '');
+    const iframeCompat = Boolean(pageDraft.html_iframe_compat);
     setBusy(true);
     try {
       await upsertPage({
         slug: slugSaved,
         title: titleSaved,
-        body: bodySaved,
-        sections,
+        body: pageMode === 'html_app' ? '' : bodySaved,
+        sections: pageMode === 'html_app' ? [] : sections,
         show_in_nav: showNav,
         sort_order: Number(pageDraft.sort_order ?? 0),
         visual_preset: moodRaw || null,
         immersive_layout: immersivePage,
         custom_mood_css: customPageCss,
+        page_mode: pageMode,
+        raw_html: pageMode === 'html_app' ? rawHtmlSaved : '',
+        unlisted: unlistedPage,
+        show_on_apps_hub: showOnAppsHub,
+        html_app_summary: htmlSummary,
+        html_iframe_compat: iframeCompat,
       });
       const verify = await fetchPageBySlug(slugSaved);
       if (!verify) {
@@ -860,6 +898,9 @@ export function AdminPage() {
           mood: moodRaw,
           immersive: immersivePage,
           hasCustomCss: Boolean(customPageCss.trim()),
+          pageMode,
+          unlisted: unlistedPage,
+          htmlBytes: pageMode === 'html_app' ? rawHtmlSaved.length : undefined,
         }),
       );
       flash(`Page saved. Public URL: /p/${slugSaved}`);
@@ -3087,9 +3128,10 @@ export function AdminPage() {
             </strong>
             <ul className="admin-muted" style={{ paddingLeft: 18, lineHeight: 1.6, fontSize: '0.85rem', margin: 0 }}>
               <li>
-                <strong>Page</strong> = an actual page at <code>/#/p/&lt;slug&gt;</code> with content blocks
-                you compose here (headings, text, panels, images). Toggle <em>Show in top nav</em> to also
-                auto-add a button to the header for it. Turn that off for a hidden / unlisted page.
+                <strong>Page</strong> = a route at <code>/#/p/&lt;slug&gt;</code>. Use <strong>Block composer</strong> for
+                headings, panels, and images, or <strong>HTML app</strong> to paste a full exported document (Gemini / Claude)
+                into a sandboxed iframe. Toggle <em>Show in top nav</em> for a header button; turn on <em>Unlisted</em> to ask
+                search engines not to index (the URL still works for anyone who has it).
               </li>
               <li>
                 <strong>Nav</strong> = ONLY a top-bar button. Pick anywhere it points: a CMS page, a game,
@@ -3105,13 +3147,13 @@ export function AdminPage() {
           </div>
           <div className="admin-panel admin-grid">
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>
-              Custom page (blocks)
+              Custom page editor
             </h2>
             <p className="admin-muted">
-              Public URL: <code>/#/p/&lt;slug&gt;</code>. Stack headings, text, panels, and images. If you add
-              no blocks, the legacy <strong>Body</strong> field is shown instead. Turn off <strong>Show in top nav</strong>{' '}
-              for a <strong>secret page</strong> (no header link — share the URL directly). Use <strong>Immersive</strong>{' '}
-              + mood / custom CSS so the page feels like its own “world” instead of the hub chrome.
+              Public URL: <code>/#/p/&lt;slug&gt;</code>. Pick <strong>Block composer</strong> for structured content, or{' '}
+              <strong>HTML app</strong> for a single-file export. Turn off <strong>Show in top nav</strong> for a vault-style
+              link-only page. Use <strong>Unlisted</strong> for <code>noindex</code> (does not password-protect). HTML apps can
+              appear on <Link to="/apps">/apps</Link> when enabled below. Central hub: Behavior → show “Apps lab” link.
             </p>
             <div className="admin-field">
               <label htmlFor="p_slug">Slug</label>
@@ -3169,6 +3211,24 @@ export function AdminPage() {
               </div>
             ) : null}
             <div className="admin-field">
+              <label htmlFor="p_page_mode">Page type</label>
+              <select
+                id="p_page_mode"
+                value={pageDraft.page_mode === 'html_app' ? 'html_app' : 'blocks'}
+                onChange={(e) => {
+                  const v = e.target.value === 'html_app' ? 'html_app' : 'blocks';
+                  setPageDraft({ ...pageDraft, page_mode: v });
+                }}
+              >
+                <option value="blocks">Block composer</option>
+                <option value="html_app">HTML app (sandboxed iframe)</option>
+              </select>
+              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.8rem', lineHeight: 1.45 }}>
+                HTML apps are <strong>admin-trusted</strong> code running inside an iframe. Use strict mode by default; enable
+                compat only if a script needs same-origin storage.
+              </p>
+            </div>
+            <div className="admin-field">
               <label htmlFor="p_visual_preset">Page mood (this route only)</label>
               <select
                 id="p_visual_preset"
@@ -3214,28 +3274,115 @@ export function AdminPage() {
                 </p>
               ) : null}
             </div>
-            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 8 }}>
-              Page blocks
-            </h3>
-            <p className="admin-muted" style={{ marginTop: 0, fontSize: '0.85rem', lineHeight: 1.5 }}>
-              Add <strong>Buttons</strong>, <strong>CTA</strong>, or <strong>Hero</strong> blocks for in-page actions — they render inside this page, not in the global top nav. Global nav placement (top vs footer) is under{' '}
-              <strong>Behavior → Site chrome</strong>.
-            </p>
-            <PageSectionsForm
-              sections={pageDraft.sections ?? []}
-              onChange={(sections) => setPageDraft({ ...pageDraft, sections })}
-              pageSlug={pageDraft.slug}
-              formDisabled={busy}
-              onNotify={flash}
-            />
-            <div className="admin-field">
-              <label htmlFor="p_body">Legacy body (only if no blocks above)</label>
-              <textarea
-                id="p_body"
-                value={pageDraft.body ?? ''}
-                onChange={(e) => setPageDraft({ ...pageDraft, body: e.target.value })}
-              />
-            </div>
+            {pageDraft.page_mode === 'html_app' ? (
+              <>
+                <div className="admin-field">
+                  <label htmlFor="p_raw_html">Full HTML document</label>
+                  <textarea
+                    id="p_raw_html"
+                    rows={16}
+                    value={pageDraft.raw_html ?? ''}
+                    onChange={(e) => {
+                      clearPageFieldError('raw_html');
+                      setPageDraft({ ...pageDraft, raw_html: e.target.value });
+                    }}
+                    placeholder="<!DOCTYPE html>…"
+                    style={{
+                      width: '100%',
+                      fontFamily: 'ui-monospace, Consolas, monospace',
+                      fontSize: '0.78rem',
+                      lineHeight: 1.4,
+                    }}
+                  />
+                  {pageFieldErrors.raw_html ? (
+                    <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
+                      <span aria-hidden>✗ </span>
+                      {pageFieldErrors.raw_html}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="admin-field">
+                  <label htmlFor="p_html_file">Load from file</label>
+                  <input
+                    id="p_html_file"
+                    type="file"
+                    accept=".html,.htm,text/html"
+                    disabled={busy}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) {
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const text = typeof reader.result === 'string' ? reader.result : '';
+                        clearPageFieldError('raw_html');
+                        setPageDraft((prev) => ({ ...prev, raw_html: text }));
+                        flash(`Loaded ${f.name} (${text.length} chars).`);
+                      };
+                      reader.onerror = () => flash('Could not read file.');
+                      reader.readAsText(f);
+                      e.target.value = '';
+                    }}
+                  />
+                  <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.8rem' }}>
+                    Replaces the textarea with the file contents. You can still edit after load.
+                  </p>
+                </div>
+                <div className="admin-field">
+                  <label htmlFor="p_html_app_summary">Short blurb (Apps hub card)</label>
+                  <textarea
+                    id="p_html_app_summary"
+                    rows={3}
+                    value={pageDraft.html_app_summary ?? ''}
+                    onChange={(e) => setPageDraft({ ...pageDraft, html_app_summary: e.target.value })}
+                    placeholder="One line for the /apps grid…"
+                  />
+                </div>
+                <label className="admin-row" style={{ gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={pageDraft.show_on_apps_hub !== false}
+                    onChange={(e) => setPageDraft({ ...pageDraft, show_on_apps_hub: e.target.checked })}
+                  />
+                  Show on <Link to="/apps">/apps</Link> hub
+                </label>
+                <label className="admin-row" style={{ gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(pageDraft.html_iframe_compat)}
+                    onChange={(e) => setPageDraft({ ...pageDraft, html_iframe_compat: e.target.checked })}
+                  />
+                  Compat sandbox (allow-same-origin) — weaker; only for HTML you fully trust
+                </label>
+              </>
+            ) : (
+              <>
+                <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 8 }}>
+                  Page blocks
+                </h3>
+                <p className="admin-muted" style={{ marginTop: 0, fontSize: '0.85rem', lineHeight: 1.5 }}>
+                  Add <strong>Buttons</strong>, <strong>CTA</strong>, or <strong>Hero</strong> blocks for in-page actions — they
+                  render inside this page, not in the global top nav. Global nav placement (top vs footer) is under{' '}
+                  <strong>Behavior → Site chrome</strong>.
+                </p>
+                <PageSectionsForm
+                  sections={pageDraft.sections ?? []}
+                  onChange={(sections) => setPageDraft({ ...pageDraft, sections })}
+                  pageSlug={pageDraft.slug}
+                  formDisabled={busy}
+                  onNotify={flash}
+                />
+                <div className="admin-field">
+                  <label htmlFor="p_body">Legacy body (only if no blocks above)</label>
+                  <textarea
+                    id="p_body"
+                    value={pageDraft.body ?? ''}
+                    onChange={(e) => setPageDraft({ ...pageDraft, body: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
             <div className="admin-field">
               <label htmlFor="p_order">Nav sort order</label>
               <input
@@ -3251,7 +3398,15 @@ export function AdminPage() {
                 checked={pageDraft.show_in_nav ?? true}
                 onChange={(e) => setPageDraft({ ...pageDraft, show_in_nav: e.target.checked })}
               />
-              Show in top navigation (off = secret page)
+              Show in top navigation (off = link-only; no auto nav button)
+            </label>
+            <label className="admin-row" style={{ gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={Boolean(pageDraft.unlisted)}
+                onChange={(e) => setPageDraft({ ...pageDraft, unlisted: e.target.checked })}
+              />
+              Unlisted — add noindex,nofollow (URL still public; not a password)
             </label>
             <label className="admin-row" style={{ gap: 8 }}>
               <input
@@ -3306,7 +3461,9 @@ export function AdminPage() {
                     <strong>{p.title}</strong>{' '}
                     <span className="admin-muted">
                       /p/{p.slug}
-                      {p.show_in_nav ? ' · in nav' : ' · secret'}
+                      {p.page_mode === 'html_app' ? ' · HTML app' : ''}
+                      {p.show_in_nav ? ' · in nav' : ' · link-only'}
+                      {p.unlisted ? ' · unlisted' : ''}
                       {p.visual_preset ? ` · ${p.visual_preset}` : ''}
                       {p.immersive_layout ? ' · immersive' : ''}
                     </span>
@@ -3332,6 +3489,12 @@ export function AdminPage() {
                           visual_preset: p.visual_preset ?? '',
                           immersive_layout: Boolean(p.immersive_layout),
                           custom_mood_css: String(p.custom_mood_css ?? ''),
+                          page_mode: p.page_mode === 'html_app' ? 'html_app' : 'blocks',
+                          raw_html: String(p.raw_html ?? ''),
+                          unlisted: Boolean(p.unlisted),
+                          show_on_apps_hub: p.show_on_apps_hub !== false,
+                          html_app_summary: String(p.html_app_summary ?? ''),
+                          html_iframe_compat: Boolean(p.html_iframe_compat),
                         })
                       }
                     >

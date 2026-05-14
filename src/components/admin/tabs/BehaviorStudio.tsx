@@ -102,6 +102,12 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
           onChange={(show_home_nav_link) => set({ show_home_nav_link })}
           help="Applies to both top and footer nav rows when those rows are visible."
         />
+        <ToggleField
+          label="Show Apps lab link in primary navigation (/apps)"
+          checked={b.show_apps_lab_link}
+          onChange={(show_apps_lab_link) => set({ show_apps_lab_link })}
+          help="Lists HTML-app pages that opt into the hub. Off by default — turn on when you publish sandboxed tools."
+        />
       </FieldGroup>
 
       <FieldGroup

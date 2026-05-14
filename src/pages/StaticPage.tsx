@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { HtmlAppEmbed } from '../components/HtmlAppEmbed';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
 import { ShareStrip } from '../components/ShareStrip';
@@ -63,6 +64,24 @@ export function StaticPage() {
     };
   }, [page]);
 
+  /** Unlisted pages: ask crawlers not to index (does not hide the URL). */
+  useEffect(() => {
+    const id = 'cdd-static-page-noindex';
+    if (!page?.unlisted) {
+      return;
+    }
+    if (!document.getElementById(id)) {
+      const meta = document.createElement('meta');
+      meta.id = id;
+      meta.name = 'robots';
+      meta.content = 'noindex, nofollow';
+      document.head.appendChild(meta);
+    }
+    return () => {
+      document.getElementById(id)?.remove();
+    };
+  }, [page?.unlisted, slug]);
+
   if (page === undefined) {
     return (
       <SiteChrome>
@@ -82,22 +101,44 @@ export function StaticPage() {
     );
   }
 
+  const isHtmlApp = page.page_mode === 'html_app';
+
   return (
     <SiteChrome navExtra={<Link to="/">← Hub</Link>} immersive={Boolean(page.immersive_layout)}>
       <RouteScopedCss id={`page-${page.slug}`} css={page.custom_mood_css ?? ''} />
-      <article className="admin-panel page-article">
-        <h1 className="header-title" style={{ fontSize: '2.2rem', textAlign: 'left' }}>
-          {page.title}
-        </h1>
-        <ShareStrip title={page.title} surface="page" />
-        {page.sections.length > 0 ? (
-          <div style={{ marginTop: 24 }}>
-            <PageSectionsView sections={page.sections} />
+      <article className={`admin-panel page-article${isHtmlApp ? ' page-article--html-app' : ''}`}>
+        <div className="page-article-head">
+          <h1 className="header-title" style={{ fontSize: '2.2rem', textAlign: 'left' }}>
+            {page.title}
+          </h1>
+          {page.unlisted ? (
+            <span className="admin-muted" style={{ fontSize: '0.75rem' }}>
+              Unlisted · share URL only
+            </span>
+          ) : null}
+        </div>
+
+        {isHtmlApp ? (
+          <div style={{ marginTop: 16 }}>
+            <p className="admin-muted" style={{ fontSize: '0.82rem', marginBottom: 12, lineHeight: 1.5 }}>
+              Running in a sandboxed frame. If layout or scripts fail, edit the page in Admin and enable{' '}
+              <strong>Compat sandbox (allow-same-origin)</strong> — only for HTML you trust.
+            </p>
+            <HtmlAppEmbed page={page} />
           </div>
         ) : (
-          <div className="prose" style={{ marginTop: 24, whiteSpace: 'pre-wrap' }}>
-            {page.body}
-          </div>
+          <>
+            <ShareStrip title={page.title} surface="page" />
+            {page.sections.length > 0 ? (
+              <div style={{ marginTop: 24 }}>
+                <PageSectionsView sections={page.sections} />
+              </div>
+            ) : (
+              <div className="prose" style={{ marginTop: 24, whiteSpace: 'pre-wrap' }}>
+                {page.body}
+              </div>
+            )}
+          </>
         )}
       </article>
     </SiteChrome>

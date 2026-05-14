@@ -244,6 +244,27 @@ export type SitePage = {
   visual_preset?: string | null;
   immersive_layout?: boolean | null;
   custom_mood_css?: string | null;
+  /**
+   * `blocks` = normal CMS (sections + legacy body).
+   * `html_app` = single pasted/exported HTML document (Gemini, Claude, etc.) shown in a sandboxed iframe.
+   */
+  page_mode: 'blocks' | 'html_app';
+  /** Full HTML document or fragment for `html_app` mode (admin-trusted). */
+  raw_html: string;
+  /**
+   * When true, the public page asks crawlers not to index (`noindex`).
+   * Use with `show_in_nav: false` for “anyone with the link” secret pages.
+   */
+  unlisted: boolean;
+  /** If `page_mode` is `html_app`, controls listing on the `/apps` hub. */
+  show_on_apps_hub: boolean;
+  /** Short blurb for the `/apps` hub card. */
+  html_app_summary: string;
+  /**
+   * Relaxed iframe sandbox (adds `allow-same-origin`) for exports that break
+   * under strict isolation. Only use when you trust the pasted HTML.
+   */
+  html_iframe_compat: boolean;
 };
 
 export type NavItem = {
@@ -546,6 +567,8 @@ export type BehaviorConfig = {
   show_primary_nav_footer: boolean;
   /** Core “Home” entry in the primary link list (header and/or footer). */
   show_home_nav_link: boolean;
+  /** Adds an “Apps” link to the primary nav → `/#/apps` (HTML app hub). */
+  show_apps_lab_link: boolean;
   show_vault_link: boolean;
   show_devlog_link: boolean;
   show_filter_buttons: boolean;

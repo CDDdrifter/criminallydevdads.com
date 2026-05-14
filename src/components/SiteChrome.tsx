@@ -6,15 +6,29 @@ import { showAdminNavLink } from '../lib/envPublic';
 import { supabaseConfigured } from '../lib/supabase';
 import { useAsyncMemo } from '../hooks/useAsyncMemo';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import type { BehaviorConfig } from '../types';
 import { SiteSocialFollow } from './SiteSocialFollow';
 
-const coreNav = [
-  { label: 'Home', href: '/', external: false as const },
-  { label: 'Vault', href: '/vault', external: false as const },
-  { label: 'Dev log', href: '/devlog', external: false as const },
-];
-
 export type SiteNavLink = { label: string; href: string; external: boolean };
+
+/** Built-in hub entries (order: Home → optional Apps → Vault → Dev log). */
+function buildCoreNavLinks(behavior: BehaviorConfig | undefined): SiteNavLink[] {
+  const b = behavior;
+  const out: SiteNavLink[] = [];
+  if (b?.show_home_nav_link !== false) {
+    out.push({ label: 'Home', href: '/', external: false });
+  }
+  if (b?.show_apps_lab_link) {
+    out.push({ label: 'Apps', href: '/apps', external: false });
+  }
+  if (b?.show_vault_link !== false) {
+    out.push({ label: 'Vault', href: '/vault', external: false });
+  }
+  if (b?.show_devlog_link !== false) {
+    out.push({ label: 'Dev log', href: '/devlog', external: false });
+  }
+  return out;
+}
 
 /**
  * Builds the primary nav link list (Home / Vault / Dev log + CMS nav pages + custom nav).
@@ -22,6 +36,7 @@ export type SiteNavLink = { label: string; href: string; external: boolean };
  */
 export function useSiteNavLinks(): SiteNavLink[] {
   const { settings } = useSiteSettings();
+  const showApps = Boolean(settings.behavior?.show_apps_lab_link);
   const showHome = settings.behavior?.show_home_nav_link !== false;
   const showVault = settings.behavior?.show_vault_link !== false;
   const showDevlog = settings.behavior?.show_devlog_link !== false;
@@ -35,12 +50,7 @@ export function useSiteNavLinks(): SiteNavLink[] {
       href: n.href,
       external: n.external,
     }));
-    const filteredCore = coreNav.filter((item) => {
-      if (item.href === '/') return showHome;
-      if (item.href === '/vault') return showVault;
-      if (item.href === '/devlog') return showDevlog;
-      return true;
-    });
+    const filteredCore = buildCoreNavLinks(settings.behavior);
     if (!supabaseConfigured || (nav.length === 0 && fromPages.length === 0)) {
       return filteredCore;
     }
@@ -55,8 +65,8 @@ export function useSiteNavLinks(): SiteNavLink[] {
       out.push(item);
     }
     return out;
-  }, [showHome, showVault, showDevlog]);
-  return useMemo(() => computed ?? coreNav, [computed]);
+  }, [showHome, showVault, showDevlog, showApps, settings.behavior]);
+  return useMemo(() => computed ?? buildCoreNavLinks(settings.behavior), [computed, settings.behavior]);
 }
 
 function NavLinkList({ links }: { links: SiteNavLink[] }) {

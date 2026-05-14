@@ -124,6 +124,7 @@ function normalizeFxIntensity(raw: unknown): FxIntensity {
 }
 
 function normalizeSitePage(row: Record<string, unknown>): SitePage {
+  const pageMode = row.page_mode === 'html_app' ? 'html_app' : 'blocks';
   return {
     id: String(row.id),
     slug: String(row.slug),
@@ -135,6 +136,12 @@ function normalizeSitePage(row: Record<string, unknown>): SitePage {
     visual_preset: normalizeVisualPresetInput(String(row.visual_preset ?? '')) || null,
     immersive_layout: Boolean(row.immersive_layout ?? false),
     custom_mood_css: String(row.custom_mood_css ?? ''),
+    page_mode: pageMode,
+    raw_html: String(row.raw_html ?? ''),
+    unlisted: Boolean(row.unlisted),
+    show_on_apps_hub: row.show_on_apps_hub !== false,
+    html_app_summary: String(row.html_app_summary ?? ''),
+    html_iframe_compat: Boolean(row.html_iframe_compat),
   };
 }
 
@@ -637,8 +644,14 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
     visual_preset: normalizeVisualPresetInput(String(row.visual_preset ?? '')) || null,
     immersive_layout: Boolean(row.immersive_layout ?? false),
     custom_mood_css: String(row.custom_mood_css ?? ''),
+    page_mode: row.page_mode === 'html_app' ? 'html_app' : 'blocks',
+    raw_html: String(row.raw_html ?? ''),
+    unlisted: Boolean(row.unlisted),
+    show_on_apps_hub: row.show_on_apps_hub !== false,
+    html_app_summary: String(row.html_app_summary ?? ''),
+    html_iframe_compat: Boolean(row.html_iframe_compat),
   };
-  for (let attempt = 0; attempt < 16; attempt++) {
+  for (let attempt = 0; attempt < 48; attempt++) {
     const { error } = await supabase.from('site_pages').upsert(payload, { onConflict: 'slug' });
     if (!error) {
       return;

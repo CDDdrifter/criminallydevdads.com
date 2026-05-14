@@ -310,6 +310,7 @@ export function defaultBehaviorConfig(): BehaviorConfig {
     show_primary_nav_header: true,
     show_primary_nav_footer: false,
     show_home_nav_link: true,
+    show_apps_lab_link: false,
     show_vault_link: true,
     show_devlog_link: true,
     show_filter_buttons: true,
