@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { PageSection } from '../types';
 import { useGames } from '../hooks/useGames';
+import { GameCardMetaChips } from './GameCardMetaChips';
 import { GameCardThumbnail } from './GameCardThumbnail';
 
 // ===========================================================================
@@ -287,6 +288,7 @@ function GameGrid({ slugs, columns, title }: { slugs: string[]; columns: 2 | 3 |
             <div className="game-info">
               <div className="game-type">{game.type}</div>
               <div className="game-title">{game.title}</div>
+              <GameCardMetaChips tags={game.tags} platforms={game.platforms} />
               <div className="game-description">{game.description}</div>
             </div>
           </Link>

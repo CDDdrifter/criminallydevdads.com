@@ -1839,6 +1839,114 @@ body.scrolling .container {
   border: 1px solid var(--border);
   background: var(--panel-strong, var(--panel));
 }
+.game-platform--chip {
+  font-size: 0.62rem;
+  padding: 2px 7px;
+  letter-spacing: 0.04em;
+}
+.game-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 10px;
+  align-items: center;
+}
+.game-card-chips__tag {
+  font-size: 0.62rem !important;
+  padding: 2px 7px !important;
+}
+
+.game-screenshot-thumb {
+  cursor: zoom-in;
+}
+
+.game-screenshot-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(4, 6, 12, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px;
+  backdrop-filter: blur(6px);
+}
+.game-screenshot-lightbox__inner {
+  position: relative;
+  max-width: min(96vw, 1200px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.game-screenshot-lightbox__img {
+  max-width: 100%;
+  max-height: calc(90vh - 48px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.65);
+}
+.game-screenshot-lightbox__close {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong, var(--panel));
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.game-screenshot-lightbox__close:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.game-screenshot-lightbox__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(10, 14, 24, 0.85);
+  color: var(--text);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.game-screenshot-lightbox__nav:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.game-screenshot-lightbox__nav--prev {
+  left: 0;
+}
+.game-screenshot-lightbox__nav--next {
+  right: 0;
+}
+@media (max-width: 640px) {
+  .game-screenshot-lightbox__nav--prev {
+    left: -4px;
+  }
+  .game-screenshot-lightbox__nav--next {
+    right: -4px;
+  }
+}
+.game-screenshot-lightbox__footer {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
 .game-feature-list { list-style: none; padding: 0; margin: 0; }
 .game-feature-list li { padding: 4px 0; color: var(--muted); }
 .game-feature-list li::before { content: "▸ "; color: var(--accent); }

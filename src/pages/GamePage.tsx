@@ -16,16 +16,19 @@ export function GamePage() {
   const { slug } = useParams<{ slug: string }>();
   const [game, setGame] = useState<GameView | null | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [screenshotLightbox, setScreenshotLightbox] = useState<number | null>(null);
 
   useEffect(() => {
     if (!slug?.trim()) {
       setGame(null);
       setLoadError('Missing game slug in URL.');
+      setScreenshotLightbox(null);
       return;
     }
     let cancelled = false;
     setGame(undefined);
     setLoadError(null);
+    setScreenshotLightbox(null);
     (async () => {
       const row = await fetchGameViewBySlug(slug.trim());
       if (cancelled) {
@@ -68,6 +71,37 @@ export function GamePage() {
       delete document.documentElement.dataset.immersiveLayout;
     };
   }, [game?.immersive_layout]);
+
+  useEffect(() => {
+    if (screenshotLightbox === null) {
+      return;
+    }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setScreenshotLightbox(null);
+      }
+      if (!game || game.screenshots.length <= 1) {
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setScreenshotLightbox((i) =>
+          i === null ? null : (i - 1 + game.screenshots.length) % game.screenshots.length,
+        );
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setScreenshotLightbox((i) => (i === null ? null : (i + 1) % game.screenshots.length));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [screenshotLightbox, game]);
 
   if (game === undefined) {
     return (
@@ -191,12 +225,27 @@ export function GamePage() {
             <h3 className="page-section-title" style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Screenshots
             </h3>
+            <p className="admin-muted" style={{ fontSize: '0.78rem', margin: '0 0 10px', lineHeight: 1.45 }}>
+              Click an image to view large. Use ← → while open. Ctrl+click (or middle-click) still opens the image URL in a new tab.
+            </p>
             <div
               className="page-section-gallery"
               style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}
             >
               {game.screenshots.map((src, i) => (
-                <a key={i} href={src} target="_blank" rel="noreferrer" className="page-section-gallery-cell">
+                <a
+                  key={i}
+                  href={src}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="page-section-gallery-cell game-screenshot-thumb"
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+                      e.preventDefault();
+                      setScreenshotLightbox(i);
+                    }
+                  }}
+                >
                   <img src={src} alt={`${game.title} screenshot ${i + 1}`} loading="lazy" />
                 </a>
               ))}
@@ -291,6 +340,64 @@ export function GamePage() {
           <GamePurchaseBlock game={game} />
         </div>
       </article>
+
+      {screenshotLightbox !== null && game.screenshots[screenshotLightbox] ? (
+        <div
+          className="game-screenshot-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Screenshot ${screenshotLightbox + 1} of ${game.screenshots.length}`}
+          onClick={() => setScreenshotLightbox(null)}
+        >
+          <div className="game-screenshot-lightbox__inner" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="game-screenshot-lightbox__close"
+              aria-label="Close"
+              onClick={() => setScreenshotLightbox(null)}
+            >
+              ×
+            </button>
+            {game.screenshots.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  className="game-screenshot-lightbox__nav game-screenshot-lightbox__nav--prev"
+                  aria-label="Previous screenshot"
+                  onClick={() =>
+                    setScreenshotLightbox(
+                      (i) =>
+                        i === null
+                          ? null
+                          : (i - 1 + game.screenshots.length) % game.screenshots.length,
+                    )
+                  }
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="game-screenshot-lightbox__nav game-screenshot-lightbox__nav--next"
+                  aria-label="Next screenshot"
+                  onClick={() =>
+                    setScreenshotLightbox((i) => (i === null ? null : (i + 1) % game.screenshots.length))
+                  }
+                >
+                  ›
+                </button>
+              </>
+            ) : null}
+            <img
+              src={game.screenshots[screenshotLightbox]}
+              alt={`${game.title} screenshot ${screenshotLightbox + 1}`}
+              className="game-screenshot-lightbox__img"
+            />
+            <div className="game-screenshot-lightbox__footer admin-muted">
+              {screenshotLightbox + 1} / {game.screenshots.length} · Escape to close · ← →
+            </div>
+          </div>
+        </div>
+      ) : null}
     </SiteChrome>
   );
 }

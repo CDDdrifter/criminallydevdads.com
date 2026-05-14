@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { GameCardMetaChips } from '../components/GameCardMetaChips';
 import { GameCardThumbnail } from '../components/GameCardThumbnail';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
@@ -243,6 +244,7 @@ export function HomePage() {
               <div className="game-info">
                 <div className="game-type">{game.type}</div>
                 <div className="game-title">{game.title}</div>
+                <GameCardMetaChips tags={game.tags} platforms={game.platforms} />
                 <div className="game-description">{game.description}</div>
               </div>
             </Link>
