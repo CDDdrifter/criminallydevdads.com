@@ -248,6 +248,11 @@ html[data-immersive-layout='on'] .top-nav {
   margin-bottom: 14px;
 }
 
+html[data-immersive-layout='on'] .site-footer-nav {
+  margin-top: 20px;
+  padding-top: 14px;
+}
+
 /* Custom mood: baseline tokens before RouteScopedCss overrides */
 html[data-visual-preset='custom'] {
   --accent: #73f8ff;
@@ -416,6 +421,39 @@ a:hover {
 
 .top-nav a:hover,
 .top-nav button:hover {
+  background: linear-gradient(135deg, rgba(115, 248, 255, 0.25), rgba(166, 115, 255, 0.25));
+  color: #fff;
+  box-shadow: 0 0 20px rgba(115, 248, 255, 0.28);
+}
+
+/* Primary nav mirrored below page content (Behavior → show footer nav). */
+.site-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 32px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.site-footer-nav a,
+.site-footer-nav button {
+  background: rgba(11, 16, 25, 0.85);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.3s;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.site-footer-nav a:hover,
+.site-footer-nav button:hover {
   background: linear-gradient(135deg, rgba(115, 248, 255, 0.25), rgba(166, 115, 255, 0.25));
   color: #fff;
   box-shadow: 0 0 20px rgba(115, 248, 255, 0.28);

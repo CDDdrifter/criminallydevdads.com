@@ -68,6 +68,43 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
       </FieldGroup>
 
       <FieldGroup
+        title="Site chrome — navigation placement"
+        description={
+          <>
+            The hub used to always pin primary links at the top. These toggles give you full control: hide the top bar
+            entirely, mirror the same links under the page, or strip the header brand strip. Use{' '}
+            <strong>Pages → Page blocks → Add block → Buttons / CTA / Hero</strong> for buttons inside article content
+            (not tied to the global nav).
+          </>
+        }
+      >
+        <ToggleField
+          label="Show header brand strip (logo + tagline above nav)"
+          checked={b.show_header_brand_strip}
+          onChange={(show_header_brand_strip) => set({ show_header_brand_strip })}
+          help="Turn off for a minimal chrome look; Brand studio fields stay saved for when you turn this back on."
+        />
+        <ToggleField
+          label="Show primary navigation at the top"
+          checked={b.show_primary_nav_header}
+          onChange={(show_primary_nav_header) => set({ show_primary_nav_header })}
+          help="When off, Home / Vault / Dev log / CMS nav links disappear from the top. Turn on “Footer nav” below so visitors can still move around."
+        />
+        <ToggleField
+          label="Mirror primary navigation in the site footer (below page content)"
+          checked={b.show_primary_nav_footer}
+          onChange={(show_primary_nav_footer) => set({ show_primary_nav_footer })}
+          help="Same link set as the top bar, rendered after the main page body. Social icons use the footer slot from Social + Sharing."
+        />
+        <ToggleField
+          label="Show Home link in primary navigation"
+          checked={b.show_home_nav_link}
+          onChange={(show_home_nav_link) => set({ show_home_nav_link })}
+          help="Applies to both top and footer nav rows when those rows are visible."
+        />
+      </FieldGroup>
+
+      <FieldGroup
         title="Visibility — what shows on the homepage"
         description="Toggle whole sections off without deleting them."
       >

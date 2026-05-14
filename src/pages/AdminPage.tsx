@@ -2475,8 +2475,9 @@ export function AdminPage() {
               Detail page blocks
             </h3>
             <p className="admin-muted" style={{ marginTop: 0, fontSize: '0.85rem', lineHeight: 1.5 }}>
-              Build the itch-style page under the playable embed: headings, images, video, panels. Requires the game slug
-              before uploading images here.
+              Build the itch-style page under the playable embed. Use <strong>Add block → Buttons / CTA / Tabs</strong> for
+              in-page navigation and calls-to-action. Requires the game slug before uploading images here. Global hub nav
+              placement is under <strong>Behavior → Site chrome</strong>.
             </p>
             <PageSectionsForm
               sections={gameDraft.sections ?? []}
@@ -3216,6 +3217,10 @@ export function AdminPage() {
             <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 8 }}>
               Page blocks
             </h3>
+            <p className="admin-muted" style={{ marginTop: 0, fontSize: '0.85rem', lineHeight: 1.5 }}>
+              Add <strong>Buttons</strong>, <strong>CTA</strong>, or <strong>Hero</strong> blocks for in-page actions — they render inside this page, not in the global top nav. Global nav placement (top vs footer) is under{' '}
+              <strong>Behavior → Site chrome</strong>.
+            </p>
             <PageSectionsForm
               sections={pageDraft.sections ?? []}
               onChange={(sections) => setPageDraft({ ...pageDraft, sections })}

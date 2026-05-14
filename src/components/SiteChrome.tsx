@@ -14,15 +14,15 @@ const coreNav = [
   { label: 'Dev log', href: '/devlog', external: false as const },
 ];
 
+export type SiteNavLink = { label: string; href: string; external: boolean };
+
 /**
- * Builds the top-nav link list.
- *
- * Behaviour flags from `SiteSettings.behavior` can hide the built-in Vault /
- * Dev log entries — handy when those routes aren't ready for the public yet.
- * CMS pages with `show_in_nav` and custom nav items always render regardless.
+ * Builds the primary nav link list (Home / Vault / Dev log + CMS nav pages + custom nav).
+ * Placement (top vs footer) is controlled in Behavior — this hook only computes the list.
  */
-export function useSiteNavLinks() {
+export function useSiteNavLinks(): SiteNavLink[] {
   const { settings } = useSiteSettings();
+  const showHome = settings.behavior?.show_home_nav_link !== false;
   const showVault = settings.behavior?.show_vault_link !== false;
   const showDevlog = settings.behavior?.show_devlog_link !== false;
   const computed = useAsyncMemo(async () => {
@@ -36,6 +36,7 @@ export function useSiteNavLinks() {
       external: n.external,
     }));
     const filteredCore = coreNav.filter((item) => {
+      if (item.href === '/') return showHome;
       if (item.href === '/vault') return showVault;
       if (item.href === '/devlog') return showDevlog;
       return true;
@@ -44,7 +45,7 @@ export function useSiteNavLinks() {
       return filteredCore;
     }
     const seen = new Set<string>();
-    const out: { label: string; href: string; external: boolean }[] = [];
+    const out: SiteNavLink[] = [];
     for (const item of [...filteredCore, ...fromPages, ...custom]) {
       const key = `${item.href}|${item.label}`;
       if (seen.has(key)) {
@@ -54,8 +55,55 @@ export function useSiteNavLinks() {
       out.push(item);
     }
     return out;
-  }, [showVault, showDevlog]);
+  }, [showHome, showVault, showDevlog]);
   return useMemo(() => computed ?? coreNav, [computed]);
+}
+
+function NavLinkList({ links }: { links: SiteNavLink[] }) {
+  return (
+    <>
+      {links.map((l) =>
+        l.external ? (
+          <a key={l.href + l.label} href={l.href} target="_blank" rel="noreferrer">
+            {l.label}
+          </a>
+        ) : (
+          <Link key={l.href + l.label} to={l.href}>
+            {l.label}
+          </Link>
+        ),
+      )}
+    </>
+  );
+}
+
+function PrimaryNavRow({
+  links,
+  navExtra,
+  adminLinkVisible,
+  adminLabel,
+  socialSlot,
+  className,
+}: {
+  links: SiteNavLink[];
+  navExtra?: React.ReactNode;
+  adminLinkVisible: boolean;
+  adminLabel: string;
+  socialSlot: 'header' | 'footer';
+  className: string;
+}) {
+  return (
+    <nav className={className} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: 1 }}>
+        <NavLinkList links={links} />
+        {navExtra}
+        {adminLinkVisible ? (
+          <Link to="/admin">{adminLabel}</Link>
+        ) : null}
+      </div>
+      <SiteSocialFollow slot={socialSlot} />
+    </nav>
+  );
 }
 
 export function SiteChrome({
@@ -71,8 +119,17 @@ export function SiteChrome({
   const links = useSiteNavLinks();
   const auth = useAuth();
   const { settings } = useSiteSettings();
-  // Either the build-time env flag OR the runtime CMS toggle reveals the admin link.
-  const adminLinkVisible = showAdminNavLink() || settings.behavior?.show_admin_link_in_nav === true;
+  const b = settings.behavior;
+  const brand = settings.branding;
+  const skipLinkEnabled = settings.accessibility?.skip_link_enabled;
+
+  const showBrandStrip = b?.show_header_brand_strip !== false;
+  const showNavHeader = b?.show_primary_nav_header !== false;
+  const showNavFooter = b?.show_primary_nav_footer === true;
+  const adminLinkVisible = showAdminNavLink() || b?.show_admin_link_in_nav === true;
+  const adminLabel = auth.isAdmin ? 'Admin' : 'Team login';
+
+  const socialHeader = settings.social?.show_in_header && (settings.social?.links?.length ?? 0) > 0;
 
   useEffect(() => {
     const onMove = (event: MouseEvent) => {
@@ -96,10 +153,6 @@ export function SiteChrome({
     };
   }, []);
 
-  // Branding & a11y skip-link surface through the Studio.
-  const brand = settings.branding;
-  const skipLinkEnabled = settings.accessibility?.skip_link_enabled;
-
   return (
     <div className={immersive ? 'container container--immersive' : 'container'}>
       {skipLinkEnabled ? (
@@ -107,9 +160,7 @@ export function SiteChrome({
           Skip to content
         </a>
       ) : null}
-      {/* Optional header logo + tagline strip — only renders when the admin
-          set a logo URL or tagline in the Brand studio. */}
-      {brand.header_logo_url || brand.header_tagline ? (
+      {showBrandStrip && (brand.header_logo_url || brand.header_tagline) ? (
         <div
           className="site-header-brand"
           style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}
@@ -128,27 +179,41 @@ export function SiteChrome({
           ) : null}
         </div>
       ) : null}
-      <nav className="top-nav" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: 1 }}>
-          {links.map((l) =>
-            l.external ? (
-              <a key={l.href + l.label} href={l.href} target="_blank" rel="noreferrer">
-                {l.label}
-              </a>
-            ) : (
-              <Link key={l.href + l.label} to={l.href}>
-                {l.label}
-              </Link>
-            ),
-          )}
-          {navExtra}
-          {adminLinkVisible ? (
-            <Link to="/admin">{auth.isAdmin ? 'Admin' : 'Team login'}</Link>
-          ) : null}
+
+      {showNavHeader ? (
+        <PrimaryNavRow
+          links={links}
+          navExtra={navExtra}
+          adminLinkVisible={adminLinkVisible}
+          adminLabel={adminLabel}
+          socialSlot="header"
+          className="top-nav"
+        />
+      ) : socialHeader ? (
+        <div
+          className="top-nav top-nav--social-only"
+          style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 4 }}
+        >
+          <SiteSocialFollow slot="header" />
         </div>
-        <SiteSocialFollow slot="header" />
-      </nav>
+      ) : adminLinkVisible ? (
+        <div className="site-chrome-admin-fallback" style={{ textAlign: 'right', marginBottom: 10 }}>
+          <Link to="/admin">{adminLabel}</Link>
+        </div>
+      ) : null}
+
       <div id="main-content">{children}</div>
+
+      {showNavFooter ? (
+        <PrimaryNavRow
+          links={links}
+          navExtra={navExtra}
+          adminLinkVisible={adminLinkVisible}
+          adminLabel={adminLabel}
+          socialSlot="footer"
+          className="site-footer-nav"
+        />
+      ) : null}
     </div>
   );
 }

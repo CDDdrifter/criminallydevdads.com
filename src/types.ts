@@ -535,6 +535,17 @@ export type ComponentsConfig = {
 };
 
 export type BehaviorConfig = {
+  /** Header strip (Brand studio logo + tagline above the nav row). */
+  show_header_brand_strip: boolean;
+  /** Main hub link row (Home / Vault / Dev log + CMS pages + custom nav). */
+  show_primary_nav_header: boolean;
+  /**
+   * Duplicate the same primary links below the page body (inside SiteChrome).
+   * Use with `show_primary_nav_header: false` for an all-bottom navigation layout.
+   */
+  show_primary_nav_footer: boolean;
+  /** Core “Home” entry in the primary link list (header and/or footer). */
+  show_home_nav_link: boolean;
   show_vault_link: boolean;
   show_devlog_link: boolean;
   show_filter_buttons: boolean;
