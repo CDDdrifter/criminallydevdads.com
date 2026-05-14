@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { GameCardThumbnail } from '../components/GameCardThumbnail';
+import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
 import { SiteSocialFollow } from '../components/SiteSocialFollow';
 import { useGames } from '../hooks/useGames';
@@ -41,6 +42,12 @@ export function HomePage() {
     return btn;
   });
 
+  // Admin-driven homepage sections (Studio → Homepage). `replace` mode lets
+  // the admin own the entire page (no hero, no grid, no footer).
+  const homepageSections = settings.homepage_sections ?? [];
+  const layoutMode = settings.homepage_layout_mode ?? 'append';
+  const showBuiltins = layoutMode !== 'replace';
+
   return (
     <SiteChrome>
       {/* Optional admin-managed HTML banner (Behavior → Homepage intro). */}
@@ -53,6 +60,18 @@ export function HomePage() {
         />
       ) : null}
 
+      {/* Admin-built top-of-page blocks. */}
+      {layoutMode === 'prepend' && homepageSections.length > 0 ? (
+        <PageSectionsView sections={homepageSections} />
+      ) : null}
+
+      {/* Replace-mode renders ONLY the admin blocks. */}
+      {layoutMode === 'replace' ? (
+        <PageSectionsView sections={homepageSections} />
+      ) : null}
+
+      {showBuiltins ? (
+        <>
       {/* Hero — pulls in Studio hero config (badge / logo / CTAs / scroll
           indicator) layered on top of the original title + subtitle. */}
       <header style={{ position: 'relative' }}>
@@ -282,6 +301,13 @@ export function HomePage() {
           ) : null}
           <SiteSocialFollow slot="footer" />
         </footer>
+      ) : null}
+        </>
+      ) : null}
+
+      {/* Admin-built blocks below the built-in hero + grid. */}
+      {layoutMode === 'append' && homepageSections.length > 0 ? (
+        <PageSectionsView sections={homepageSections} />
       ) : null}
     </SiteChrome>
   );

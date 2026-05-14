@@ -191,6 +191,12 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
     performance: mergeDeep<PerformanceConfig>(defaultPerformanceConfig(), raw.performance),
     accessibility: mergeDeep<AccessibilityConfig>(defaultAccessibilityConfig(), raw.accessibility),
     sharing: mergeDeep<SharingConfig>(defaultSharingConfig(), raw.sharing),
+    // Admin-driven homepage (migration 018).
+    homepage_sections: normalizePageSections(raw.homepage_sections),
+    homepage_layout_mode:
+      raw.homepage_layout_mode === 'prepend' || raw.homepage_layout_mode === 'replace'
+        ? raw.homepage_layout_mode
+        : 'append',
   };
 }
 
@@ -275,7 +281,54 @@ function recordToView(g: GameRecord): GameView {
     in_vault: Boolean(g.in_vault ?? false),
     immersive_layout: Boolean(g.immersive_layout ?? false),
     custom_mood_css: String(g.custom_mood_css ?? '').trim(),
+    // ---- Game-page enrichment (migration 018) -----------------------------
+    tags: Array.isArray(g.tags) ? (g.tags as unknown[]).map(String).filter(Boolean) : [],
+    release_date: String(g.release_date ?? '').trim(),
+    platforms: Array.isArray(g.platforms)
+      ? (g.platforms as unknown[]).map(String).filter(Boolean)
+      : [],
+    screenshots: Array.isArray(g.screenshots)
+      ? (g.screenshots as unknown[]).map(String).filter(Boolean)
+      : [],
+    features: Array.isArray(g.features)
+      ? (g.features as unknown[]).map(String).filter(Boolean)
+      : [],
+    controls: normalizeGameExtras(g.controls, ['key', 'desc']) as { id: string; key: string; desc: string }[],
+    credits: normalizeGameExtras(g.credits, ['role', 'name'], ['href']) as { id: string; role: string; name: string; href?: string }[],
+    changelog: normalizeGameExtras(g.changelog, ['version', 'notes'], ['date']) as { id: string; version: string; notes: string; date?: string }[],
+    system_requirements: Array.isArray(g.system_requirements)
+      ? (g.system_requirements as unknown[]).map(String).filter(Boolean)
+      : [],
   };
+}
+
+/**
+ * Tiny helper to coerce a raw JSONB list of `{key, value, …}` rows into
+ * `{id, …}` entries used by the controls / credits / changelog editors.
+ * Drops entries missing required fields rather than crashing the page.
+ */
+function normalizeGameExtras(
+  raw: unknown,
+  required: string[],
+  optional: string[] = [],
+): Record<string, string>[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Record<string, string>[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const rec = item as Record<string, unknown>;
+    const ok = required.every((k) => typeof rec[k] === 'string' && (rec[k] as string).length > 0);
+    if (!ok) continue;
+    const entry: Record<string, string> = {
+      id: typeof rec.id === 'string' && rec.id ? rec.id : crypto.randomUUID(),
+    };
+    for (const k of required) entry[k] = String(rec[k]);
+    for (const k of optional) {
+      if (typeof rec[k] === 'string') entry[k] = String(rec[k]);
+    }
+    out.push(entry);
+  }
+  return out;
 }
 
 export async function fetchPublishedGames(): Promise<GameView[]> {
@@ -540,6 +593,8 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     performance: merged.performance,
     accessibility: merged.accessibility,
     sharing: merged.sharing,
+    homepage_sections: merged.homepage_sections,
+    homepage_layout_mode: merged.homepage_layout_mode,
   };
   for (let attempt = 0; attempt < 16; attempt++) {
     const { error } = await supabase.from('site_settings').upsert(payload);

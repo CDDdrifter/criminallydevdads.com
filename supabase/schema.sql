@@ -350,3 +350,16 @@ alter table site_settings add column if not exists branding jsonb not null defau
 alter table site_settings add column if not exists performance jsonb not null default '{}'::jsonb;
 alter table site_settings add column if not exists accessibility jsonb not null default '{}'::jsonb;
 alter table site_settings add column if not exists sharing jsonb not null default '{}'::jsonb;
+
+-- Migration 018 — admin-driven homepage + game-page enrichment columns.
+alter table site_settings add column if not exists homepage_sections jsonb not null default '[]'::jsonb;
+alter table site_settings add column if not exists homepage_layout_mode text not null default 'append';
+alter table site_games add column if not exists tags jsonb not null default '[]'::jsonb;
+alter table site_games add column if not exists release_date text not null default '';
+alter table site_games add column if not exists platforms jsonb not null default '[]'::jsonb;
+alter table site_games add column if not exists screenshots jsonb not null default '[]'::jsonb;
+alter table site_games add column if not exists features jsonb not null default '[]'::jsonb;
+alter table site_games add column if not exists controls jsonb not null default '[]'::jsonb;
+alter table site_games add column if not exists credits jsonb not null default '[]'::jsonb;
+alter table site_games add column if not exists changelog jsonb not null default '[]'::jsonb;
+alter table site_games add column if not exists system_requirements jsonb not null default '[]'::jsonb;

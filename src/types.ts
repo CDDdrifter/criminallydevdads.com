@@ -1,10 +1,94 @@
+// ---------------------------------------------------------------------------
+// PageSection — the universal building block.
+//
+// Used by:
+//  - Game detail pages (`site_games.sections`)
+//  - Custom CMS pages (`site_pages.sections`)
+//  - The homepage (`site_settings.homepage_sections`)
+//
+// Every block carries a stable `id` so React reconciliation + drag-reorder
+// stays clean. Render lives in `PageSectionsView`, editor lives in
+// `PageSectionsForm`, parsing lives in `lib/pageSections.ts`.
+// ---------------------------------------------------------------------------
+
+/** Item shared by feature_list / timeline / stats / faq / accordion / download / pricing. */
+export type PageItem = {
+  id: string;
+  /** Short label / heading. */
+  title: string;
+  /** Long description / body. */
+  body: string;
+  /** Emoji or single character used as the visual marker. */
+  icon?: string;
+  /** Optional URL — used for `cta`, `download`, `feature_list` linked cards. */
+  href?: string;
+  /** Big-number value for `stats` blocks. */
+  value?: string;
+  /** Status badge for `timeline` / `roadmap`. */
+  status?: 'done' | 'progress' | 'planned' | 'cancelled';
+};
+
 export type PageSection =
-  | { id: string; kind: 'heading'; title: string; subtitle?: string }
+  // -- Original 6 ----------------------------------------------------------
+  | { id: string; kind: 'heading'; title: string; subtitle?: string; align?: 'left' | 'center' | 'right' }
   | { id: string; kind: 'text'; body: string }
   | { id: string; kind: 'panel'; title: string; body: string; variant?: 'default' | 'accent' | 'muted' }
   | { id: string; kind: 'image'; url: string; alt?: string; caption?: string }
   | { id: string; kind: 'video'; url: string; caption?: string }
-  | { id: string; kind: 'divider' };
+  | { id: string; kind: 'divider' }
+  // -- Expansion -----------------------------------------------------------
+  /** Multi-image grid with optional lightbox + columns. */
+  | { id: string; kind: 'gallery'; images: { id: string; url: string; alt?: string; caption?: string }[]; columns?: 2 | 3 | 4; lightbox?: boolean }
+  /** 2/3/4 columns of nested blocks. */
+  | { id: string; kind: 'columns'; columns: { id: string; sections: PageSection[] }[]; gap?: 'sm' | 'md' | 'lg' }
+  /** Coloured callout/note/tip/warning with optional icon. */
+  | { id: string; kind: 'callout'; title: string; body: string; tone: 'info' | 'tip' | 'success' | 'warning' | 'danger'; icon?: string }
+  /** Pull-quote / testimonial. */
+  | { id: string; kind: 'quote'; body: string; author?: string; role?: string; avatar_url?: string }
+  /** Code block with optional language label. */
+  | { id: string; kind: 'code'; body: string; language?: string; filename?: string }
+  /** Card-grid of features (icon + title + body). */
+  | { id: string; kind: 'feature_list'; items: PageItem[]; columns?: 2 | 3 | 4 }
+  /** Big-number stats banner. */
+  | { id: string; kind: 'stats'; items: PageItem[]; columns?: 2 | 3 | 4 }
+  /** Vertical timeline with status pills. */
+  | { id: string; kind: 'timeline'; items: PageItem[] }
+  /** Collapsible Q&A list. */
+  | { id: string; kind: 'accordion'; items: PageItem[]; default_open_id?: string }
+  /** Tabbed content — each tab holds its own sub-blocks. */
+  | { id: string; kind: 'tabs'; tabs: { id: string; label: string; sections: PageSection[] }[] }
+  /** Big call-to-action with one or two buttons. */
+  | { id: string; kind: 'cta'; title: string; body: string; primary?: { label: string; href: string; external?: boolean }; secondary?: { label: string; href: string; external?: boolean }; bg_image_url?: string }
+  /** YouTube / Twitch / Vimeo / generic iframe embed. */
+  | { id: string; kind: 'embed'; url: string; provider?: 'youtube' | 'twitch' | 'vimeo' | 'codepen' | 'soundcloud' | 'custom'; aspect?: '16/9' | '4/3' | '1/1' | 'auto'; caption?: string }
+  /** Markdown — full GitHub-flavoured renderer. */
+  | { id: string; kind: 'markdown'; body: string }
+  /** Raw HTML (admin trust model — same as `custom_head_html`). */
+  | { id: string; kind: 'html'; html: string }
+  /** Tunable vertical space. */
+  | { id: string; kind: 'spacer'; size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' }
+  /** Hero banner with bg image / video, headline, optional CTA. */
+  | { id: string; kind: 'hero'; title: string; subtitle?: string; bg_image_url?: string; bg_video_url?: string; height?: 'sm' | 'md' | 'lg' | 'screen'; align?: 'left' | 'center' | 'right'; cta?: { label: string; href: string; external?: boolean }; overlay?: number }
+  /** File/asset download card with size + format. */
+  | { id: string; kind: 'download'; title: string; body: string; href: string; size?: string; format?: string; icon?: string }
+  /** Row of buttons (linked or download). */
+  | { id: string; kind: 'buttons'; buttons: { id: string; label: string; href: string; external?: boolean; variant?: 'primary' | 'secondary' | 'ghost' }[]; align?: 'left' | 'center' | 'right' }
+  /** Branded FAQ — like accordion but rendered without the collapse animation. */
+  | { id: string; kind: 'faq'; items: PageItem[]; intro?: string }
+  /** Generic iframe — for tools, calculators, custom widgets. */
+  | { id: string; kind: 'iframe'; url: string; height_px?: number; caption?: string; allow?: string }
+  /** Image-text side-by-side block. */
+  | { id: string; kind: 'image_text'; image_url: string; title: string; body: string; image_side?: 'left' | 'right'; image_alt?: string; cta?: { label: string; href: string; external?: boolean } }
+  /** Side-by-side comparison rows. */
+  | { id: string; kind: 'pricing'; columns: { id: string; title: string; price: string; period?: string; features: string[]; cta?: { label: string; href: string; external?: boolean }; featured?: boolean }[] }
+  /** Team / credits grid. */
+  | { id: string; kind: 'team'; members: { id: string; name: string; role: string; avatar_url?: string; href?: string; bio?: string }[]; columns?: 2 | 3 | 4 }
+  /** Newsletter / form embed snippet. */
+  | { id: string; kind: 'newsletter'; title: string; body: string; provider: 'mailchimp' | 'buttondown' | 'substack' | 'convertkit' | 'custom'; action_url: string; button_label?: string }
+  /** Sub-game grid: lists curated games by slug. Renders like the homepage grid. */
+  | { id: string; kind: 'game_grid'; title?: string; slugs: string[]; columns?: 2 | 3 | 4 }
+  /** Tag chip cloud / pill list. */
+  | { id: string; kind: 'tags'; items: { id: string; label: string; href?: string; tone?: 'default' | 'accent' | 'muted' }[] };
 
 export type SupportButton = {
   id: string;
@@ -81,6 +165,25 @@ export type GameRecord = {
   immersive_layout?: boolean | null;
   /** Extra CSS for this game’s detail + play routes (admin trust model). */
   custom_mood_css?: string | null;
+  // ---- Game-page enrichment (migration 018) -------------------------------
+  /** Searchable tags / chips ("roguelite", "co-op", "speedrun"). */
+  tags?: string[] | null;
+  /** ISO date — used for "released" badge + sort. */
+  release_date?: string | null;
+  /** Platforms badge row ("html5", "windows", "mac", "linux", "android", "ios"). */
+  platforms?: string[] | null;
+  /** Marketing screenshots (extra images beyond `thumbnail`). */
+  screenshots?: string[] | null;
+  /** Bulleted key feature list ("3 game modes", "Mobile-friendly"). */
+  features?: string[] | null;
+  /** Control list — `{key: "WASD", desc: "Move"}` rows. */
+  controls?: { id: string; key: string; desc: string }[] | null;
+  /** Credits roster — `{role: "Code", name: "…"}` rows. */
+  credits?: { id: string; role: string; name: string; href?: string }[] | null;
+  /** Version changelog — `{version: "1.2", date, notes}`. */
+  changelog?: { id: string; version: string; date?: string; notes: string }[] | null;
+  /** System requirements bullets. */
+  system_requirements?: string[] | null;
 };
 
 export type GameView = {
@@ -115,6 +218,16 @@ export type GameView = {
   in_vault: boolean;
   immersive_layout: boolean;
   custom_mood_css: string;
+  // ---- Game-page enrichment (migration 018) -------------------------------
+  tags: string[];
+  release_date: string;
+  platforms: string[];
+  screenshots: string[];
+  features: string[];
+  controls: { id: string; key: string; desc: string }[];
+  credits: { id: string; role: string; name: string; href?: string }[];
+  changelog: { id: string; version: string; date?: string; notes: string }[];
+  system_requirements: string[];
 };
 
 export type SitePage = {
@@ -792,6 +905,19 @@ export type SiteSettings = {
   accessibility: AccessibilityConfig;
   /** Share-button strip on game detail pages. */
   sharing: SharingConfig;
+  /**
+   * Admin-driven homepage blocks. When populated, render alongside (or in
+   * place of) the built-in hero + game grid based on `homepage_layout_mode`.
+   * Same `PageSection` engine as game / custom pages — every block type
+   * (hero, gallery, columns, cta, …) is available.
+   */
+  homepage_sections: PageSection[];
+  /**
+   * `append` (default) renders these blocks BELOW the built-in hero/grid.
+   * `prepend` renders them ABOVE. `replace` removes the default hero, grid,
+   * support + footer entirely — admin owns the page top to bottom.
+   */
+  homepage_layout_mode: 'append' | 'prepend' | 'replace';
 };
 
 // ---------------------------------------------------------------------------
@@ -865,4 +991,6 @@ export const defaultSiteSettings: SiteSettings = {
   performance: defaultPerformanceConfig(),
   accessibility: defaultAccessibilityConfig(),
   sharing: defaultSharingConfig(),
+  homepage_sections: [],
+  homepage_layout_mode: 'append',
 };
