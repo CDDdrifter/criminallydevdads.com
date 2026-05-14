@@ -260,6 +260,15 @@ async function buildGameFromFolder(
     in_vault: false,
     immersive_layout: false,
     custom_mood_css: '',
+    tags: [],
+    release_date: '',
+    platforms: [],
+    screenshots: [],
+    features: [],
+    controls: [],
+    credits: [],
+    changelog: [],
+    system_requirements: [],
   };
 }
 

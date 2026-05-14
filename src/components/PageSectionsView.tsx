@@ -94,7 +94,7 @@ function renderMarkdown(src: string): string {
   // Blockquote
   html = html.replace(/^> ?(.*)$/gm, '<blockquote>$1</blockquote>');
   // Lists — wrap consecutive `-` / `*` lines in <ul>.
-  html = html.replace(/(?:^|\n)((?:[-*] .*\n?)+)/g, (m, block) => {
+  html = html.replace(/(?:^|\n)((?:[-*] .*\n?)+)/g, (_full, block) => {
     const items = block
       .trim()
       .split('\n')

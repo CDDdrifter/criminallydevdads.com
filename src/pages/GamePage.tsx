@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { GameEmbedSection } from '../components/GameEmbedSection';
 import { GamePurchaseBlock } from '../components/GamePurchaseBlock';
@@ -101,10 +101,23 @@ export function GamePage() {
         <h1 className="header-title" style={{ fontSize: '2rem', textAlign: 'left', marginBottom: 8 }}>
           {game.title}
         </h1>
-        <p className="admin-muted" style={{ marginBottom: 24 }}>
+        <p className="admin-muted" style={{ marginBottom: 12 }}>
           {game.type.toUpperCase()} · {game.slug} · {priceText}
           {game.in_vault ? ' · Vault library' : ''}
+          {game.release_date ? ` · ${game.release_date}` : ''}
         </p>
+
+        {/* Tags + platforms chip rows — only render when admin filled them in. */}
+        {(game.tags.length > 0 || game.platforms.length > 0) ? (
+          <div className="admin-row" style={{ flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+            {game.platforms.map((p) => (
+              <span key={p} className="game-platform">{p}</span>
+            ))}
+            {game.tags.map((t) => (
+              <span key={t} className="page-section-tag is-accent">{t}</span>
+            ))}
+          </div>
+        ) : null}
 
         <ShareStrip title={game.title} surface="game" />
 
@@ -169,6 +182,102 @@ export function GamePage() {
             </div>
           </>
         )}
+
+        {/* ===== Per-game enrichment panels (migration 018) =================
+            Each panel only renders if the admin filled in that array, so a
+            stub-imported game shows nothing here at all. */}
+        {game.screenshots.length > 0 ? (
+          <section style={{ marginTop: 24 }}>
+            <h3 className="page-section-title" style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Screenshots
+            </h3>
+            <div
+              className="page-section-gallery"
+              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}
+            >
+              {game.screenshots.map((src, i) => (
+                <a key={i} href={src} target="_blank" rel="noreferrer" className="page-section-gallery-cell">
+                  <img src={src} alt={`${game.title} screenshot ${i + 1}`} loading="lazy" />
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {(game.features.length > 0 ||
+          game.controls.length > 0 ||
+          game.system_requirements.length > 0 ||
+          game.credits.length > 0) ? (
+          <div className="game-meta-grid">
+            {game.features.length > 0 ? (
+              <section className="game-meta-panel">
+                <h3>Key features</h3>
+                <ul className="game-feature-list">
+                  {game.features.map((f, i) => <li key={i}>{f}</li>)}
+                </ul>
+              </section>
+            ) : null}
+            {game.controls.length > 0 ? (
+              <section className="game-meta-panel">
+                <h3>Controls</h3>
+                <div className="game-controls-table">
+                  {game.controls.map((c) => (
+                    <Fragment key={c.id}>
+                      <span className="game-controls-key">{c.key}</span>
+                      <span>{c.desc}</span>
+                    </Fragment>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+            {game.system_requirements.length > 0 ? (
+              <section className="game-meta-panel">
+                <h3>System requirements</h3>
+                <ul className="game-feature-list">
+                  {game.system_requirements.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              </section>
+            ) : null}
+            {game.credits.length > 0 ? (
+              <section className="game-meta-panel">
+                <h3>Credits</h3>
+                <div className="game-controls-table">
+                  {game.credits.map((c) => (
+                    <Fragment key={c.id}>
+                      <span className="admin-muted" style={{ fontSize: '0.82rem' }}>{c.role}</span>
+                      <span>
+                        {c.href ? (
+                          <a href={c.href} target="_blank" rel="noreferrer">{c.name}</a>
+                        ) : (
+                          c.name
+                        )}
+                      </span>
+                    </Fragment>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </div>
+        ) : null}
+
+        {game.changelog.length > 0 ? (
+          <section style={{ marginTop: 16 }}>
+            <h3 className="page-section-title" style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Changelog
+            </h3>
+            <div className="admin-panel">
+              {game.changelog.map((c) => (
+                <div key={c.id} className="game-changelog-row">
+                  <div className="admin-row" style={{ gap: 10, alignItems: 'baseline' }}>
+                    <span className="game-changelog-version">v{c.version}</span>
+                    {c.date ? <span className="game-changelog-date">{c.date}</span> : null}
+                  </div>
+                  <div className="page-section-pre" style={{ marginTop: 4 }}>{c.notes}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="game-actions" style={{ maxWidth: 480, marginTop: 24, flexWrap: 'wrap' }}>
           <Link to={`/play/${game.slug}`} className="btn-download" style={{ textAlign: 'center' }}>

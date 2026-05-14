@@ -53,6 +53,7 @@ import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
 import { BrandHeroStudio } from '../components/admin/tabs/BrandHeroStudio';
 import { ComponentsStudio } from '../components/admin/tabs/ComponentsStudio';
 import { EffectsStudio } from '../components/admin/tabs/EffectsStudio';
+import { HomepageStudio } from '../components/admin/tabs/HomepageStudio';
 import { LayoutStudio } from '../components/admin/tabs/LayoutStudio';
 import { MediaStudio } from '../components/admin/tabs/MediaStudio';
 import { MotionStudio } from '../components/admin/tabs/MotionStudio';
@@ -102,7 +103,9 @@ type Tab =
   | 'social'
   | 'motion'
   | 'media'
-  | 'system';
+  | 'system'
+  // Studio expansion (migration 018).
+  | 'homepage';
 
 function describeAdminWriteFailure(err: unknown): string {
   const core = formatSupabaseWriteError(err);
@@ -157,6 +160,16 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
     in_vault: false,
     immersive_layout: false,
     custom_mood_css: '',
+    // Migration 018 — game-page enrichment.
+    tags: [],
+    release_date: '',
+    platforms: [],
+    screenshots: [],
+    features: [],
+    controls: [],
+    credits: [],
+    changelog: [],
+    system_requirements: [],
 });
 
 const newSupportButton = (): SupportButton => ({
@@ -239,6 +252,16 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     in_vault: draft.in_vault ?? false,
     immersive_layout: draft.immersive_layout ?? false,
     custom_mood_css: String(draft.custom_mood_css ?? ''),
+    // Migration 018 — game-page enrichment columns. All optional / additive.
+    tags: Array.isArray(draft.tags) ? draft.tags : [],
+    release_date: String(draft.release_date ?? ''),
+    platforms: Array.isArray(draft.platforms) ? draft.platforms : [],
+    screenshots: Array.isArray(draft.screenshots) ? draft.screenshots : [],
+    features: Array.isArray(draft.features) ? draft.features : [],
+    controls: Array.isArray(draft.controls) ? draft.controls : [],
+    credits: Array.isArray(draft.credits) ? draft.credits : [],
+    changelog: Array.isArray(draft.changelog) ? draft.changelog : [],
+    system_requirements: Array.isArray(draft.system_requirements) ? draft.system_requirements : [],
   };
 }
 
@@ -1286,6 +1309,8 @@ export function AdminPage() {
             ['motion', 'Motion + Cards'],
             ['media', 'Audio + Cursor + Particles'],
             ['system', 'Performance + A11y'],
+            // Studio expansion (migration 018).
+            ['homepage', '🏠 Homepage'],
           ] as const
         ).map(([t, label]) => (
           <button
@@ -1333,6 +1358,7 @@ export function AdminPage() {
               ['motion', '🎬 Motion + Cards', 'Animations, page entrance, card layout, NEW ribbon.'],
               ['media', '🎵 Audio + Cursor + Particles', 'Bg music, hover sounds, custom cursor, floating particles.'],
               ['system', '♿ Performance + A11y', 'Animation kill-switches, focus ring, font scaling, high contrast.'],
+              ['homepage', '🏠 Homepage builder', 'Build the entire front page with hero banners, galleries, columns, tabs, FAQs — any block.'],
             ] as const
           ).map(([id, title, desc]) => (
             <button
@@ -2255,6 +2281,196 @@ export function AdminPage() {
               Immersive layout — wider “world” frame on detail + play (less hub-style chrome)
             </label>
 
+            {/* ===== Game-page enrichment (migration 018) =================
+                Each field is optional. Empty arrays don't render anything
+                on the public page. */}
+            <details className="admin-panel" style={{ marginTop: 8, borderStyle: 'dashed' }}>
+              <summary style={{ cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)', fontSize: '0.82rem' }}>
+                Game info panels (tags, platforms, screenshots, features, controls, credits, changelog)
+              </summary>
+
+              <div className="admin-field" style={{ marginTop: 12 }}>
+                <label>Release date</label>
+                <input
+                  type="text"
+                  value={gameDraft.release_date ?? ''}
+                  onChange={(e) => setGameDraft({ ...gameDraft, release_date: e.target.value })}
+                  placeholder="2026-04-12 or Coming Soon"
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Tags (one per line or comma-separated)</label>
+                <textarea
+                  rows={2}
+                  value={(gameDraft.tags ?? []).join('\n')}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      tags: e.target.value.split(/[\n,]/).map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="one tag per line"
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Platforms (chips shown below the title)</label>
+                <textarea
+                  rows={2}
+                  value={(gameDraft.platforms ?? []).join('\n')}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      platforms: e.target.value.split(/[\n,]/).map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="html5, windows, mac — one per line"
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Screenshot URLs (one per line)</label>
+                <textarea
+                  rows={3}
+                  value={(gameDraft.screenshots ?? []).join('\n')}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      screenshots: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="https://…/screen1.png — one URL per line"
+                />
+                <p className="admin-muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
+                  Or use a gallery block in the detail page editor below for captions + lightbox.
+                </p>
+              </div>
+
+              <div className="admin-field">
+                <label>Key features (one bullet per line)</label>
+                <textarea
+                  rows={3}
+                  value={(gameDraft.features ?? []).join('\n')}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      features: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="one feature per line"
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>System requirements (one per line)</label>
+                <textarea
+                  rows={3}
+                  value={(gameDraft.system_requirements ?? []).join('\n')}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      system_requirements: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="one requirement per line"
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Controls (key → description)</label>
+                <p className="admin-muted" style={{ fontSize: '0.78rem', margin: '0 0 6px' }}>
+                  Lines like <code>WASD = Move</code> or <code>Space|Jump</code>. Empty lines ignored.
+                </p>
+                <textarea
+                  rows={4}
+                  value={(gameDraft.controls ?? []).map((c) => `${c.key} = ${c.desc}`).join('\n')}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      controls: e.target.value
+                        .split('\n')
+                        .map((l) => {
+                          const m = l.match(/^\s*(.+?)\s*[=|]\s*(.+)\s*$/);
+                          if (!m || !m[1] || !m[2]) return null;
+                          return { id: crypto.randomUUID(), key: m[1], desc: m[2] };
+                        })
+                        .filter(Boolean) as { id: string; key: string; desc: string }[],
+                    })
+                  }
+                  placeholder={'WASD = Move\nSpace = Jump\nLMB = Attack'}
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Credits (role → name [→ link])</label>
+                <p className="admin-muted" style={{ fontSize: '0.78rem', margin: '0 0 6px' }}>
+                  Lines like <code>Code = Sam</code> or <code>Art = Pat = https://pat.example</code>.
+                </p>
+                <textarea
+                  rows={4}
+                  value={(gameDraft.credits ?? [])
+                    .map((c) => `${c.role} = ${c.name}${c.href ? ` = ${c.href}` : ''}`)
+                    .join('\n')}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      credits: e.target.value
+                        .split('\n')
+                        .map((l) => {
+                          const parts = l.split('=').map((p) => p.trim());
+                          if (parts.length < 2 || !parts[0] || !parts[1]) return null;
+                          const out: { id: string; role: string; name: string; href?: string } = {
+                            id: crypto.randomUUID(),
+                            role: parts[0],
+                            name: parts[1],
+                          };
+                          if (parts[2]) out.href = parts[2];
+                          return out;
+                        })
+                        .filter(Boolean) as { id: string; role: string; name: string; href?: string }[],
+                    })
+                  }
+                  placeholder={'Code = Sam\nArt = Pat = https://pat.example\nMusic = Anonymous'}
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Changelog (one entry per blank-line block)</label>
+                <p className="admin-muted" style={{ fontSize: '0.78rem', margin: '0 0 6px' }}>
+                  First line: <code>v1.2 | 2026-05-01</code> (date optional). Lines below: release notes.
+                </p>
+                <textarea
+                  rows={6}
+                  value={(gameDraft.changelog ?? [])
+                    .map((c) => `v${c.version}${c.date ? ` | ${c.date}` : ''}\n${c.notes}`)
+                    .join('\n\n')}
+                  onChange={(e) =>
+                    setGameDraft({
+                      ...gameDraft,
+                      changelog: e.target.value
+                        .split(/\n{2,}/)
+                        .map((block) => {
+                          const [head, ...rest] = block.split('\n');
+                          if (!head) return null;
+                          const m = head.match(/^v?\s*([\w.\-]+)(?:\s*\|\s*(.+))?$/);
+                          if (!m || !m[1]) return null;
+                          const entry: { id: string; version: string; date?: string; notes: string } = {
+                            id: crypto.randomUUID(),
+                            version: m[1],
+                            notes: rest.join('\n').trim(),
+                          };
+                          if (m[2]) entry.date = m[2].trim();
+                          return entry;
+                        })
+                        .filter(Boolean) as { id: string; version: string; date?: string; notes: string }[],
+                    })
+                  }
+                  placeholder={'v1.0 | 2026-05-12\nInitial public release.\n\nv0.9 | 2026-05-01\nBeta tweaks.'}
+                />
+              </div>
+            </details>
+
             <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 8 }}>
               Detail page blocks
             </h3>
@@ -2801,6 +3017,16 @@ export function AdminPage() {
                           donation_presets_cents: donationPresetsFromUnknown(g.donation_presets_cents),
                           pwyw_min_cents: g.pwyw_min_cents ?? null,
                           pwyw_suggested_cents: g.pwyw_suggested_cents ?? null,
+                          // Migration 018 — game-page enrichment.
+                          tags: Array.isArray(g.tags) ? g.tags : [],
+                          release_date: String(g.release_date ?? ''),
+                          platforms: Array.isArray(g.platforms) ? g.platforms : [],
+                          screenshots: Array.isArray(g.screenshots) ? g.screenshots : [],
+                          features: Array.isArray(g.features) ? g.features : [],
+                          controls: Array.isArray(g.controls) ? g.controls : [],
+                          credits: Array.isArray(g.credits) ? g.credits : [],
+                          changelog: Array.isArray(g.changelog) ? g.changelog : [],
+                          system_requirements: Array.isArray(g.system_requirements) ? g.system_requirements : [],
                         });
                         setZipEntryPick(g.storage_entry_in_zip?.trim() ?? '');
                         setGameZipFile(null);
@@ -3436,7 +3662,8 @@ export function AdminPage() {
         tab === 'social' ||
         tab === 'motion' ||
         tab === 'media' ||
-        tab === 'system') && (
+        tab === 'system' ||
+        tab === 'homepage') && (
         <>
           {tab === 'theme' && (
             <ThemeStudio
@@ -3461,6 +3688,7 @@ export function AdminPage() {
           {tab === 'motion' && <MotionStudio settings={settings} setSettings={setSettings} />}
           {tab === 'media' && <MediaStudio settings={settings} setSettings={setSettings} />}
           {tab === 'system' && <SystemStudio settings={settings} setSettings={setSettings} />}
+          {tab === 'homepage' && <HomepageStudio settings={settings} setSettings={setSettings} />}
 
           {/* Shared save bar — sticky at the bottom of the studio shell. */}
           <div
