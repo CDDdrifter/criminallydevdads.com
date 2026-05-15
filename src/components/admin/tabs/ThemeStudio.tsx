@@ -2,12 +2,12 @@
  * ThemeStudio
  *
  * Admin panel that paints every named colour token in the site, plus the
- * body background gradient + radial accent + optional background image and
- * header glow. Wired into `SiteSettings.theme` (see `types.ts`).
+ * body background gradient + radial accent + optional background image, looping
+ * body video, and header glow. Wired into `SiteSettings.theme` (see `types.ts`).
  *
  * Layout:
  *   1. Master switch + display name + preset picker.
- *   2. Background — gradient builder, radial accent, image, header glow.
+ *   2. Background — gradient builder, radial accent, image, video, header glow.
  *   3. Core tokens — every grouped colour the site uses.
  *
  * All controls are reactive: editing any field updates the parent state and
@@ -311,6 +311,68 @@ export function ThemeStudio({ settings, setSettings, onSavePreset }: Props) {
                 label="Fixed (scroll with body off)"
                 checked={theme.background.body_image_fixed}
                 onChange={(body_image_fixed) => setBackground({ body_image_fixed })}
+              />
+            </>
+          ) : null}
+        </div>
+
+        <div className="admin-panel" style={{ borderStyle: 'dashed' }}>
+          <h3
+            style={{
+              fontSize: '0.85rem',
+              textTransform: 'uppercase',
+              color: 'var(--muted)',
+              marginBottom: 8,
+            }}
+          >
+            Background video (animated)
+          </h3>
+          <ToggleField
+            label="Show looping video behind the site"
+            checked={theme.background.body_video.enabled}
+            onChange={(enabled) =>
+              setBackground({
+                body_video: { ...theme.background.body_video, enabled },
+              })
+            }
+            help="Requires Studio theme master switch ON. Uses a muted, looping &lt;video&gt; under your gradient + FX. Upload .webm or .mp4 to Supabase Storage or any https URL."
+          />
+          {theme.background.body_video.enabled ? (
+            <>
+              <TextField
+                label="Video URL"
+                value={theme.background.body_video.url}
+                onChange={(url) =>
+                  setBackground({
+                    body_video: { ...theme.background.body_video, url },
+                  })
+                }
+                placeholder="https://….supabase.co/storage/…/bg.webm"
+              />
+              <NumberSliderField
+                label="Video opacity"
+                min={0}
+                max={1}
+                step={0.02}
+                value={theme.background.body_video.opacity}
+                onChange={(opacity) =>
+                  setBackground({
+                    body_video: { ...theme.background.body_video, opacity },
+                  })
+                }
+              />
+              <NumberSliderField
+                label="Blur (px)"
+                min={0}
+                max={24}
+                step={1}
+                value={theme.background.body_video.blur_px}
+                onChange={(blur_px) =>
+                  setBackground({
+                    body_video: { ...theme.background.body_video, blur_px },
+                  })
+                }
+                help="Softens busy footage so text stays readable."
               />
             </>
           ) : null}

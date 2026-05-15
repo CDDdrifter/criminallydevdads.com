@@ -8,10 +8,10 @@
  *
  * Style notes:
  *   - All visual styling lives in `index.css` under `.page-section-*` rules.
- *   - Nothing in this file pulls outside dependencies — it stays renderable
- *     in any branch even if Supabase is offline.
  *   - For interactive blocks (accordion, tabs, gallery lightbox) we keep
  *     state locally in tiny subcomponents instead of bubbling up.
+ *   - `sandbox_html` blocks import `htmlAppSandbox` from `HtmlAppEmbed` so
+ *     pasting Gemini HTML matches full-page app security.
  */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,6 +21,7 @@ import type { PageSection } from '../types';
 import { useGames } from '../hooks/useGames';
 import { GameCardMetaChips } from './GameCardMetaChips';
 import { GameCardThumbnail } from './GameCardThumbnail';
+import { htmlAppSandbox } from './HtmlAppEmbed';
 
 // ===========================================================================
 // Tiny renderers for sub-content used by multiple block types.
@@ -674,6 +675,30 @@ export function PageSectionsView({
                 ))}
               </section>
             );
+          case 'sandbox_html': {
+            const doc = s.html?.trim() ?? '';
+            const height = s.height_px ?? 560;
+            if (!doc) {
+              return (
+                <div key={s.id} className="page-section-img-placeholder">
+                  Mini-app HTML missing — edit this block in Admin.
+                </div>
+              );
+            }
+            return (
+              <figure key={s.id} className="page-section-sandbox-html">
+                <iframe
+                  title="Mini app"
+                  className="html-app-embed"
+                  style={{ height, minHeight: height, width: '100%' }}
+                  srcDoc={doc}
+                  sandbox={htmlAppSandbox(Boolean(s.iframe_compat))}
+                  referrerPolicy="no-referrer"
+                />
+                {s.caption ? <figcaption className="page-section-caption">{s.caption}</figcaption> : null}
+              </figure>
+            );
+          }
           case 'iframe':
             return (
               <figure key={s.id} className="page-section-iframe">

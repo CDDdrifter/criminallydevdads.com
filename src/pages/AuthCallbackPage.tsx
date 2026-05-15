@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { SiteChrome } from '../components/SiteChrome';
 import { useAuth } from '../context/AuthContext';
 import { cleanOAuthQueryFromUrl, popAuthReturn } from '../lib/authBootstrap';
+import { decodeOAuthQueryValue, humanizeOAuthError } from '../lib/authErrors';
 import { supabase, supabaseConfigured } from '../lib/supabase';
 
 /**
@@ -25,7 +26,7 @@ export function AuthCallbackPage() {
     const oauthError = params.get('error_description') ?? params.get('error');
 
     if (oauthError) {
-      setDetail(decodeURIComponent(oauthError));
+      setDetail(humanizeOAuthError(decodeOAuthQueryValue(oauthError)));
       return;
     }
 
@@ -35,7 +36,7 @@ export function AuthCallbackPage() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error && !cancelled) {
-          setDetail(error.message);
+          setDetail(humanizeOAuthError(error.message));
           return;
         }
         cleanOAuthQueryFromUrl();

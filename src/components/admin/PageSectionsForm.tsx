@@ -324,6 +324,7 @@ export function PageSectionsForm({
               ['gallery', 'Gallery'],
               ['embed', 'Embed (YT/Twitch)'],
               ['iframe', 'Iframe'],
+              ['sandbox_html', 'Mini app (HTML)'],
               ['hero', 'Hero banner'],
               ['cta', 'CTA block'],
               ['buttons', 'Buttons row'],
@@ -746,6 +747,47 @@ export function PageSectionsForm({
               <div className="admin-field">
                 <label>Allow attribute (optional)</label>
                 <input value={sec.allow ?? ''} onChange={(e) => set(i)({ allow: e.target.value })} placeholder="fullscreen; autoplay" />
+              </div>
+              <div className="admin-field">
+                <label>Caption (optional)</label>
+                <input value={sec.caption ?? ''} onChange={(e) => set(i)({ caption: e.target.value })} />
+              </div>
+            </>
+          )}
+
+          {sec.kind === 'sandbox_html' && (
+            <>
+              <p className="admin-muted" style={{ fontSize: '0.78rem', marginBottom: 10, lineHeight: 1.5 }}>
+                Paste a full HTML document (e.g. a Gemini / single-file export). Runs in a{' '}
+                <strong>sandboxed iframe</strong> — isolated from the hub. Enable compat only for apps that break
+                without <code>allow-same-origin</code> (trusted code only).
+              </p>
+              <div className="admin-field">
+                <label>HTML document</label>
+                <textarea
+                  value={sec.html}
+                  onChange={(e) => set(i)({ html: e.target.value })}
+                  rows={14}
+                  style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.8rem' }}
+                />
+              </div>
+              <div className="admin-field">
+                <label>Height (px)</label>
+                <input
+                  type="number"
+                  value={sec.height_px ?? 560}
+                  onChange={(e) => set(i)({ height_px: Number(e.target.value) })}
+                />
+              </div>
+              <div className="admin-field">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(sec.iframe_compat)}
+                    onChange={(e) => set(i)({ iframe_compat: e.target.checked })}
+                  />{' '}
+                  Compat sandbox (allow-same-origin)
+                </label>
               </div>
               <div className="admin-field">
                 <label>Caption (optional)</label>

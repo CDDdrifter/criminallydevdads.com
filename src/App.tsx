@@ -17,6 +17,7 @@ import { SiteAudio } from './components/SiteAudio';
 import { SiteCursor } from './components/SiteCursor';
 import { SiteCustomCss } from './components/SiteCustomCss';
 import { SiteParticles } from './components/SiteParticles';
+import { SiteBackgroundVideo } from './components/SiteBackgroundVideo';
 import { SiteThemeApply } from './components/SiteThemeApply';
 import { SiteWatermark } from './components/SiteWatermark';
 import { AdminPage } from './pages/AdminPage';
@@ -38,6 +39,7 @@ import { SiteAnalytics } from './components/SiteAnalytics';
 export function App() {
   return (
     <HashRouter>
+      <SiteBackgroundVideo />
       <GlobalHtmlFxSync />
       <SiteThemeApply />
       <SiteCustomCss />

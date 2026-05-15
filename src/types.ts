@@ -77,6 +77,18 @@ export type PageSection =
   | { id: string; kind: 'faq'; items: PageItem[]; intro?: string }
   /** Generic iframe — for tools, calculators, custom widgets. */
   | { id: string; kind: 'iframe'; url: string; height_px?: number; caption?: string; allow?: string }
+  /**
+   * Standalone HTML mini-app (Gemini / Claude export) in a sandboxed iframe — same security model as
+   * CMS pages with `page_mode: html_app`. Use “Compat sandbox” if scripts need same-origin.
+   */
+  | {
+      id: string;
+      kind: 'sandbox_html';
+      html: string;
+      iframe_compat?: boolean;
+      height_px?: number;
+      caption?: string;
+    }
   /** Image-text side-by-side block. */
   | { id: string; kind: 'image_text'; image_url: string; title: string; body: string; image_side?: 'left' | 'right'; image_alt?: string; cta?: { label: string; href: string; external?: boolean } }
   /** Side-by-side comparison rows. */
@@ -417,6 +429,15 @@ export type ThemeBackgrounds = {
     opacity: number;
     size: string;
     position: string;
+  };
+  /** Optional full-viewport looping video behind gradients (WebM/MP4 URL). */
+  body_video: {
+    enabled: boolean;
+    /** Direct URL to .webm or .mp4 (host on Storage or any https URL). */
+    url: string;
+    opacity: number;
+    /** Soft blur over the video (px). */
+    blur_px: number;
   };
 };
 

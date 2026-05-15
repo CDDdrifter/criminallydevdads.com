@@ -4,13 +4,17 @@ const SANDBOX_STRICT =
   'allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-pointer-lock';
 const SANDBOX_COMPAT = `${SANDBOX_STRICT} allow-same-origin`;
 
+export function htmlAppSandbox(compat: boolean): string {
+  return compat ? SANDBOX_COMPAT : SANDBOX_STRICT;
+}
+
 /**
  * Runs pasted / exported HTML (Gemini, Claude, etc.) inside an iframe so
  * scripts cannot touch the parent hub shell. Admin trust model — only
  * editors can set `raw_html`.
  */
 export function HtmlAppEmbed({ page }: { page: SitePage }) {
-  const sandbox = page.html_iframe_compat ? SANDBOX_COMPAT : SANDBOX_STRICT;
+  const sandbox = htmlAppSandbox(Boolean(page.html_iframe_compat));
   const html = page.raw_html?.trim() ?? '';
   if (!html) {
     return (

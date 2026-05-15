@@ -114,8 +114,13 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
         title="Community — sign-in, comments, cloud saves"
         description={
           <>
-            Visitors sign in with Google (no separate username). Comments and per-game JSON saves sync across devices.
-            Enable Google under Supabase → Authentication → Providers, then add your site URL to Redirect URLs.
+            <strong>Any Google account</strong> can sign in as a visitor when the provider is on — there is no
+            per-email allowlist for players (only the{' '}
+            <strong>Admin / editor</strong> list in SQL: <code>site_admin_emails</code> /{' '}
+            <code>site_admin_domains</code>). Enable Google under Supabase → Authentication → Providers. Under URL
+            Configuration, set Site URL and add your exact deploy root to <strong>Redirect URLs</strong> (see{' '}
+            <code>src/lib/authRedirect.ts</code>). If sign-in fails after redirect, check the error on the callback
+            page — common fix is a trailing-slash mismatch; use <code>VITE_AUTH_REDIRECT_URL</code> to pin one URL.
           </>
         }
       >
@@ -123,6 +128,7 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
           label="Allow public Google sign-in"
           checked={b.player_google_sign_in_enabled !== false}
           onChange={(player_google_sign_in_enabled) => set({ player_google_sign_in_enabled })}
+          help="When off, hides Google OAuth for visitors. Editors may still use magic link if configured."
         />
         <ToggleField
           label="Show sign-in / account in header"

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { humanizeOAuthError } from '../lib/authErrors';
 import { supabaseConfigured } from '../lib/supabase';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
@@ -74,7 +75,7 @@ export function UserAuthNav() {
           try {
             await auth.signInWithGoogle();
           } catch (e) {
-            setErr(e instanceof Error ? e.message : 'Sign-in failed');
+            setErr(humanizeOAuthError(e instanceof Error ? e.message : 'Sign-in failed'));
           } finally {
             setBusy(false);
           }

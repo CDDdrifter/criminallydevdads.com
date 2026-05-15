@@ -122,8 +122,10 @@ export function StaticPage() {
         {isHtmlApp ? (
           <div style={{ marginTop: 16 }}>
             <p className="admin-muted" style={{ fontSize: '0.82rem', marginBottom: 12, lineHeight: 1.5 }}>
-              Running in a sandboxed frame. If layout or scripts fail, edit the page in Admin and enable{' '}
-              <strong>Compat sandbox (allow-same-origin)</strong> — only for HTML you trust.
+              Standalone HTML runs in a sandboxed frame (Gemini / single-file exports). If something breaks, enable{' '}
+              <strong>Compat sandbox</strong> on this page in Admin — only for code you trust. You can also add the same
+              app as a <strong>Mini app (HTML)</strong> block on a regular page, or list it on{' '}
+              <Link to="/apps">/apps</Link> when <strong>Show on Apps hub</strong> is on.
             </p>
             <HtmlAppEmbed page={page} />
           </div>

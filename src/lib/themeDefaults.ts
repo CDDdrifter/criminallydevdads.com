@@ -140,6 +140,12 @@ export function defaultThemeBackgrounds(): ThemeBackgrounds {
       size: '600px 240px',
       position: 'center top',
     },
+    body_video: {
+      enabled: false,
+      url: '',
+      opacity: 0.45,
+      blur_px: 0,
+    },
   };
 }
 

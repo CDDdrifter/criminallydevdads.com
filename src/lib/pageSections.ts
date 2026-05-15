@@ -341,6 +341,16 @@ export function normalizePageSections(raw: unknown): PageSection[] {
           allow: strOpt(item.allow),
         });
         break;
+      case 'sandbox_html':
+        out.push({
+          id,
+          kind: 'sandbox_html',
+          html: str(item.html),
+          iframe_compat: bool(item.iframe_compat),
+          height_px: num(item.height_px) ?? 560,
+          caption: strOpt(item.caption),
+        });
+        break;
       case 'image_text':
         out.push({
           id,
@@ -604,6 +614,15 @@ export function createEmptySection(kind: PageSection['kind']): PageSection {
       };
     case 'iframe':
       return { id, kind: 'iframe', url: '', height_px: 480, caption: '' };
+    case 'sandbox_html':
+      return {
+        id,
+        kind: 'sandbox_html',
+        html: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mini app</title></head><body style="margin:0;font-family:system-ui;background:#0a0f18;color:#e8eeff;display:flex;align-items:center;justify-content:center;min-height:100vh"><p>Replace this with your exported HTML.</p></body></html>',
+        iframe_compat: false,
+        height_px: 560,
+        caption: '',
+      };
     case 'image_text':
       return {
         id,
