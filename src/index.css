@@ -1140,7 +1140,7 @@ body.scrolling .container {
   background: #070b12;
 }
 
-/* GamePlayerEmbed: shell is fullscreen target; button sits over iframe (bottom-right). */
+/* GamePlayerEmbed: iframe only — no overlay fullscreen/exit control. */
 .game-embed-shell {
   position: relative;
   width: 100%;
@@ -1169,77 +1169,6 @@ body.scrolling .container {
   flex: 1;
   min-height: 0;
   height: 100%;
-}
-
-/* iPhone fallback — Safari refuses native fullscreen on non-<video> elements
-   on iOS 12+ phones, so GamePlayerEmbed adds `--pseudo-fs` to position the
-   shell over the entire viewport (including under the iOS toolbar via
-   `100dvh`) and body scroll is locked from JS. */
-.game-embed-shell--pseudo-fs {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  width: 100vw;
-  height: 100vh;
-  /* dvh accounts for Safari's collapsing URL bar — keeps the iframe to the
-     real visible area instead of falling behind the chrome. */
-  height: 100dvh;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: #000;
-  border-radius: 0;
-  margin: 0;
-  padding: 0;
-  /* Respect the iPhone notch + bottom indicator. */
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-}
-
-.game-embed-shell--pseudo-fs iframe {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-}
-
-.game-embed-shell--pseudo-fs .game-embed-fs-btn {
-  bottom: max(16px, env(safe-area-inset-bottom, 0px));
-  right: max(16px, env(safe-area-inset-right, 0px));
-  z-index: 10000;
-}
-
-.game-embed-fs-btn {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  z-index: 20;
-  padding: 8px 14px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-family: inherit;
-  color: var(--text, #eaf0ff);
-  background: rgba(8, 12, 22, 0.85);
-  border: 1px solid rgba(115, 248, 255, 0.45);
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.game-embed-fs-btn:hover {
-  border-color: rgba(166, 115, 255, 0.65);
-  background: rgba(18, 24, 40, 0.92);
-}
-
-.game-embed-shell:fullscreen .game-embed-fs-btn {
-  bottom: max(16px, env(safe-area-inset-bottom, 0px));
-  right: max(16px, env(safe-area-inset-right, 0px));
 }
 
 .prose {
