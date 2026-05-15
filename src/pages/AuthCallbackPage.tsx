@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SiteChrome } from '../components/SiteChrome';
-import { useAuth } from '../context/AuthContext';
 import { cleanOAuthQueryFromUrl, popAuthReturn } from '../lib/authBootstrap';
 import { decodeOAuthQueryValue, humanizeOAuthError } from '../lib/authErrors';
 import { supabase, supabaseConfigured } from '../lib/supabase';
@@ -23,10 +22,11 @@ function oauthParamsFromLocation(searchParams: URLSearchParams): URLSearchParams
 
 /**
  * Finishes Google / magic-link sign-in (PKCE `?code=` on the redirect URL).
- * Listed in Supabase → Redirect URLs as your site root; we route users here after exchange.
+ * GoTrue may already exchange the code during `getSession()` → `initialize()` when `code` is in the URL.
+ * We must not call `exchangeCodeForSession` again (second call consumes no verifier → "PKCE code verifier not found").
+ * Do not depend on `auth.user` / `auth.loading` here — that re-runs the effect after login and duplicated exchange.
  */
 export function AuthCallbackPage() {
-  const auth = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [detail, setDetail] = useState<string | null>(null);
@@ -53,41 +53,60 @@ export function AuthCallbackPage() {
 
     let cancelled = false;
 
-    (async () => {
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error && !cancelled) {
-          setDetail(humanizeOAuthError(error.message));
-          return;
-        }
-        cleanOAuthQueryFromUrl();
-      }
+    void (async () => {
+      await supabase.auth.getSession();
 
       if (cancelled) return;
 
-      if (auth.loading) return;
+      let {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (auth.user) {
-        const dest = popAuthReturn();
-        navigate(dest, { replace: true });
+      if (session?.user) {
+        cleanOAuthQueryFromUrl();
+        navigate(popAuthReturn(), { replace: true });
         return;
       }
 
       if (!code) {
-        setDetail('No sign-in code in the URL. Try Sign in with Google again.');
+        if (!cancelled) {
+          setDetail('No sign-in code in the URL. Try Sign in with Google again.');
+        }
+        return;
+      }
+
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (cancelled) return;
+
+      if (error) {
+        ({
+          data: { session },
+        } = await supabase.auth.getSession());
+        if (session?.user) {
+          cleanOAuthQueryFromUrl();
+          navigate(popAuthReturn(), { replace: true });
+          return;
+        }
+        setDetail(humanizeOAuthError(error.message));
+        return;
+      }
+
+      cleanOAuthQueryFromUrl();
+
+      ({
+        data: { session },
+      } = await supabase.auth.getSession());
+
+      if (session?.user) {
+        navigate(popAuthReturn(), { replace: true });
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [paramKey, auth.loading, auth.user, navigate, searchParams]);
-
-  useEffect(() => {
-    if (auth.loading || !auth.user) return;
-    const dest = popAuthReturn();
-    navigate(dest, { replace: true });
-  }, [auth.loading, auth.user, navigate]);
+  }, [paramKey, navigate, searchParams]);
 
   return (
     <SiteChrome>
