@@ -8,6 +8,7 @@ import { ShareStrip } from '../components/ShareStrip';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchPageBySlug } from '../lib/cmsData';
 import { normalizeVisualPresetInput } from '../lib/visualPresets';
+import { trackAppOpen } from '../lib/analytics';
 import type { SitePage } from '../types';
 
 export function StaticPage() {
@@ -82,6 +83,13 @@ export function StaticPage() {
       document.getElementById(id)?.remove();
     };
   }, [page?.unlisted, slug]);
+
+  useEffect(() => {
+    if (!slug?.trim() || page === undefined || !page || page.page_mode !== 'html_app') {
+      return;
+    }
+    void trackAppOpen(slug.trim());
+  }, [page, slug]);
 
   if (page === undefined) {
     return (

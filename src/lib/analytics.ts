@@ -72,3 +72,10 @@ export function trackGamePlay(gameSlug: string, userId?: string | null) {
 export function trackSignIn(userId: string) {
   void trackEvent('sign_in', { path: '/auth', userId });
 }
+
+/** HTML mini-app page (`page_mode: html_app`) — counted separately from generic page views. */
+export function trackAppOpen(pageSlug: string, userId?: string | null) {
+  const key = pageSlug.trim();
+  if (!key) return;
+  void trackEvent('app_open', { path: `/p/${key}`, targetKey: key, userId });
+}

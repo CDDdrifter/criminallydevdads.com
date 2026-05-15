@@ -43,6 +43,11 @@ export function UserAuthNav() {
             </span>
           )}
           <span className="user-auth-nav__name">{name}</span>
+          {auth.profile?.username ? (
+            <span className="admin-muted" style={{ fontSize: '0.72rem', marginLeft: 4 }}>
+              @{auth.profile.username}
+            </span>
+          ) : null}
         </Link>
         <button
           type="button"

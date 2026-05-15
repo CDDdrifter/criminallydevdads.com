@@ -8,3 +8,7 @@ verify_jwt = true
 # JWT verification would block anonymous invokes from the anon client.
 [functions.create-checkout-session]
 verify_jwt = false
+
+# Admin-only broadcast; validates JWT then uses service role for recipient list.
+[functions.mailing-broadcast]
+verify_jwt = true

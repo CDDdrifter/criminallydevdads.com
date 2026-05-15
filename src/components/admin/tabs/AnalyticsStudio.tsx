@@ -18,7 +18,7 @@ export function AnalyticsStudio({ daysBack, onDaysBackChange }: Props) {
     const data = await fetchAnalyticsSummary(daysBack);
     if (!data) {
       setError(
-        'Could not load analytics. Run migration 020 in Supabase SQL Editor and sign in as an admin.',
+        'Could not load analytics. Run migrations 020 and 021 in Supabase SQL Editor and sign in as an admin.',
       );
       setSummary(null);
     } else {
@@ -38,8 +38,9 @@ export function AnalyticsStudio({ daysBack, onDaysBackChange }: Props) {
         description={
           <>
             Events are stored in <code>site_analytics_events</code> when Behavior → first-party analytics is on.
-            Third-party tools (Plausible, GA4, etc.) are configured under SEO. Run migration{' '}
-            <code>020_community_profiles_comments_analytics.sql</code> once.
+            Third-party tools (Plausible, GA4, etc.) are configured under SEO. Run migrations{' '}
+            <code>020_community_profiles_comments_analytics.sql</code> and{' '}
+            <code>021_analytics_summary_extend.sql</code> (extends the admin summary RPC).
           </>
         }
       >
@@ -73,11 +74,30 @@ export function AnalyticsStudio({ daysBack, onDaysBackChange }: Props) {
             <Kpi label="Total events" value={summary.total_events} />
             <Kpi label="Page views" value={summary.page_views} />
             <Kpi label="Game plays" value={summary.game_plays} />
+            <Kpi label="App opens (HTML)" value={summary.events_by_type?.app_open ?? 0} />
             <Kpi label="Unique sessions" value={summary.unique_sessions} />
             <Kpi label="Signed-in visitors" value={summary.signed_in_users} />
             <Kpi label="Registered profiles" value={summary.registered_profiles} />
             <Kpi label="Comments posted" value={summary.comments_posted} />
             <Kpi label="Sign-ins" value={summary.sign_ins} />
+            <Kpi label="Comments (events)" value={summary.events_by_type?.comment_post ?? 0} />
+          </div>
+
+          <div className="admin-panel">
+            <h3 style={{ marginTop: 0, fontSize: '0.9rem' }}>Events by type (window)</h3>
+            {Object.keys(summary.events_by_type ?? {}).length === 0 ? (
+              <p className="admin-muted">No typed events in this period.</p>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>
+                {Object.entries(summary.events_by_type)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([k, v]) => (
+                    <li key={k}>
+                      <code>{k}</code> — {v.toLocaleString()}
+                    </li>
+                  ))}
+              </ul>
+            )}
           </div>
 
           <div className="admin-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -109,6 +129,23 @@ export function AnalyticsStudio({ daysBack, onDaysBackChange }: Props) {
                 </ol>
               )}
             </div>
+          </div>
+
+          <div className="admin-panel">
+            <h3 style={{ marginTop: 0, fontSize: '0.9rem' }}>Top HTML apps (app_open)</h3>
+            {(summary.top_app_opens ?? []).length === 0 ? (
+              <p className="admin-muted">
+                No app_open events — open sandbox HTML pages with first-party analytics on.
+              </p>
+            ) : (
+              <ol style={{ margin: 0, paddingLeft: 20 }}>
+                {(summary.top_app_opens ?? []).map((row) => (
+                  <li key={row.app_key} style={{ marginBottom: 6 }}>
+                    <code>{row.app_key}</code> — {row.opens.toLocaleString()} opens
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
 
           <p className="admin-muted" style={{ fontSize: '0.8rem' }}>

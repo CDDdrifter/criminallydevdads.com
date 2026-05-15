@@ -38,6 +38,51 @@ export function EffectsStudio({ settings, setSettings }: Props) {
 
   return (
     <div className="admin-grid" style={{ gap: 16 }}>
+      <details className="admin-panel" style={{ borderStyle: 'solid', borderColor: 'rgba(115, 248, 255, 0.35)' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, color: 'var(--accent)' }}>
+          Visual systems inventory — what lives where
+        </summary>
+        <div className="admin-muted" style={{ marginTop: 12, fontSize: '0.82rem', lineHeight: 1.65 }}>
+          <p style={{ margin: '0 0 10px' }}>
+            <strong>This tab</strong> controls the CRT-style <em>overlay layers</em> (scanlines, grain, vignette, animated
+            colour wash, cursor spotlight) plus title glitch, card entrance/hover, header edge sweep, scroll micro-jitter,
+            and <strong>Effects → Custom CSS</strong>. Master on/off toggles mirror legacy <code>fx_*</code> site
+            settings.
+          </p>
+          <p style={{ margin: '0 0 10px' }}>
+            <strong>Theme</strong> — solid tokens (every colour), body gradient, radial accents, background image,{' '}
+            <strong>looping background video</strong>, header glow, named presets.
+          </p>
+          <p style={{ margin: '0 0 10px' }}>
+            <strong>Typography</strong> — Google Fonts import, families, sizes, hero title shadow, link underline.
+            <br />
+            <strong>Layout</strong> — container width, padding, card grid, thumbnail height, nav alignment (sticky/top).
+            <br />
+            <strong>Components</strong> — card/button/panel shadows, modal backdrop, promo chips.
+            <br />
+            <strong>Motion</strong> — page entrance presets, route transition fade, hero idle animation, button hover
+            motion, promo strip entrance.
+            <br />
+            <strong>Media</strong> — ambient particles (density, speed, palette).
+            <br />
+            <strong>Brand / Hero</strong> — top brand strip (logo, tagline).
+            <br />
+            <strong>Behavior</strong> — game card hover style (lift/shine/glow/tilt/pulse), preview autoplay, click
+            sound, homepage intro HTML.
+            <br />
+            <strong>System</strong> — forced high-contrast mode.
+            <br />
+            <strong>Site settings (legacy)</strong> — <code>Site Custom CSS</code> (global) and per-page / per-game{' '}
+            <strong>Custom mood CSS</strong> in Pages / Games.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Always-on shell</strong> — <code>SiteCursor</code>, <code>SiteAudio</code> (BGM / ambient),{' '}
+            <code>SiteWatermark</code>, third-party analytics from <strong>SEO</strong>. Hash routes fire first-party{' '}
+            <code>page_view</code>; HTML app pages also emit <code>app_open</code> (see Analytics tab after migration 021).
+          </p>
+        </div>
+      </details>
+
       <FieldGroup
         title="Master FX toggles"
         tone="accent"

@@ -50,6 +50,7 @@ import { unknownColumnFromPostgrestMessage } from '../lib/postgrestUnknownColumn
 import { formatSupabaseWriteError, isRlsOrPermissionError } from '../lib/supabaseWriteError';
 import { VISUAL_PRESET_OPTIONS, normalizeVisualPresetInput } from '../lib/visualPresets';
 import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
+import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
 import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
 import { BrandHeroStudio } from '../components/admin/tabs/BrandHeroStudio';
 import { ComponentsStudio } from '../components/admin/tabs/ComponentsStudio';
@@ -107,14 +108,15 @@ type Tab =
   | 'system'
   // Studio expansion (migration 018).
   | 'homepage'
-  | 'analytics';
+  | 'analytics'
+  | 'mailing';
 
 function describeAdminWriteFailure(err: unknown): string {
   const core = formatSupabaseWriteError(err);
   if (isRlsOrPermissionError(err)) {
     return `${core}\n\nRow security / permission: you must be signed in as an allowed editor. In Supabase, check site_admin_domains and site_admin_emails for this project. Try Sign out, then sign in again.`;
   }
-  return `${core}\n\nIf a database column is missing, run migrations 014, 019, and 020 in supabase/migrations/ once in the Supabase SQL Editor.`;
+    return `${core}\n\nIf a database column is missing, run migrations 014, 019, 020, and 022 in supabase/migrations/ once in the Supabase SQL Editor.`;
 }
 
 function emptyPageDraft(): Partial<SitePage> & {
@@ -1356,6 +1358,7 @@ export function AdminPage() {
             // Studio expansion (migration 018).
             ['homepage', '🏠 Homepage'],
             ['analytics', '📊 Analytics'],
+            ['mailing', '✉️ Mailing'],
           ] as const
         ).map(([t, label]) => (
           <button
@@ -1408,6 +1411,11 @@ export function AdminPage() {
                 'analytics',
                 '📊 Analytics',
                 'First-party traffic: page views, game plays, sign-ins, top pages & games. Requires migration 020.',
+              ],
+              [
+                'mailing',
+                '✉️ Mailing list',
+                'Opt-in subscribers, preview, and Resend broadcast from the site. Requires migration 022 + mailing-broadcast function.',
               ],
             ] as const
           ).map(([id, title, desc]) => (
@@ -3831,6 +3839,8 @@ export function AdminPage() {
       {tab === 'analytics' && (
         <AnalyticsStudio daysBack={analyticsDaysBack} onDaysBackChange={setAnalyticsDaysBack} />
       )}
+
+      {tab === 'mailing' && <MailingListStudio />}
 
       {(tab === 'theme' ||
         tab === 'effects' ||
