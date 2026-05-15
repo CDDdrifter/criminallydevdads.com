@@ -31,6 +31,8 @@ import { PurchaseTermsPage } from './pages/PurchaseTermsPage';
 import { StaticPage } from './pages/StaticPage';
 import { VaultPage } from './pages/VaultPage';
 import { AccountPage } from './pages/AccountPage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
+import { OAuthConsentPage } from './pages/OAuthConsentPage';
 import { SiteAnalytics } from './components/SiteAnalytics';
 
 export function App() {
@@ -60,6 +62,8 @@ export function App() {
         <Route path="/purchase/success" element={<PurchaseSuccessPage />} />
         <Route path="/purchase/terms" element={<PurchaseTermsPage />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/oauth/consent" element={<OAuthConsentPage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
       </MaintenanceGate>

@@ -1225,7 +1225,7 @@ export function AdminPage() {
             onClick={() => {
               setGoogleError(null);
               auth
-                .signInWithGoogle()
+                .signInWithGoogle('/admin')
                 .catch((e) => {
                   console.error(e);
                   setGoogleError(e instanceof Error ? e.message : 'Google sign-in failed');

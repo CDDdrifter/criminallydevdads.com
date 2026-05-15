@@ -19,10 +19,15 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
 
   const mode = settings.behavior?.maintenance_mode;
   const onAdminRoute = pathname === '/admin' || hash === '#/admin';
+  const authRoute =
+    pathname === '/auth/callback' ||
+    pathname === '/oauth/consent' ||
+    hash === '#/auth/callback' ||
+    hash.startsWith('#/oauth/consent');
 
   // No maintenance, or this admin user is bypassing, or we're on /admin so
   // editors can fix things — render the real app.
-  if (!mode?.enabled || onAdminRoute || (mode.allow_admin_bypass && auth.isAdmin)) {
+  if (!mode?.enabled || onAdminRoute || authRoute || (mode.allow_admin_bypass && auth.isAdmin)) {
     return <>{children}</>;
   }
 

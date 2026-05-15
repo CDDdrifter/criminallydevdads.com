@@ -162,6 +162,25 @@ If the error mentions **redirect**, copy the **exact** URL from the error (or fr
 4. Google **OAuth consent screen** must be configured (app name, your email as test user if the app is in **Testing** mode — only listed test users can sign in).
 5. Browser error **redirect_uri_mismatch** → the Supabase callback URL is missing or wrong in Google Cloud (step 3).
 
+6. **Authentication** → **URL Configuration**:
+   - **Site URL:** `https://criminallydevdads.com` (no `/#/` hash).
+   - **Redirect URLs** (add all that apply):
+     - `https://criminallydevdads.com/`
+     - `https://criminallydevdads.com/**`
+     - Your `*.github.io` deploy URL if you use GitHub Pages.
+   - Optional env: `VITE_AUTH_REDIRECT_URL=https://criminallydevdads.com/` in GitHub Actions.
+
+7. After Google, the app uses **PKCE** (`?code=` in the URL) and routes to `/#/auth/callback` to finish sign-in. You should see Google’s **account picker** (`prompt=select_account`).
+
+### 4b. OAuth 2.1 server consent page (Supabase preview URL)
+
+If you enabled **Authentication → OAuth Server** in Supabase:
+
+1. Set **Authorization path** to `/oauth/consent`.
+2. The live consent UI is at **`https://criminallydevdads.com/#/oauth/consent`** (hash route).
+3. Supabase’s path-based preview (`/oauth/consent`) is rewritten to the hash route on load.
+4. Users sign in with Google on that page, then **Allow** / **Deny** the third-party app.
+
 ### 5. After login: “Access denied”
 
 That means auth **worked** but the email is not an editor in the database. Add your domain or exact email (Part F).

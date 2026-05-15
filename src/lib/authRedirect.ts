@@ -8,6 +8,13 @@
  *
  * GitHub Pages often serves the app at .../repo/ or .../repo/index.html — missing trailing
  * slash or a mismatch here commonly causes 404 after OAuth.
+ *
+ * In Supabase → Authentication → URL Configuration, add these Redirect URLs (exact):
+ *   https://criminallydevdads.com/
+ *   https://criminallydevdads.com/**
+ *   (and your github.io URL if you use it)
+ * Site URL should be https://criminallydevdads.com (no hash).
+ * OAuth Server authorization path: /oauth/consent → live at /#/oauth/consent
  */
 export function getAuthRedirectBaseUrl(): string {
   const override = (import.meta.env.VITE_AUTH_REDIRECT_URL ?? '').trim();

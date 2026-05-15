@@ -1,6 +1,6 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { getAuthRedirectBaseUrl } from '../lib/authRedirect';
+import { getOAuthRedirectUrl, stashAuthReturn } from '../lib/authBootstrap';
 import { trackSignIn } from '../lib/analytics';
 import { ensureProfile, fetchProfile, type SiteProfile } from '../lib/communityData';
 import { installGameCloudBridge } from '../lib/gameCloudBridge';
@@ -14,7 +14,7 @@ type AuthState = {
   isAdmin: boolean;
   isSignedIn: boolean;
   adminCheckError: string | null;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (returnPath?: string) => Promise<void>;
   signInWithEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -130,14 +130,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     installGameCloudBridge(() => user?.id ?? null);
   }, [user?.id]);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = useCallback(async (returnPath?: string) => {
     if (!supabase) {
       throw new Error('Supabase is not configured');
     }
-    const redirectTo = getAuthRedirectBaseUrl();
+    stashAuthReturn(returnPath);
+    const redirectTo = getOAuthRedirectUrl();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        queryParams: {
+          prompt: 'select_account',
+          access_type: 'online',
+        },
+      },
     });
     if (error) {
       throw error;
@@ -160,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'This email is not on the editor allow list. In Supabase → SQL, add the domain to site_admin_domains or your exact address to site_admin_emails.',
       );
     }
-    const redirectTo = getAuthRedirectBaseUrl();
+    const redirectTo = getOAuthRedirectUrl();
     const { error } = await supabase.auth.signInWithOtp({
       email: trimmed,
       options: { emailRedirectTo: redirectTo },
