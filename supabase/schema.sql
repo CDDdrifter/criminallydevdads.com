@@ -371,3 +371,5 @@ alter table site_pages add column if not exists unlisted boolean not null defaul
 alter table site_pages add column if not exists show_on_apps_hub boolean not null default true;
 alter table site_pages add column if not exists html_app_summary text not null default '';
 alter table site_pages add column if not exists html_iframe_compat boolean not null default false;
+
+-- Migration 020 — run supabase/migrations/020_community_profiles_comments_analytics.sql in SQL Editor.

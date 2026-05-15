@@ -341,6 +341,7 @@ export function PageSectionsForm({
               ['newsletter', 'Newsletter'],
               ['game_grid', 'Game grid'],
               ['tags', 'Tags'],
+              ['comments', 'Comments thread'],
             ] as const
           ).map(([k, label]) => (
             <button key={k} type="button" onClick={() => addKind(k)}>
@@ -1433,6 +1434,43 @@ export function PageSectionsForm({
                 <p className="admin-muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
                   Match the slug you set on each game (Games tab). Order matters.
                 </p>
+              </div>
+            </>
+          )}
+
+          {sec.kind === 'comments' && (
+            <>
+              <div className="admin-field">
+                <label>Section title</label>
+                <input value={sec.title ?? ''} onChange={(e) => set(i)({ title: e.target.value })} />
+              </div>
+              <p className="admin-muted" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
+                Leave target empty on game / page / dev log routes — the page slug is used automatically. Override
+                only for cross-linking another thread.
+              </p>
+              <div className="admin-field">
+                <label>Target type (optional)</label>
+                <select
+                  value={sec.target_type ?? ''}
+                  onChange={(e) =>
+                    set(i)({
+                      target_type: (e.target.value || undefined) as 'game' | 'page' | 'devlog' | undefined,
+                    })
+                  }
+                >
+                  <option value="">Use page context</option>
+                  <option value="game">Game</option>
+                  <option value="page">CMS page</option>
+                  <option value="devlog">Dev log</option>
+                </select>
+              </div>
+              <div className="admin-field">
+                <label>Target key / slug (optional)</label>
+                <input
+                  value={sec.target_key ?? ''}
+                  onChange={(e) => set(i)({ target_key: e.target.value })}
+                  placeholder="my-game-slug"
+                />
               </div>
             </>
           )}

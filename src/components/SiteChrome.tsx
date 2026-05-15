@@ -8,6 +8,7 @@ import { useAsyncMemo } from '../hooks/useAsyncMemo';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import type { BehaviorConfig } from '../types';
 import { SiteSocialFollow } from './SiteSocialFollow';
+import { UserAuthNav } from './UserAuthNav';
 
 export type SiteNavLink = { label: string; href: string; external: boolean };
 
@@ -111,6 +112,7 @@ function PrimaryNavRow({
           <Link to="/admin">{adminLabel}</Link>
         ) : null}
       </div>
+      <UserAuthNav />
       <SiteSocialFollow slot={socialSlot} />
     </nav>
   );

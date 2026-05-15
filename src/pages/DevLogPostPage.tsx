@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { CommentSection } from '../components/CommentSection';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchDevLogBySlug } from '../lib/cmsData';
 import type { DevLogPost } from '../types';
@@ -62,6 +63,7 @@ export function DevLogPostPage() {
         <div className="prose" style={{ marginTop: 24, whiteSpace: 'pre-wrap' }}>
           {post.body}
         </div>
+        {slug ? <CommentSection targetType="devlog" targetKey={slug} /> : null}
       </article>
     </SiteChrome>
   );

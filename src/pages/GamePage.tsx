@@ -4,6 +4,7 @@ import { GameEmbedSection } from '../components/GameEmbedSection';
 import { GamePurchaseBlock } from '../components/GamePurchaseBlock';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
+import { CommentSection } from '../components/CommentSection';
 import { ShareStrip } from '../components/ShareStrip';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchGameViewBySlug } from '../lib/cmsData';
@@ -166,7 +167,10 @@ export function GamePage() {
         ) : null}
 
         {hasBlocks ? (
-          <PageSectionsView sections={game.sections} />
+          <PageSectionsView
+            sections={game.sections}
+            commentContext={{ target_type: 'game', target_key: game.slug }}
+          />
         ) : (
           <>
             {game.thumbnail ? (
@@ -327,6 +331,8 @@ export function GamePage() {
             </div>
           </section>
         ) : null}
+
+        <CommentSection targetType="game" targetKey={game.slug} />
 
         <div className="game-actions" style={{ maxWidth: 480, marginTop: 24, flexWrap: 'wrap' }}>
           <Link to={`/play/${game.slug}`} className="btn-download" style={{ textAlign: 'center' }}>

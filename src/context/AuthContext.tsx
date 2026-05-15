@@ -1,51 +1,90 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { getAuthRedirectBaseUrl } from '../lib/authRedirect';
+import { trackSignIn } from '../lib/analytics';
+import { ensureProfile, fetchProfile, type SiteProfile } from '../lib/communityData';
+import { installGameCloudBridge } from '../lib/gameCloudBridge';
 import { supabase, supabaseConfigured } from '../lib/supabase';
 
 type AuthState = {
   session: Session | null;
   user: User | null;
+  profile: SiteProfile | null;
   loading: boolean;
   isAdmin: boolean;
-  /** Set when signed in but is_site_admin RPC failed (schema/network) — not the same as allowlist denial */
+  isSignedIn: boolean;
   adminCheckError: string | null;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
+function metaFromUser(user: User) {
+  const m = user.user_metadata ?? {};
+  return {
+    name: String(m.full_name ?? m.name ?? user.email?.split('@')[0] ?? 'Player'),
+    avatar: String(m.avatar_url ?? m.picture ?? ''),
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<SiteProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [serverIsAdmin, setServerIsAdmin] = useState(false);
   const [adminCheckError, setAdminCheckError] = useState<string | null>(null);
 
-  const applySession = useCallback(async (next: Session | null) => {
-    setSession(next);
-    setAdminCheckError(null);
-    if (!supabase) {
-      setServerIsAdmin(false);
+  const loadProfile = useCallback(async (user: User | null) => {
+    if (!user) {
+      setProfile(null);
       return;
     }
-    if (!next?.user) {
-      setServerIsAdmin(false);
-      return;
+    const meta = metaFromUser(user);
+    let p = await fetchProfile(user.id);
+    if (!p) {
+      p = await ensureProfile(user.id, meta);
     }
-    const { data, error } = await supabase.rpc('is_site_admin');
-    if (error) {
-      console.error('is_site_admin RPC failed', error);
-      setServerIsAdmin(false);
-      setAdminCheckError(
-        error.message ||
-          'Could not verify editor access. Run supabase/schema.sql in the SQL Editor, then try again.',
-      );
-      return;
-    }
-    setServerIsAdmin(data === true);
+    setProfile(p);
   }, []);
+
+  const applySession = useCallback(
+    async (next: Session | null, event?: string) => {
+      setSession(next);
+      setAdminCheckError(null);
+      if (!supabase) {
+        setServerIsAdmin(false);
+        setProfile(null);
+        return;
+      }
+      if (!next?.user) {
+        setServerIsAdmin(false);
+        setProfile(null);
+        return;
+      }
+
+      await loadProfile(next.user);
+
+      const { data, error } = await supabase.rpc('is_site_admin');
+      if (error) {
+        console.error('is_site_admin RPC failed', error);
+        setServerIsAdmin(false);
+        setAdminCheckError(
+          error.message ||
+            'Could not verify editor access. Run supabase/schema.sql in the SQL Editor, then try again.',
+        );
+      } else {
+        setServerIsAdmin(data === true);
+      }
+
+      if (event === 'SIGNED_IN') {
+        void trackSignIn(next.user.id);
+      }
+    },
+    [loadProfile],
+  );
 
   useEffect(() => {
     if (!supabaseConfigured || !supabase) {
@@ -68,9 +107,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, next) => {
+    } = supabase.auth.onAuthStateChange((event, next) => {
       setLoading(true);
-      void applySession(next).finally(() => {
+      void applySession(next, event).finally(() => {
         if (!cancelled) {
           setLoading(false);
         }
@@ -85,6 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const user = session?.user ?? null;
   const isAdmin = serverIsAdmin;
+  const isSignedIn = Boolean(user);
+
+  useEffect(() => {
+    installGameCloudBridge(() => user?.id ?? null);
+  }, [user?.id]);
 
   const signInWithGoogle = useCallback(async () => {
     if (!supabase) {
@@ -131,20 +175,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     await supabase.auth.signOut();
+    setProfile(null);
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (user) {
+      await loadProfile(user);
+    }
+  }, [user, loadProfile]);
 
   const value = useMemo(
     () => ({
       session,
       user,
+      profile,
       loading,
       isAdmin,
+      isSignedIn,
       adminCheckError,
       signInWithGoogle,
       signInWithEmail,
       signOut,
+      refreshProfile,
     }),
-    [session, user, loading, isAdmin, adminCheckError, signInWithGoogle, signInWithEmail, signOut],
+    [
+      session,
+      user,
+      profile,
+      loading,
+      isAdmin,
+      isSignedIn,
+      adminCheckError,
+      signInWithGoogle,
+      signInWithEmail,
+      signOut,
+      refreshProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

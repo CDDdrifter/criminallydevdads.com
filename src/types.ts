@@ -88,7 +88,15 @@ export type PageSection =
   /** Sub-game grid: lists curated games by slug. Renders like the homepage grid. */
   | { id: string; kind: 'game_grid'; title?: string; slugs: string[]; columns?: 2 | 3 | 4 }
   /** Tag chip cloud / pill list. */
-  | { id: string; kind: 'tags'; items: { id: string; label: string; href?: string; tone?: 'default' | 'accent' | 'muted' }[] };
+  | { id: string; kind: 'tags'; items: { id: string; label: string; href?: string; tone?: 'default' | 'accent' | 'muted' }[] }
+  /** Threaded discussion — uses page context or explicit target below. */
+  | {
+      id: string;
+      kind: 'comments';
+      title?: string;
+      target_type?: 'game' | 'page' | 'devlog';
+      target_key?: string;
+    };
 
 export type SupportButton = {
   id: string;
@@ -569,6 +577,14 @@ export type BehaviorConfig = {
   show_home_nav_link: boolean;
   /** Adds an “Apps” link to the primary nav → `/#/apps` (HTML app hub). */
   show_apps_lab_link: boolean;
+  /** Public Google sign-in (comments + cloud saves). Requires Supabase + Google provider. */
+  player_google_sign_in_enabled: boolean;
+  /** Show “Sign in with Google” / account chip in the header. */
+  show_player_sign_in_nav: boolean;
+  /** Allow comment sections site-wide. */
+  comments_globally_enabled: boolean;
+  /** Record page views / game plays into `site_analytics_events` (migration 020). */
+  first_party_analytics_enabled: boolean;
   show_vault_link: boolean;
   show_devlog_link: boolean;
   show_filter_buttons: boolean;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { CommentSection } from '../components/CommentSection';
 import { HtmlAppEmbed } from '../components/HtmlAppEmbed';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
@@ -131,7 +132,10 @@ export function StaticPage() {
             <ShareStrip title={page.title} surface="page" />
             {page.sections.length > 0 ? (
               <div style={{ marginTop: 24 }}>
-                <PageSectionsView sections={page.sections} />
+                <PageSectionsView
+                  sections={page.sections}
+                  commentContext={{ target_type: 'page', target_key: page.slug }}
+                />
               </div>
             ) : (
               <div className="prose" style={{ marginTop: 24, whiteSpace: 'pre-wrap' }}>
@@ -140,6 +144,10 @@ export function StaticPage() {
             )}
           </>
         )}
+
+        {!isHtmlApp && slug ? (
+          <CommentSection targetType="page" targetKey={slug} />
+        ) : null}
       </article>
     </SiteChrome>
   );

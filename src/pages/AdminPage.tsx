@@ -49,6 +49,7 @@ import { donationPresetsFromUnknown } from '../lib/gamePricing';
 import { unknownColumnFromPostgrestMessage } from '../lib/postgrestUnknownColumn';
 import { formatSupabaseWriteError, isRlsOrPermissionError } from '../lib/supabaseWriteError';
 import { VISUAL_PRESET_OPTIONS, normalizeVisualPresetInput } from '../lib/visualPresets';
+import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
 import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
 import { BrandHeroStudio } from '../components/admin/tabs/BrandHeroStudio';
 import { ComponentsStudio } from '../components/admin/tabs/ComponentsStudio';
@@ -105,14 +106,15 @@ type Tab =
   | 'media'
   | 'system'
   // Studio expansion (migration 018).
-  | 'homepage';
+  | 'homepage'
+  | 'analytics';
 
 function describeAdminWriteFailure(err: unknown): string {
   const core = formatSupabaseWriteError(err);
   if (isRlsOrPermissionError(err)) {
     return `${core}\n\nRow security / permission: you must be signed in as an allowed editor. In Supabase, check site_admin_domains and site_admin_emails for this project. Try Sign out, then sign in again.`;
   }
-  return `${core}\n\nIf a database column is missing, run supabase/migrations/014_ensure_admin_write_schema.sql and 019_site_pages_html_apps_and_unlisted.sql once in the Supabase SQL Editor.`;
+  return `${core}\n\nIf a database column is missing, run migrations 014, 019, and 020 in supabase/migrations/ once in the Supabase SQL Editor.`;
 }
 
 function emptyPageDraft(): Partial<SitePage> & {
@@ -325,6 +327,7 @@ function summarizePageSave(args: {
 export function AdminPage() {
   const auth = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
+  const [analyticsDaysBack, setAnalyticsDaysBack] = useState(30);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -1352,6 +1355,7 @@ export function AdminPage() {
             ['system', 'Performance + A11y'],
             // Studio expansion (migration 018).
             ['homepage', '🏠 Homepage'],
+            ['analytics', '📊 Analytics'],
           ] as const
         ).map(([t, label]) => (
           <button
@@ -1400,6 +1404,11 @@ export function AdminPage() {
               ['media', '🎵 Audio + Cursor + Particles', 'Bg music, hover sounds, custom cursor, floating particles.'],
               ['system', '♿ Performance + A11y', 'Animation kill-switches, focus ring, font scaling, high contrast.'],
               ['homepage', '🏠 Homepage builder', 'Build the entire front page with hero banners, galleries, columns, tabs, FAQs — any block.'],
+              [
+                'analytics',
+                '📊 Analytics',
+                'First-party traffic: page views, game plays, sign-ins, top pages & games. Requires migration 020.',
+              ],
             ] as const
           ).map(([id, title, desc]) => (
             <button
@@ -3819,6 +3828,10 @@ export function AdminPage() {
           repaints the page live as the admin types. Save persists the whole
           settings row, so the studio shares one save button with this panel.
           ===================================================================== */}
+      {tab === 'analytics' && (
+        <AnalyticsStudio daysBack={analyticsDaysBack} onDaysBackChange={setAnalyticsDaysBack} />
+      )}
+
       {(tab === 'theme' ||
         tab === 'effects' ||
         tab === 'typography' ||

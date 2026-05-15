@@ -429,6 +429,20 @@ export function normalizePageSections(raw: unknown): PageSection[] {
             : [],
         });
         break;
+      case 'comments': {
+        const tt =
+          item.target_type === 'game' || item.target_type === 'page' || item.target_type === 'devlog'
+            ? item.target_type
+            : undefined;
+        out.push({
+          id,
+          kind: 'comments',
+          title: strOpt(item.title),
+          target_type: tt,
+          target_key: strOpt(item.target_key),
+        });
+        break;
+      }
       default:
         // Unknown kind — silently dropped so a future block type added on
         // another machine doesn't break older clients.
@@ -653,5 +667,7 @@ export function createEmptySection(kind: PageSection['kind']): PageSection {
           { id: newSectionId(), label: 'co-op', tone: 'default' },
         ],
       };
+    case 'comments':
+      return { id, kind: 'comments', title: 'Comments' };
   }
 }

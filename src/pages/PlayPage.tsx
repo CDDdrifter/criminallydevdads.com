@@ -5,6 +5,7 @@ import { RouteScopedCss } from '../components/RouteScopedCss';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchGameViewBySlug } from '../lib/cmsData';
 import { normalizeVisualPresetInput } from '../lib/visualPresets';
+import { trackGamePlay } from '../lib/analytics';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
 import type { GameView } from '../types';
 
@@ -64,6 +65,11 @@ export function PlayPage() {
       delete document.documentElement.dataset.immersiveLayout;
     };
   }, [game?.immersive_layout]);
+
+  useEffect(() => {
+    if (!game?.slug || !game.isPlayable) return;
+    void trackGamePlay(game.slug);
+  }, [game?.slug, game?.isPlayable]);
 
   if (game === undefined) {
     return (

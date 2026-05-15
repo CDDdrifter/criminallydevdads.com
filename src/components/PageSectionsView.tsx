@@ -15,6 +15,8 @@
  */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CommentSection } from './CommentSection';
+import type { CommentTargetType } from '../lib/communityData';
 import type { PageSection } from '../types';
 import { useGames } from '../hooks/useGames';
 import { GameCardMetaChips } from './GameCardMetaChips';
@@ -302,7 +304,18 @@ function GameGrid({ slugs, columns, title }: { slugs: string[]; columns: 2 | 3 |
 // Main renderer.
 // ===========================================================================
 
-export function PageSectionsView({ sections }: { sections: PageSection[] }) {
+export type CommentRenderContext = {
+  target_type: CommentTargetType;
+  target_key: string;
+};
+
+export function PageSectionsView({
+  sections,
+  commentContext = null,
+}: {
+  sections: PageSection[];
+  commentContext?: CommentRenderContext | null;
+}) {
   if (sections.length === 0) {
     return null;
   }
@@ -796,6 +809,19 @@ export function PageSectionsView({ sections }: { sections: PageSection[] }) {
                 )}
               </div>
             );
+          case 'comments': {
+            const tt = s.target_type ?? commentContext?.target_type;
+            const tk = (s.target_key ?? commentContext?.target_key ?? '').trim();
+            if (!tt || !tk) return null;
+            return (
+              <CommentSection
+                key={s.id}
+                targetType={tt}
+                targetKey={tk}
+                title={s.title ?? 'Comments'}
+              />
+            );
+          }
           default:
             return null;
         }

@@ -111,6 +111,39 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
       </FieldGroup>
 
       <FieldGroup
+        title="Community — sign-in, comments, cloud saves"
+        description={
+          <>
+            Visitors sign in with Google (no separate username). Comments and per-game JSON saves sync across devices.
+            Enable Google under Supabase → Authentication → Providers, then add your site URL to Redirect URLs.
+          </>
+        }
+      >
+        <ToggleField
+          label="Allow public Google sign-in"
+          checked={b.player_google_sign_in_enabled !== false}
+          onChange={(player_google_sign_in_enabled) => set({ player_google_sign_in_enabled })}
+        />
+        <ToggleField
+          label="Show sign-in / account in header"
+          checked={b.show_player_sign_in_nav !== false}
+          onChange={(show_player_sign_in_nav) => set({ show_player_sign_in_nav })}
+        />
+        <ToggleField
+          label="Enable comments site-wide"
+          checked={b.comments_globally_enabled !== false}
+          onChange={(comments_globally_enabled) => set({ comments_globally_enabled })}
+          help="Turn off to hide all comment blocks until you are ready for public discussion."
+        />
+        <ToggleField
+          label="First-party analytics (page views, plays, sign-ins)"
+          checked={b.first_party_analytics_enabled !== false}
+          onChange={(first_party_analytics_enabled) => set({ first_party_analytics_enabled })}
+          help="Stored in Supabase. View totals under Admin → Analytics. Run migration 020 once."
+        />
+      </FieldGroup>
+
+      <FieldGroup
         title="Visibility — what shows on the homepage"
         description="Toggle whole sections off without deleting them."
       >

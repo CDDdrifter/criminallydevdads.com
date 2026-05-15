@@ -30,6 +30,8 @@ import { PurchaseSuccessPage } from './pages/PurchaseSuccessPage';
 import { PurchaseTermsPage } from './pages/PurchaseTermsPage';
 import { StaticPage } from './pages/StaticPage';
 import { VaultPage } from './pages/VaultPage';
+import { AccountPage } from './pages/AccountPage';
+import { SiteAnalytics } from './components/SiteAnalytics';
 
 export function App() {
   return (
@@ -43,6 +45,7 @@ export function App() {
       <SiteParticles />
       <FxBackdrop />
       <SiteWatermark />
+      <SiteAnalytics />
       <MaintenanceGate>
       <Routes>
         <Route path="/" element={<HomePage />} />
@@ -56,6 +59,7 @@ export function App() {
         {/* Stripe redirects: success/cancel URLs built with SITE_URL in create-checkout-session */}
         <Route path="/purchase/success" element={<PurchaseSuccessPage />} />
         <Route path="/purchase/terms" element={<PurchaseTermsPage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
       </MaintenanceGate>
