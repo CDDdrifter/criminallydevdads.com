@@ -70,6 +70,10 @@ export function bootstrapSpaAuthPaths(): void {
 /** Strip `?code=` / `?error=` from the address bar after PKCE exchange (keep hash route). */
 export function cleanOAuthQueryFromUrl() {
   const base = getAuthRedirectBaseUrl().replace(/\/$/, '');
-  const hash = window.location.hash?.startsWith('#/') ? window.location.hash : '#/auth/callback';
+  let hash = window.location.hash?.startsWith('#/') ? window.location.hash : '#/auth/callback';
+  const q = hash.indexOf('?');
+  if (q !== -1) {
+    hash = hash.slice(0, q);
+  }
   window.history.replaceState({}, '', `${base}${hash}`);
 }

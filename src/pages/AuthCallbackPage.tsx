@@ -1,10 +1,25 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SiteChrome } from '../components/SiteChrome';
 import { useAuth } from '../context/AuthContext';
 import { cleanOAuthQueryFromUrl, popAuthReturn } from '../lib/authBootstrap';
 import { decodeOAuthQueryValue, humanizeOAuthError } from '../lib/authErrors';
 import { supabase, supabaseConfigured } from '../lib/supabase';
+
+/**
+ * PKCE `code` may arrive in the hash query (`/#/auth/callback?code=…`) because we use HashRouter.
+ * `window.location.search` is often empty then — use `useSearchParams()` (or hash fallback).
+ */
+function oauthParamsFromLocation(searchParams: URLSearchParams): URLSearchParams {
+  if (searchParams.get('code') || searchParams.get('error') || searchParams.get('error_description')) {
+    return searchParams;
+  }
+  const hash = window.location.hash;
+  if (hash.includes('?')) {
+    return new URLSearchParams(hash.split('?')[1] ?? '');
+  }
+  return new URLSearchParams(window.location.search);
+}
 
 /**
  * Finishes Google / magic-link sign-in (PKCE `?code=` on the redirect URL).
@@ -13,7 +28,13 @@ import { supabase, supabaseConfigured } from '../lib/supabase';
 export function AuthCallbackPage() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [detail, setDetail] = useState<string | null>(null);
+
+  const paramKey = useMemo(() => {
+    const p = oauthParamsFromLocation(searchParams);
+    return `${p.get('code') ?? ''}|${p.get('error') ?? ''}|${p.get('error_description') ?? ''}`;
+  }, [searchParams]);
 
   useEffect(() => {
     if (!supabaseConfigured || !supabase) {
@@ -21,7 +42,7 @@ export function AuthCallbackPage() {
       return;
     }
 
-    const params = new URLSearchParams(window.location.search);
+    const params = oauthParamsFromLocation(searchParams);
     const code = params.get('code');
     const oauthError = params.get('error_description') ?? params.get('error');
 
@@ -60,7 +81,7 @@ export function AuthCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [auth.loading, auth.user, navigate]);
+  }, [paramKey, auth.loading, auth.user, navigate, searchParams]);
 
   useEffect(() => {
     if (auth.loading || !auth.user) return;
