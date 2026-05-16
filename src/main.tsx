@@ -1,22 +1,16 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+/**
+ * Entry: run hash-route bootstrap BEFORE any module that imports Supabase.
+ *
+ * Hoisted imports meant `createClient` ran while the URL was still `/?code=…`,
+ * started PKCE exchange (consumes the verifier), then `location.replace` to
+ * `/#/auth/callback?…` forced a full reload — second load had no verifier →
+ * "PKCE code verifier not found". Dynamic import delays Supabase until after
+ * bootstrap (replaceState, no reload).
+ */
 import { bootstrapSpaAuthPaths } from './lib/authBootstrap';
-import { RootErrorBoundary } from './components/RootErrorBoundary';
 
 bootstrapSpaAuthPaths();
-import { AuthProvider } from './context/AuthContext';
-import { SiteSettingsProvider } from './context/SiteSettingsContext';
-import { App } from './App';
-import './index.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <RootErrorBoundary>
-      <AuthProvider>
-        <SiteSettingsProvider>
-          <App />
-        </SiteSettingsProvider>
-      </AuthProvider>
-    </RootErrorBoundary>
-  </React.StrictMode>,
-);
+void import('./main-app').then(({ mountApp }) => {
+  mountApp();
+});

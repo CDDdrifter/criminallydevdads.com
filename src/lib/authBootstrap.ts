@@ -1,8 +1,12 @@
 /**
  * Hash-router SPA helpers for Supabase Auth.
  *
- * Supabase redirects to path-based URLs (`/oauth/consent`, `/?code=…`) while this
- * app routes live under `/#/…`. Bootstrap runs once before React mounts.
+ * Supabase redirects to path-based URLs (`/oauth/consent`, `/…?code=…`) while this
+ * app routes live under `/#/…`.
+ *
+ * Use `history.replaceState` (not `location.replace`) when moving `?code=` into the
+ * hash: a full reload can abort PKCE exchange and consume the verifier →
+ * "PKCE code verifier not found" on the next load.
  */
 import { getAuthRedirectBaseUrl } from './authRedirect';
 
@@ -48,7 +52,8 @@ export function bootstrapSpaAuthPaths(): void {
 
   if (hasCode && !hash.startsWith('#/auth/callback')) {
     const basePath = pathname.replace(/\/$/, '') || '';
-    window.location.replace(`${origin}${basePath}/#/auth/callback${search}`);
+    const next = `${origin}${basePath}/#/auth/callback${search}`;
+    window.history.replaceState(window.history.state, '', next);
     return;
   }
 
@@ -58,12 +63,14 @@ export function bootstrapSpaAuthPaths(): void {
 
   if (pathname === '/oauth/consent' || pathname.endsWith('/oauth/consent')) {
     const basePath = pathname.replace(/\/oauth\/consent\/?$/, '') || '';
-    window.location.replace(`${origin}${basePath}/#/oauth/consent${search}`);
+    const next = `${origin}${basePath}/#/oauth/consent${search}`;
+    window.history.replaceState(window.history.state, '', next);
     return;
   }
   if (pathname === '/auth/callback' || pathname.endsWith('/auth/callback')) {
     const basePath = pathname.replace(/\/auth\/callback\/?$/, '') || '';
-    window.location.replace(`${origin}${basePath}/#/auth/callback${search}`);
+    const next = `${origin}${basePath}/#/auth/callback${search}`;
+    window.history.replaceState(window.history.state, '', next);
   }
 }
 
