@@ -26,9 +26,8 @@ function initSupabase(): { client: SupabaseClient | null; configured: boolean } 
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        // PKCE puts `?code=` in the query string (before `#/`) — required for HashRouter SPAs.
-        // Magic links still work; open the email link in the same browser when possible.
         flowType: 'pkce',
+        storage: localStorage,
       },
     });
     return { client, configured: true };
