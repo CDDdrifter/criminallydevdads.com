@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-17T02:12:08.405Z",
+  "generated_at": "2026-05-17T15:14:06.232Z",
   "settings": {
     "id": 1,
     "hero_title": "⚔️ CRIMINALLY DEV DADS ⚔️",
@@ -7,7 +7,7 @@
     "support_title": "Support the Devs",
     "support_body": "Love our games? Help us keep creating by supporting our work. COMING SOON",
     "footer_text": "© 2026 CRIMINALLY DEV DADS  // ALL RIGHTS RESERVED // STAY CRIMINAL",
-    "site_visual_preset": null,
+    "site_visual_preset": "bloodline",
     "fx_scanlines": true,
     "fx_noise": true,
     "fx_vignette": true,
@@ -286,7 +286,7 @@
       "show_vault_link": true,
       "maintenance_mode": {
         "title": "We’ll be right back",
-        "enabled": true,
+        "enabled": false,
         "message": "The hub is in maintenance. Check back soon.",
         "allow_admin_bypass": true
       },
