@@ -91,8 +91,9 @@ body {
   color: var(--text);
   font-family: 'Consolas', 'Space Mono', 'Courier New', monospace;
   min-height: 100vh;
-  padding: 20px;
-  letter-spacing: 0.2px;
+  padding: clamp(16px, 2.5vw, 28px);
+  letter-spacing: 0.15px;
+  line-height: 1.55;
   overflow-x: hidden;
 }
 
@@ -248,10 +249,17 @@ html[data-fx-intensity='intense'] body::after {
 }
 
 .container {
-  max-width: 1400px;
+  max-width: 1180px;
   margin: 0 auto;
+  padding-inline: clamp(4px, 1.5vw, 16px);
   position: relative;
   z-index: 3;
+}
+
+#main-content {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vw, 36px);
 }
 
 /* Game/page “world” routes — pairs with SiteChrome `immersive` + html[data-immersive-layout='on']. */
@@ -488,10 +496,6 @@ a:hover {
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #070b12;
-}
-
-.page-article--html-app {
-  max-width: 100%;
 }
 
 .apps-hub-grid {
@@ -1090,6 +1094,28 @@ body.scrolling .container {
   resize: vertical;
 }
 
+.admin-textarea--html {
+  min-height: min(52vh, 520px);
+  font-family: ui-monospace, Consolas, 'Courier New', monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  tab-size: 2;
+}
+
+.admin-html-paste-hint {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.admin-html-paste-stats {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .admin-row {
   display: flex;
   gap: 10px;
@@ -1252,9 +1278,57 @@ body.scrolling .container {
 
 /* CMS page sections (panels / blocks) */
 .page-article {
-  max-width: 900px;
+  max-width: 720px;
   margin-left: auto;
   margin-right: auto;
+  width: 100%;
+}
+
+.page-article.admin-panel {
+  padding: clamp(22px, 4vw, 36px);
+  border-radius: 14px;
+}
+
+.page-article-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 4px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(127, 139, 167, 0.22);
+}
+
+.page-article-head .header-title {
+  margin: 0;
+  line-height: 1.15;
+}
+
+.page-article--html-app {
+  max-width: min(1080px, 100%);
+}
+
+.page-article--html-app .page-article-head {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.html-app-notice {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--muted);
+  border-radius: 10px;
+  border: 1px solid rgba(127, 139, 167, 0.28);
+  background: rgba(7, 11, 18, 0.55);
+}
+
+.html-app-notice strong {
+  color: var(--text-strong, var(--text));
+  font-weight: 600;
 }
 
 .page-sections {

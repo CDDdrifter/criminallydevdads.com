@@ -48,7 +48,10 @@ import { blockingSiteSettingsIssues, softSiteSettingsLinkHints } from '../lib/ad
 import { donationPresetsFromUnknown } from '../lib/gamePricing';
 import { unknownColumnFromPostgrestMessage } from '../lib/postgrestUnknownColumn';
 import { formatSupabaseWriteError, isRlsOrPermissionError } from '../lib/supabaseWriteError';
-import { VISUAL_PRESET_OPTIONS, normalizeVisualPresetInput } from '../lib/visualPresets';
+import { ADMIN_CMS_TABS, ADMIN_OVERVIEW_CARDS, ADMIN_STUDIO_TABS } from '../lib/adminLabels';
+import { defaultRouteFxOverride, normalizeRouteFxOverride } from '../lib/routeFx';
+import { normalizeVisualPresetInput } from '../lib/visualPresets';
+import { RouteAppearancePanel } from '../components/admin/RouteAppearancePanel';
 import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
 import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
 import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
@@ -140,6 +143,7 @@ function emptyPageDraft(): Partial<SitePage> & {
     show_on_apps_hub: true,
     html_app_summary: '',
     html_iframe_compat: false,
+    route_fx: defaultRouteFxOverride(),
   };
 }
 
@@ -170,6 +174,7 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
     in_vault: false,
     immersive_layout: false,
     custom_mood_css: '',
+    route_fx: defaultRouteFxOverride(),
     // Migration 018 — game-page enrichment.
     tags: [],
     release_date: '',
@@ -262,6 +267,7 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     in_vault: draft.in_vault ?? false,
     immersive_layout: draft.immersive_layout ?? false,
     custom_mood_css: String(draft.custom_mood_css ?? ''),
+    route_fx: draft.route_fx ?? defaultRouteFxOverride(),
     // Migration 018 — game-page enrichment columns. All optional / additive.
     tags: Array.isArray(draft.tags) ? draft.tags : [],
     release_date: String(draft.release_date ?? ''),
@@ -292,6 +298,14 @@ function summarizeGameSave(p: ReturnType<typeof gameUpsertPayload>): string {
   const imm = p.immersive_layout ? 'Immersive layout' : 'Standard layout';
   const css = String(p.custom_mood_css ?? '').trim() ? 'Custom CSS attached' : 'No per-game CSS';
   return `Saved “${p.title}” (${p.slug}) · ${blocks} · ${commerce} · ${mood} · ${host} · ${vis} · ${vault} · ${imm} · ${css}.`;
+}
+
+function htmlPasteStats(raw: string | undefined): { chars: number; lines: number } {
+  const text = raw ?? '';
+  if (!text) {
+    return { chars: 0, lines: 0 };
+  }
+  return { chars: text.length, lines: text.split(/\r\n|\r|\n/).length };
 }
 
 function summarizePageSave(args: {
@@ -883,6 +897,7 @@ export function AdminPage() {
         show_on_apps_hub: showOnAppsHub,
         html_app_summary: htmlSummary,
         html_iframe_compat: iframeCompat,
+        route_fx: pageDraft.route_fx ?? defaultRouteFxOverride(),
       });
       const verify = await fetchPageBySlug(slugSaved);
       if (!verify) {
@@ -1332,40 +1347,18 @@ export function AdminPage() {
 
       <div className="admin-tabs">
         {/* Original CMS tabs */}
-        {(['overview', 'settings', 'games', 'pages', 'nav', 'devlogs'] as Tab[]).map((t) => (
-          <button key={t} type="button" className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
-            {t === 'devlogs' ? 'dev logs' : t}
+        {ADMIN_CMS_TABS.map(({ id, label }) => (
+          <button key={id} type="button" className={tab === id ? 'active' : ''} onClick={() => setTab(id as Tab)}>
+            {label}
           </button>
         ))}
-        {/* Visual separator between CMS and the Studio (migration 016). */}
         <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 4px' }} />
-        {/* Studio tabs */}
-        {(
-          [
-            ['theme', 'Theme'],
-            ['effects', 'Effects'],
-            ['typography', 'Typography'],
-            ['layout', 'Layout'],
-            ['components', 'Components'],
-            ['behavior', 'Behavior'],
-            ['seo', 'SEO + Head'],
-            // Studio expansion (migration 017).
-            ['brand', 'Brand + Hero'],
-            ['social', 'Social + Sharing'],
-            ['motion', 'Motion + Cards'],
-            ['media', 'Audio + Cursor + Particles'],
-            ['system', 'Performance + A11y'],
-            // Studio expansion (migration 018).
-            ['homepage', '🏠 Homepage'],
-            ['analytics', '📊 Analytics'],
-            ['mailing', '✉️ Mailing'],
-          ] as const
-        ).map(([t, label]) => (
+        {ADMIN_STUDIO_TABS.map(({ id, label }) => (
           <button
-            key={t}
+            key={id}
             type="button"
-            className={tab === t ? 'active' : ''}
-            onClick={() => setTab(t)}
+            className={tab === id ? 'active' : ''}
+            onClick={() => setTab(id as Tab)}
             style={{ borderColor: 'rgba(166, 115, 255, 0.5)' }}
           >
             {label}
@@ -1383,42 +1376,7 @@ export function AdminPage() {
             gap: 16,
           }}
         >
-          {(
-            [
-              ['settings', 'Site settings', 'Hero, footer, support block'],
-              ['games', 'Games', 'ZIP uploads (itch-style), itch links, repo folders'],
-              ['pages', 'Pages & panels', 'Custom URLs with headings, text, panels, images'],
-              [
-                'nav',
-                'Navigation',
-                'Extra top-bar buttons after the built-in Home / Vault / Dev log links (e.g. Discord, press kit).',
-              ],
-              ['devlogs', 'Dev logs', 'News and build notes'],
-              ['theme', '🎨 Theme Studio', 'Repaint every colour, gradient, and background. Built-in presets included.'],
-              ['effects', '⚡ Effects Studio', 'Scanlines, noise, vignette, glow, card hover — every knob.'],
-              ['typography', '🔤 Typography', 'Fonts (including Google Fonts), sizes, weights, spacing.'],
-              ['layout', '📐 Layout', 'Container width, padding, grid, header / nav / footer alignment.'],
-              ['components', '🧩 Components', 'Buttons, cards, panels, modals — radii, shadows, padding.'],
-              ['behavior', '🎛 Behavior', 'Feature flags, maintenance mode, default filter, hover effect.'],
-              ['seo', '🔍 SEO + Head', 'Meta description, OG image, favicon, analytics, custom <head>.'],
-              ['brand', '🪪 Brand + Hero', 'Site name, header logo, footer, watermark, hero CTA buttons.'],
-              ['social', '🌐 Social + Sharing', 'Follow icons in header/footer + share buttons on game pages.'],
-              ['motion', '🎬 Motion + Cards', 'Animations, page entrance, card layout, NEW ribbon.'],
-              ['media', '🎵 Audio + Cursor + Particles', 'Bg music, hover sounds, custom cursor, floating particles.'],
-              ['system', '♿ Performance + A11y', 'Animation kill-switches, focus ring, font scaling, high contrast.'],
-              ['homepage', '🏠 Homepage builder', 'Build the entire front page with hero banners, galleries, columns, tabs, FAQs — any block.'],
-              [
-                'analytics',
-                '📊 Analytics',
-                'First-party traffic: page views, game plays, sign-ins, top pages & games. Requires migration 020.',
-              ],
-              [
-                'mailing',
-                '✉️ Mailing list',
-                'Opt-in subscribers, preview, and Resend broadcast from the site. Requires migration 022 + mailing-broadcast function.',
-              ],
-            ] as const
-          ).map(([id, title, desc]) => (
+          {ADMIN_OVERVIEW_CARDS.map(({ id, title, desc }) => (
             <button
               key={id}
               type="button"
@@ -2006,97 +1964,15 @@ export function AdminPage() {
             </button>
           </div>
 
-          <div className="admin-panel" style={{ borderStyle: 'dashed' }}>
-            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
-              Visual atmosphere (site-wide)
-            </h3>
-            <p className="admin-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: '0.82rem', lineHeight: 1.55 }}>
-              These map directly to <code>src/index.css</code> (<code>.fx-*</code>, <code>body::before</code>,{' '}
-              <code>body::after</code>) and <code>FxBackdrop</code>. Toggles set <code>html[data-fx-*]</code> via{' '}
-              <code>GlobalHtmlFxSync</code>. Per-game moods on <strong>Game</strong> still override colors on{' '}
-              <code>/game/…</code> and <code>/play/…</code> only.
+          <div className="admin-panel" style={{ borderStyle: 'dashed', borderColor: 'rgba(115, 248, 255, 0.35)' }}>
+            <p className="admin-muted" style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.55 }}>
+              🎨 Site mood, FX layers, and global CSS →{' '}
+              <button type="button" onClick={() => setTab('effects')}>
+                ⚡ Effects Studio
+              </button>
+              . Per-game/page overrides → <strong>🎮 Games</strong> / <strong>📄 Pages</strong> →{' '}
+              <strong>🎨 Appearance</strong>.
             </p>
-            <div className="admin-field">
-              <label htmlFor="site_visual_preset">Site mood (hub, devlog, pages, admin…)</label>
-              <select
-                id="site_visual_preset"
-                value={settings.site_visual_preset ?? ''}
-                onChange={(e) => setSettings({ ...settings, site_visual_preset: e.target.value })}
-              >
-                {VISUAL_PRESET_OPTIONS.map((o) => (
-                  <option key={o.value || 'default'} value={o.value} title={o.hint}>
-                    {o.label}
-                    {o.value ? '' : ' — hub default accents'}
-                  </option>
-                ))}
-              </select>
-              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.8rem' }}>
-                Hover an option for a short description. Keys must match CSS — add new moods in code +{' '}
-                <code>visualPresets.ts</code> together.
-              </p>
-            </div>
-            <div className="admin-field">
-              <label htmlFor="fx_intensity">FX strength (for layers that are on)</label>
-              <select
-                id="fx_intensity"
-                value={settings.fx_intensity}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    fx_intensity: e.target.value as SiteSettings['fx_intensity'],
-                  })
-                }
-              >
-                <option value="subtle">Subtle</option>
-                <option value="normal">Normal</option>
-                <option value="intense">Intense</option>
-              </select>
-            </div>
-            <div className="admin-grid" style={{ gap: 8 }}>
-              {(
-                [
-                  ['fx_scanlines', 'Scanlines overlay', '.fx-scanlines'],
-                  ['fx_noise', 'Noise / grain', '.fx-noise'],
-                  ['fx_vignette', 'Vignette (edge darken)', '.fx-vignette'],
-                  ['fx_hue_shift', 'Animated color wash', 'body::before'],
-                  ['fx_cursor_spotlight', 'Cursor-following spotlight', 'body::after + --cursor-x/y'],
-                ] as const
-              ).map(([key, label, cssRef]) => (
-                <label key={key} className="admin-row" style={{ gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={settings[key]}
-                    onChange={(e) => setSettings({ ...settings, [key]: e.target.checked })}
-                  />
-                  <span>
-                    {label} <span className="admin-muted">({cssRef})</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="admin-panel" style={{ borderStyle: 'dashed' }}>
-            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
-              Custom CSS (advanced)
-            </h3>
-            <p className="admin-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: '0.82rem', lineHeight: 1.55 }}>
-              Injected globally after the main stylesheet. Useful for small layout tweaks; you can target{' '}
-              <code>.container</code>, <code>.game-card</code>, <code>.top-nav</code>, etc. Only paste CSS you fully
-              trust.
-            </p>
-            <textarea
-              id="site_custom_css"
-              rows={14}
-              value={settings.custom_css}
-              onChange={(e) => setSettings({ ...settings, custom_css: e.target.value })}
-              style={{
-                width: '100%',
-                fontFamily: 'ui-monospace, Consolas, monospace',
-                fontSize: '0.82rem',
-                lineHeight: 1.45,
-              }}
-            />
           </div>
 
           <div className="admin-field">
@@ -2271,72 +2147,21 @@ export function AdminPage() {
               </p>
             </div>
 
-            <div className="admin-field">
-              <label htmlFor="g_visual_preset">Page mood (optional)</label>
-              <select
-                id="g_visual_preset"
-                value={gameDraft.visual_preset ?? ''}
-                onChange={(e) => {
-                  clearGameFieldError('custom_mood_css');
-                  setGameDraft({ ...gameDraft, visual_preset: e.target.value });
-                }}
-              >
-                {VISUAL_PRESET_OPTIONS.map((o) => (
-                  <option key={o.value || 'default'} value={o.value} title={o.hint}>
-                    {o.label}
-                    {o.value ? '' : ' — follow hub'}
-                  </option>
-                ))}
-              </select>
-              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem', lineHeight: 1.5 }}>
-                Built-in palette library plus <strong>Custom (CSS)</strong> for your own variables and overrides. Applies on
-                this game&apos;s <strong>detail</strong> and <strong>play</strong> routes only. Global FX toggles still
-                come from <strong>Site settings</strong>.
-              </p>
-            </div>
-            <div className="admin-field">
-              <label htmlFor="g_custom_mood_css">Custom mood CSS</label>
-              <p className="admin-muted" style={{ margin: '0 0 8px', fontSize: '0.82rem', lineHeight: 1.45 }}>
-                Injected on this game&apos;s routes only (trust this CSS). Optional for any mood; with <strong>Custom</strong>{' '}
-                mood, baseline colors still come from <code>index.css</code> until you add rules here.
-              </p>
-              <textarea
-                id="g_custom_mood_css"
-                rows={8}
-                value={gameDraft.custom_mood_css ?? ''}
-                onChange={(e) => {
-                  clearGameFieldError('custom_mood_css');
-                  setGameDraft({ ...gameDraft, custom_mood_css: e.target.value });
-                }}
-                style={{
-                  width: '100%',
-                  fontFamily: 'ui-monospace, Consolas, monospace',
-                  fontSize: '0.82rem',
-                  lineHeight: 1.45,
-                }}
-              />
-              {gameFieldErrors.custom_mood_css ? (
-                <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
-                  <span aria-hidden>✗ </span>
-                  {gameFieldErrors.custom_mood_css}
-                </p>
-              ) : null}
-            </div>
+            <RouteAppearancePanel
+              kind="game"
+              value={gameDraft}
+              onChange={(patch) => setGameDraft({ ...gameDraft, ...patch })}
+              customCssError={gameFieldErrors.custom_mood_css}
+              onClearCustomCssError={() => clearGameFieldError('custom_mood_css')}
+              onOpenEffectsTab={() => setTab('effects')}
+            />
             <label className="admin-row" style={{ gap: 8 }}>
               <input
                 type="checkbox"
                 checked={gameDraft.in_vault ?? false}
                 onChange={(e) => setGameDraft({ ...gameDraft, in_vault: e.target.checked })}
               />
-              List in Vault (<code>/#/vault</code>) — secret catalog, separate from the main hub grid
-            </label>
-            <label className="admin-row" style={{ gap: 8 }}>
-              <input
-                type="checkbox"
-                checked={gameDraft.immersive_layout ?? false}
-                onChange={(e) => setGameDraft({ ...gameDraft, immersive_layout: e.target.checked })}
-              />
-              Immersive layout — wider “world” frame on detail + play (less hub-style chrome)
+              🔐 List in Vault (<code>/#/vault</code>) — secret catalog, separate from the main hub grid
             </label>
 
             {/* ===== Game-page enrichment (migration 018) =================
@@ -3086,6 +2911,7 @@ export function AdminPage() {
                           credits: Array.isArray(g.credits) ? g.credits : [],
                           changelog: Array.isArray(g.changelog) ? g.changelog : [],
                           system_requirements: Array.isArray(g.system_requirements) ? g.system_requirements : [],
+                          route_fx: normalizeRouteFxOverride(g.route_fx),
                         });
                         setZipEntryPick(g.storage_entry_in_zip?.trim() ?? '');
                         setGameZipFile(null);
@@ -3245,72 +3071,44 @@ export function AdminPage() {
                 compat only if a script needs same-origin storage.
               </p>
             </div>
-            <div className="admin-field">
-              <label htmlFor="p_visual_preset">Page mood (this route only)</label>
-              <select
-                id="p_visual_preset"
-                value={pageDraft.visual_preset ?? ''}
-                onChange={(e) => {
-                  clearPageFieldError('custom_mood_css');
-                  setPageDraft({ ...pageDraft, visual_preset: e.target.value });
-                }}
-              >
-                {VISUAL_PRESET_OPTIONS.map((o) => (
-                  <option key={o.value || 'default'} value={o.value} title={o.hint}>
-                    {o.label}
-                    {o.value ? '' : ' — follow hub'}
-                  </option>
-                ))}
-              </select>
-              <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.8rem', lineHeight: 1.45 }}>
-                Built-in palette library plus <strong>Custom (CSS)</strong>. FX on/off still comes from Site settings; this
-                recolors accents for <code>/p/…</code>.
-              </p>
-            </div>
-            <div className="admin-field">
-              <label htmlFor="p_custom_mood_css">Custom mood CSS</label>
-              <textarea
-                id="p_custom_mood_css"
-                rows={8}
-                value={pageDraft.custom_mood_css ?? ''}
-                onChange={(e) => {
-                  clearPageFieldError('custom_mood_css');
-                  setPageDraft({ ...pageDraft, custom_mood_css: e.target.value });
-                }}
-                style={{
-                  width: '100%',
-                  fontFamily: 'ui-monospace, Consolas, monospace',
-                  fontSize: '0.82rem',
-                  lineHeight: 1.45,
-                }}
-              />
-              {pageFieldErrors.custom_mood_css ? (
-                <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
-                  <span aria-hidden>✗ </span>
-                  {pageFieldErrors.custom_mood_css}
-                </p>
-              ) : null}
-            </div>
+            <RouteAppearancePanel
+              kind="page"
+              value={pageDraft}
+              onChange={(patch) => setPageDraft({ ...pageDraft, ...patch })}
+              customCssError={pageFieldErrors.custom_mood_css}
+              onClearCustomCssError={() => clearPageFieldError('custom_mood_css')}
+              onOpenEffectsTab={() => setTab('effects')}
+            />
             {pageDraft.page_mode === 'html_app' ? (
               <>
                 <div className="admin-field">
                   <label htmlFor="p_raw_html">Full HTML document</label>
+                  <p className="admin-html-paste-hint">
+                    Paste an entire single-file export (1,000+ lines is fine) or use <strong>Load from file</strong>.
+                    Save the page, then visit <code>/p/your-slug</code>. For Gemini-built apps, enable{' '}
+                    <strong>Compat sandbox</strong> below if scripts or fetch calls fail. Do not embed production API
+                    keys; anyone with the page URL can read them.
+                  </p>
                   <textarea
                     id="p_raw_html"
-                    rows={16}
+                    className="admin-textarea--html"
+                    rows={24}
                     value={pageDraft.raw_html ?? ''}
                     onChange={(e) => {
                       clearPageFieldError('raw_html');
                       setPageDraft({ ...pageDraft, raw_html: e.target.value });
                     }}
                     placeholder="<!DOCTYPE html>…"
-                    style={{
-                      width: '100%',
-                      fontFamily: 'ui-monospace, Consolas, monospace',
-                      fontSize: '0.78rem',
-                      lineHeight: 1.4,
-                    }}
+                    spellCheck={false}
                   />
+                  <p className="admin-html-paste-stats" aria-live="polite">
+                    {(() => {
+                      const { chars, lines } = htmlPasteStats(pageDraft.raw_html);
+                      return chars > 0
+                        ? `${lines.toLocaleString()} lines · ${chars.toLocaleString()} characters`
+                        : 'No HTML pasted yet';
+                    })()}
+                  </p>
                   {pageFieldErrors.raw_html ? (
                     <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 8 }} role="alert">
                       <span aria-hidden>✗ </span>
@@ -3335,7 +3133,10 @@ export function AdminPage() {
                         const text = typeof reader.result === 'string' ? reader.result : '';
                         clearPageFieldError('raw_html');
                         setPageDraft((prev) => ({ ...prev, raw_html: text }));
-                        flash(`Loaded ${f.name} (${text.length} chars).`);
+                        const stats = htmlPasteStats(text);
+                        flash(
+                          `Loaded ${f.name} (${stats.lines.toLocaleString()} lines, ${stats.chars.toLocaleString()} chars).`,
+                        );
                       };
                       reader.onerror = () => flash('Could not read file.');
                       reader.readAsText(f);
@@ -3425,14 +3226,6 @@ export function AdminPage() {
               />
               Unlisted — add noindex,nofollow (URL still public; not a password)
             </label>
-            <label className="admin-row" style={{ gap: 8 }}>
-              <input
-                type="checkbox"
-                checked={pageDraft.immersive_layout ?? false}
-                onChange={(e) => setPageDraft({ ...pageDraft, immersive_layout: e.target.checked })}
-              />
-              Immersive layout — wider frame, lighter hub chrome on this page
-            </label>
             <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button type="button" disabled={busy} onClick={onSavePage}>
                 Save page
@@ -3512,6 +3305,7 @@ export function AdminPage() {
                           show_on_apps_hub: p.show_on_apps_hub !== false,
                           html_app_summary: String(p.html_app_summary ?? ''),
                           html_iframe_compat: Boolean(p.html_iframe_compat),
+                          route_fx: normalizeRouteFxOverride(p.route_fx),
                         })
                       }
                     >

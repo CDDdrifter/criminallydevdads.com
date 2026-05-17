@@ -132,6 +132,18 @@ export type SiteEvent = {
 
 export type FxIntensity = 'subtle' | 'normal' | 'intense';
 
+/** Per-route FX override tri-state — `inherit` uses site settings. */
+export type RouteFxTriState = 'inherit' | 'on' | 'off';
+
+export type RouteFxOverride = {
+  scanlines?: RouteFxTriState;
+  noise?: RouteFxTriState;
+  vignette?: RouteFxTriState;
+  hue_shift?: RouteFxTriState;
+  cursor_spotlight?: RouteFxTriState;
+  intensity?: FxIntensity | 'inherit';
+};
+
 /**
  * Mirrors `site_games.pricing_model` when CMS is used.
  * - free: no Buy / no Edge checkout
@@ -185,6 +197,8 @@ export type GameRecord = {
   immersive_layout?: boolean | null;
   /** Extra CSS for this game’s detail + play routes (admin trust model). */
   custom_mood_css?: string | null;
+  /** Per-route FX layer overrides (`inherit` | `on` | `off`). Migration 023. */
+  route_fx?: RouteFxOverride | null;
   // ---- Game-page enrichment (migration 018) -------------------------------
   /** Searchable tags / chips ("roguelite", "co-op", "speedrun"). */
   tags?: string[] | null;
@@ -238,6 +252,7 @@ export type GameView = {
   in_vault: boolean;
   immersive_layout: boolean;
   custom_mood_css: string;
+  route_fx: RouteFxOverride;
   // ---- Game-page enrichment (migration 018) -------------------------------
   tags: string[];
   release_date: string;
@@ -264,6 +279,8 @@ export type SitePage = {
   visual_preset?: string | null;
   immersive_layout?: boolean | null;
   custom_mood_css?: string | null;
+  /** Per-route FX overrides. Migration 023. */
+  route_fx?: RouteFxOverride | null;
   /**
    * `blocks` = normal CMS (sections + legacy body).
    * `html_app` = single pasted/exported HTML document (Gemini, Claude, etc.) shown in a sandboxed iframe.
@@ -501,6 +518,11 @@ export type EffectsConfig = {
   scroll_jitter: { enabled: boolean };
   edge_sweep: { enabled: boolean; color: string; period_s: number };
   reduce_motion: { honor_prefers: boolean };
+  background_grid: { enabled: boolean; opacity: number; color: string; cell_px: number };
+  phosphor_bloom: { enabled: boolean; strength: number; color: string };
+  link_glow: { enabled: boolean; color: string; intensity_px: number };
+  panel_glass: { enabled: boolean; blur_px: number; saturation: number };
+  hero_shimmer: { enabled: boolean; speed_s: number; opacity: number };
   /** Optional extra CSS appended after all generated theme rules (advanced). */
   custom_css: string;
 };

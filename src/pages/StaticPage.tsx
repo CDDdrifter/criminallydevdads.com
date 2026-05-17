@@ -7,12 +7,15 @@ import { RouteScopedCss } from '../components/RouteScopedCss';
 import { ShareStrip } from '../components/ShareStrip';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchPageBySlug } from '../lib/cmsData';
-import { normalizeVisualPresetInput } from '../lib/visualPresets';
+import { useRouteFxSync } from '../hooks/useRouteFxSync';
+import { useSiteSettings } from '../hooks/useSiteSettings';
+import { applyVisualPresetToDocument, resolveVisualPreset } from '../lib/routeFx';
 import { trackAppOpen } from '../lib/analytics';
 import type { SitePage } from '../types';
 
 export function StaticPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { settings } = useSiteSettings();
   const [page, setPage] = useState<SitePage | null | undefined>(undefined);
 
   useEffect(() => {
@@ -40,16 +43,14 @@ export function StaticPage() {
       delete document.documentElement.dataset.visualPreset;
       return;
     }
-    const preset = normalizeVisualPresetInput(page.visual_preset);
-    if (preset) {
-      document.documentElement.dataset.visualPreset = preset;
-    } else {
-      delete document.documentElement.dataset.visualPreset;
-    }
+    const preset = resolveVisualPreset(page.visual_preset, settings.site_visual_preset);
+    applyVisualPresetToDocument(preset);
     return () => {
       delete document.documentElement.dataset.visualPreset;
     };
-  }, [page]);
+  }, [page, settings.site_visual_preset]);
+
+  useRouteFxSync(page?.route_fx);
 
   useEffect(() => {
     if (page === undefined || !page) {
@@ -117,7 +118,7 @@ export function StaticPage() {
       <RouteScopedCss id={`page-${page.slug}`} css={page.custom_mood_css ?? ''} />
       <article className={`admin-panel page-article${isHtmlApp ? ' page-article--html-app' : ''}`}>
         <div className="page-article-head">
-          <h1 className="header-title" style={{ fontSize: '2.2rem', textAlign: 'left' }}>
+          <h1 className="header-title" style={{ fontSize: 'clamp(1.6rem, 4vw, 2.1rem)', textAlign: 'left' }}>
             {page.title}
           </h1>
           {page.unlisted ? (
@@ -129,11 +130,12 @@ export function StaticPage() {
 
         {isHtmlApp ? (
           <div style={{ marginTop: 16 }}>
-            <p className="admin-muted" style={{ fontSize: '0.82rem', marginBottom: 12, lineHeight: 1.5 }}>
-              Standalone HTML runs in a sandboxed frame (Gemini / single-file exports). If something breaks, enable{' '}
-              <strong>Compat sandbox</strong> on this page in Admin — only for code you trust. You can also add the same
-              app as a <strong>Mini app (HTML)</strong> block on a regular page, or list it on{' '}
-              <Link to="/apps">/apps</Link> when <strong>Show on Apps hub</strong> is on.
+            <p className="html-app-notice">
+              Paste a full <strong>single-file HTML</strong> export (e.g. from Gemini) in Admin, save, then open this URL.
+              Scripts run in a <strong>sandboxed iframe</strong> on our domain. If the app is blank or APIs fail, turn on{' '}
+              <strong>Compat sandbox</strong> in Admin (only for HTML you trust). API keys in pasted HTML are visible to
+              anyone with the link; use a test key for personal experiments. List on <Link to="/apps">/apps</Link> when{' '}
+              <strong>Show on Apps hub</strong> is enabled.
             </p>
             <HtmlAppEmbed page={page} />
           </div>

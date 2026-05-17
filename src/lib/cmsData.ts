@@ -54,6 +54,7 @@ import { normalizePageSections } from './pageSections';
 import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
 import { fetchStaticJson } from './staticCms';
 import { normalizePromoEvents } from './promoEvents';
+import { normalizeRouteFxOverride } from './routeFx';
 import { normalizeVisualPresetInput } from './visualPresets';
 import { unknownColumnFromPostgrestMessage } from './postgrestUnknownColumn';
 
@@ -142,6 +143,7 @@ function normalizeSitePage(row: Record<string, unknown>): SitePage {
     show_on_apps_hub: row.show_on_apps_hub !== false,
     html_app_summary: String(row.html_app_summary ?? ''),
     html_iframe_compat: Boolean(row.html_iframe_compat),
+    route_fx: normalizeRouteFxOverride(row.route_fx),
   };
 }
 
@@ -288,6 +290,7 @@ function recordToView(g: GameRecord): GameView {
     in_vault: Boolean(g.in_vault ?? false),
     immersive_layout: Boolean(g.immersive_layout ?? false),
     custom_mood_css: String(g.custom_mood_css ?? '').trim(),
+    route_fx: normalizeRouteFxOverride(g.route_fx),
     // ---- Game-page enrichment (migration 018) -----------------------------
     tags: Array.isArray(g.tags) ? (g.tags as unknown[]).map(String).filter(Boolean) : [],
     release_date: String(g.release_date ?? '').trim(),
@@ -398,7 +401,13 @@ export async function fetchAllGamesAdmin(): Promise<GameRecord[]> {
     console.error(error);
     return [];
   }
-  return data ?? [];
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      ...(row as GameRecord),
+      route_fx: normalizeRouteFxOverride(r.route_fx),
+    };
+  });
 }
 
 export async function upsertGame(row: Partial<GameRecord> & { slug: string; title: string }) {
@@ -650,6 +659,7 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
     show_on_apps_hub: row.show_on_apps_hub !== false,
     html_app_summary: String(row.html_app_summary ?? ''),
     html_iframe_compat: Boolean(row.html_iframe_compat),
+    route_fx: row.route_fx ?? normalizeRouteFxOverride(null),
   };
   for (let attempt = 0; attempt < 48; attempt++) {
     const { error } = await supabase.from('site_pages').upsert(payload, { onConflict: 'slug' });

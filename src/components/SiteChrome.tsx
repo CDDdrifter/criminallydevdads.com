@@ -17,16 +17,16 @@ function buildCoreNavLinks(behavior: BehaviorConfig | undefined): SiteNavLink[] 
   const b = behavior;
   const out: SiteNavLink[] = [];
   if (b?.show_home_nav_link !== false) {
-    out.push({ label: 'Home', href: '/', external: false });
+    out.push({ label: '🏠 Home', href: '/', external: false });
   }
   if (b?.show_apps_lab_link) {
-    out.push({ label: 'Apps', href: '/apps', external: false });
+    out.push({ label: '⚡ Apps', href: '/apps', external: false });
   }
   if (b?.show_vault_link !== false) {
-    out.push({ label: 'Vault', href: '/vault', external: false });
+    out.push({ label: '🔐 Vault', href: '/vault', external: false });
   }
   if (b?.show_devlog_link !== false) {
-    out.push({ label: 'Dev log', href: '/devlog', external: false });
+    out.push({ label: '📝 Dev log', href: '/devlog', external: false });
   }
   return out;
 }

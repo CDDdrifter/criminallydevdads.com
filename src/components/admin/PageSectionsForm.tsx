@@ -14,6 +14,7 @@
  *     (which don't have a slug) can still upload.
  */
 import { useState } from 'react';
+import { PAGE_BLOCK_LABELS } from '../../lib/adminLabels';
 import type { PageItem, PageSection } from '../../types';
 import { createEmptySection, newSectionId } from '../../lib/pageSections';
 import {
@@ -307,46 +308,9 @@ export function PageSectionsForm({
           Pick any block — they appear at the end of the list. Drag with the ↑↓ buttons to reorder.
         </p>
         <div className="admin-row" style={{ flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-          {(
-            [
-              ['heading', 'Heading'],
-              ['text', 'Text'],
-              ['panel', 'Panel'],
-              ['callout', 'Callout'],
-              ['quote', 'Quote'],
-              ['code', 'Code'],
-              ['markdown', 'Markdown'],
-              ['html', 'Raw HTML'],
-              ['divider', 'Divider'],
-              ['spacer', 'Spacer'],
-              ['image', 'Image'],
-              ['video', 'Video'],
-              ['gallery', 'Gallery'],
-              ['embed', 'Embed (YT/Twitch)'],
-              ['iframe', 'Iframe'],
-              ['sandbox_html', 'Mini app (HTML)'],
-              ['hero', 'Hero banner'],
-              ['cta', 'CTA block'],
-              ['buttons', 'Buttons row'],
-              ['download', 'Download card'],
-              ['image_text', 'Image + text'],
-              ['columns', 'Columns'],
-              ['tabs', 'Tabs'],
-              ['accordion', 'Accordion'],
-              ['faq', 'FAQ'],
-              ['feature_list', 'Feature list'],
-              ['stats', 'Stats'],
-              ['timeline', 'Timeline'],
-              ['pricing', 'Pricing'],
-              ['team', 'Team'],
-              ['newsletter', 'Newsletter'],
-              ['game_grid', 'Game grid'],
-              ['tags', 'Tags'],
-              ['comments', 'Comments thread'],
-            ] as const
-          ).map(([k, label]) => (
+          {(Object.keys(PAGE_BLOCK_LABELS) as PageSection['kind'][]).map((k) => (
             <button key={k} type="button" onClick={() => addKind(k)}>
-              {label}
+              {PAGE_BLOCK_LABELS[k]}
             </button>
           ))}
         </div>

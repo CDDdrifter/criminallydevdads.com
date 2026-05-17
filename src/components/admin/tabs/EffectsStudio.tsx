@@ -9,6 +9,7 @@
  * Each section is one FX subsystem.
  */
 import type { SiteSettings } from '../../../types';
+import { VISUAL_PRESET_OPTIONS } from '../../../lib/visualPresets';
 import {
   ColorField,
   FieldGroup,
@@ -84,13 +85,28 @@ export function EffectsStudio({ settings, setSettings }: Props) {
       </details>
 
       <FieldGroup
+        title="🌐 Site mood (hub default)"
+        tone="accent"
+        description="Accent palette for Home, Vault, Dev log, and any route without its own mood. Games/Pages can override in their 🎨 Appearance panel."
+      >
+        <SelectField
+          label="Hub mood preset"
+          value={settings.site_visual_preset ?? ''}
+          onChange={(site_visual_preset) => setSettings({ ...settings, site_visual_preset })}
+          options={VISUAL_PRESET_OPTIONS.map((o) => ({
+            value: o.value,
+            label: o.label,
+          }))}
+        />
+      </FieldGroup>
+
+      <FieldGroup
         title="Master FX toggles"
         tone="accent"
         description={
           <>
             Big switches for each layer. Fine controls below only paint while the layer is on.
-            These mirror the legacy <code>fx_*</code> booleans in <strong>Site settings</strong>;
-            we keep them here too so everything visual lives in one place.
+            Per-game/page overrides live in <strong>🎨 Appearance</strong> on Games / Pages tabs.
           </>
         }
       >
@@ -217,15 +233,23 @@ export function EffectsStudio({ settings, setSettings }: Props) {
       <FieldGroup
         title="Advanced — extra CSS"
         tone="danger"
-        description="Appended after every generated FX rule. Trusted admin content; raw CSS only."
+        description="Two injection points: Effects CSS (studio-generated rules) and Global site CSS (legacy SiteCustomCss)."
       >
         <TextAreaField
-          label="Custom effects CSS"
-          rows={12}
+          label="⚡ Effects custom CSS"
+          rows={10}
           monospace
           value={fx.custom_css}
           onChange={(custom_css) => setSettings({ ...settings, effects: { ...fx, custom_css } })}
-          help={<>Useful for one-off polish (e.g. a particle layer). Affects every page.</>}
+          help={<>Appended after generated FX rules from this tab.</>}
+        />
+        <TextAreaField
+          label="🌐 Global site CSS"
+          rows={10}
+          monospace
+          value={settings.custom_css}
+          onChange={(custom_css) => setSettings({ ...settings, custom_css })}
+          help={<>Injected by SiteCustomCss — targets .container, .game-card, .top-nav, etc.</>}
         />
       </FieldGroup>
     </div>

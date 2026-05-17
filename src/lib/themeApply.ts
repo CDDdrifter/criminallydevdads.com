@@ -273,6 +273,56 @@ header::after {
 }`);
   }
 
+  if (fx.background_grid.enabled) {
+    out.push(`
+body {
+  background-image:
+    linear-gradient(${fx.background_grid.color} 1px, transparent 1px),
+    linear-gradient(90deg, ${fx.background_grid.color} 1px, transparent 1px);
+  background-size: ${fx.background_grid.cell_px}px ${fx.background_grid.cell_px}px;
+  background-blend-mode: screen;
+}
+body::before { opacity: calc(${fx.background_grid.opacity} + 0.02); }`);
+  }
+
+  if (fx.phosphor_bloom.enabled) {
+    out.push(`
+.header-title, .game-card-title {
+  text-shadow: 0 0 ${8 + fx.phosphor_bloom.strength * 24}px ${fx.phosphor_bloom.color};
+}`);
+  }
+
+  if (fx.link_glow.enabled) {
+    out.push(`
+a:hover {
+  text-shadow: 0 0 ${fx.link_glow.intensity_px}px ${fx.link_glow.color};
+}`);
+  }
+
+  if (fx.panel_glass.enabled) {
+    out.push(`
+.admin-panel, .page-section-panel, header {
+  backdrop-filter: blur(${fx.panel_glass.blur_px}px) saturate(${fx.panel_glass.saturation});
+}`);
+  }
+
+  if (fx.hero_shimmer.enabled) {
+    out.push(`
+@keyframes heroShimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.header-title {
+  background: linear-gradient(90deg, var(--text-strong), var(--accent), var(--accent-2), var(--text-strong));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: heroShimmer ${fx.hero_shimmer.speed_s}s linear infinite;
+  opacity: ${fx.hero_shimmer.opacity};
+}`);
+  }
+
   // --- Optional appended CSS (last so it wins) -----------------------------
   if (fx.custom_css?.trim()) {
     out.push(`/* effects.custom_css */\n${fx.custom_css}`);

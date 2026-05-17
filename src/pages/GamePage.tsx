@@ -9,12 +9,15 @@ import { ShareStrip } from '../components/ShareStrip';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchGameViewBySlug } from '../lib/cmsData';
 import { formatGamePriceLabel, gameHasGumroadUrl } from '../lib/gamePricing';
-import { normalizeVisualPresetInput } from '../lib/visualPresets';
+import { useRouteFxSync } from '../hooks/useRouteFxSync';
+import { useSiteSettings } from '../hooks/useSiteSettings';
+import { applyVisualPresetToDocument, resolveVisualPreset } from '../lib/routeFx';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
 import type { GameView } from '../types';
 
 export function GamePage() {
   const { slug } = useParams<{ slug: string }>();
+  const { settings } = useSiteSettings();
   const [game, setGame] = useState<GameView | null | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [screenshotLightbox, setScreenshotLightbox] = useState<number | null>(null);
@@ -50,17 +53,15 @@ export function GamePage() {
     };
   }, [slug]);
 
+  useRouteFxSync(game?.route_fx);
+
   useEffect(() => {
-    const preset = normalizeVisualPresetInput(game?.visual_preset);
-    if (preset) {
-      document.documentElement.dataset.visualPreset = preset;
-    } else {
-      delete document.documentElement.dataset.visualPreset;
-    }
+    const preset = resolveVisualPreset(game?.visual_preset, settings.site_visual_preset);
+    applyVisualPresetToDocument(preset);
     return () => {
       delete document.documentElement.dataset.visualPreset;
     };
-  }, [game?.visual_preset]);
+  }, [game?.visual_preset, settings.site_visual_preset]);
 
   useEffect(() => {
     if (game?.immersive_layout) {

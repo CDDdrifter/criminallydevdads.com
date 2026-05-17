@@ -212,6 +212,16 @@ export function defaultEffectsConfig(): EffectsConfig {
     scroll_jitter: { enabled: true },
     edge_sweep: { enabled: true, color: 'var(--accent)', period_s: 4 },
     reduce_motion: { honor_prefers: true },
+    background_grid: {
+      enabled: false,
+      opacity: 0.06,
+      color: 'rgba(115, 248, 255, 0.15)',
+      cell_px: 48,
+    },
+    phosphor_bloom: { enabled: false, strength: 0.35, color: 'rgba(115, 248, 255, 0.25)' },
+    link_glow: { enabled: true, color: 'rgba(115, 248, 255, 0.5)', intensity_px: 12 },
+    panel_glass: { enabled: false, blur_px: 12, saturation: 1.2 },
+    hero_shimmer: { enabled: false, speed_s: 6, opacity: 0.35 },
     custom_css: '',
   };
 }

@@ -19,6 +19,7 @@
 
 import type { GameView } from '../types';
 import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePricing';
+import { defaultRouteFxOverride } from './routeFx';
 import { normalizeVisualPresetInput } from './visualPresets';
 import { resolvePublicAssetUrl } from './paths';
 
@@ -260,6 +261,7 @@ async function buildGameFromFolder(
     in_vault: false,
     immersive_layout: false,
     custom_mood_css: '',
+    route_fx: defaultRouteFxOverride(),
     tags: [],
     release_date: '',
     platforms: [],

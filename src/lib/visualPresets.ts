@@ -19,26 +19,26 @@ export type VisualPresetId =
   | 'custom';
 
 export const VISUAL_PRESET_OPTIONS: { value: VisualPresetId; label: string; hint: string }[] = [
-  { value: '', label: 'Default', hint: 'Cyan / violet accents, full cursor glow (see Site settings toggles).' },
-  { value: 'ember', label: 'Ember', hint: 'Warm orange / pink accents; warmer spotlight.' },
-  { value: 'aurora', label: 'Aurora', hint: 'Mint / ice accents; green-tinted spotlight.' },
-  { value: 'noir', label: 'Noir', hint: 'Muted silver / blue-gray; softer spotlight.' },
+  { value: '', label: '🌐 Default', hint: 'Cyan / violet accents; inherits hub FX toggles.' },
+  { value: 'ember', label: '🔥 Ember', hint: 'Warm orange / pink accents; warmer spotlight.' },
+  { value: 'aurora', label: '🌌 Aurora', hint: 'Mint / ice accents; green-tinted spotlight.' },
+  { value: 'noir', label: '🎬 Noir', hint: 'Muted silver / blue-gray; softer spotlight.' },
   {
     value: 'minimal',
-    label: 'Minimal',
+    label: '◻️ Minimal',
     hint: 'Keeps preset accents but dims the cursor glow layer (body::after opacity in CSS).',
   },
-  { value: 'dawn', label: 'Dawn', hint: 'Soft peach / gold highlights; gentle sunrise glow.' },
-  { value: 'nebula', label: 'Nebula', hint: 'Violet / teal deep-space accents.' },
-  { value: 'terminal', label: 'Terminal', hint: 'Phosphor green on dark; retro console vibe.' },
-  { value: 'ocean', label: 'Ocean', hint: 'Cool aqua / sea-blue accents.' },
-  { value: 'bloodline', label: 'Bloodline', hint: 'Deep red / crimson accents (still readable).' },
-  { value: 'chroma', label: 'Chroma', hint: 'Magenta + cyan synth accents.' },
-  { value: 'sandstorm', label: 'Sandstorm', hint: 'Warm sand / amber; desert HUD feel.' },
+  { value: 'dawn', label: '🌅 Dawn', hint: 'Soft peach / gold highlights; gentle sunrise glow.' },
+  { value: 'nebula', label: '🪐 Nebula', hint: 'Violet / teal deep-space accents.' },
+  { value: 'terminal', label: '💻 Terminal', hint: 'Phosphor green on dark; retro console vibe.' },
+  { value: 'ocean', label: '🌊 Ocean', hint: 'Cool aqua / sea-blue accents.' },
+  { value: 'bloodline', label: '🩸 Bloodline', hint: 'Deep red / crimson accents (still readable).' },
+  { value: 'chroma', label: '🌈 Chroma', hint: 'Magenta + cyan synth accents.' },
+  { value: 'sandstorm', label: '🏜️ Sandstorm', hint: 'Warm sand / amber; desert HUD feel.' },
   {
     value: 'custom',
-    label: 'Custom (CSS)',
-    hint: 'No preset palette — style with the “Custom mood CSS” field on this game or page.',
+    label: '🎨 Custom (CSS)',
+    hint: 'No preset palette — style with Custom mood CSS on this game or page.',
   },
 ];
 
