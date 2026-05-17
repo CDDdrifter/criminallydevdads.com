@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-08T18:17:10.202Z",
+  "generated_at": "2026-05-17T02:12:08.405Z",
   "settings": {
     "id": 1,
     "hero_title": "⚔️ CRIMINALLY DEV DADS ⚔️",
@@ -12,7 +12,315 @@
     "fx_noise": true,
     "fx_vignette": true,
     "fx_hue_shift": true,
-    "fx_cursor_spotlight": true
+    "fx_cursor_spotlight": true,
+    "support_page_href": "/p/support",
+    "stripe_donation_url": "",
+    "support_buttons": [
+      {
+        "id": "75351e98-6be8-4bfa-8781-169d78acdd6c",
+        "href": "",
+        "label": "",
+        "variant": "secondary",
+        "external": false
+      }
+    ],
+    "promo_events": [
+      {
+        "id": "da17dc36-3236-49f0-8556-1e8874421776",
+        "body": "Skybattle. Need moar?",
+        "href": "/game/skybattle",
+        "title": "Check out the latest game!",
+        "active": true,
+        "ends_at": null,
+        "external": false,
+        "starts_at": null
+      }
+    ],
+    "custom_css": "",
+    "fx_intensity": "normal",
+    "theme": {
+      "colors": {
+        "bg_0": "#05070d",
+        "bg_1": "#0d111a",
+        "link": "#73f8ff",
+        "text": "#d6deff",
+        "muted": "#7f8ba7",
+        "panel": "rgba(18, 24, 36, 0.82)",
+        "accent": "#73f8ff",
+        "border": "rgba(115, 248, 255, 0.3)",
+        "danger": "#ff5fbf",
+        "success": "#3ecf8e",
+        "warning": "#f8d36b",
+        "accent_2": "#a673ff",
+        "tag_bg_a": "rgba(115, 248, 255, 0.9)",
+        "tag_bg_b": "rgba(166, 115, 255, 0.9)",
+        "tag_text": "#070b12",
+        "button_bg": "rgba(11, 16, 25, 0.85)",
+        "card_bg_a": "rgba(18, 24, 36, 0.82)",
+        "card_bg_b": "rgba(16, 21, 33, 0.92)",
+        "header_bg": "rgba(18, 24, 36, 0.82)",
+        "link_hover": "#ffffff",
+        "play_btn_a": "rgba(115, 248, 255, 0.82)",
+        "play_btn_b": "rgba(166, 115, 255, 0.82)",
+        "button_text": "#73f8ff",
+        "card_border": "rgba(115, 248, 255, 0.3)",
+        "text_strong": "#eaf0ff",
+        "panel_strong": "rgba(16, 21, 33, 0.92)",
+        "button_border": "rgba(115, 248, 255, 0.3)",
+        "header_border": "rgba(115, 248, 255, 0.3)",
+        "nav_button_bg": "rgba(11, 16, 25, 0.85)",
+        "play_btn_text": "#061019",
+        "support_btn_a": "rgba(115, 248, 255, 0.85)",
+        "support_btn_b": "rgba(166, 115, 255, 0.85)",
+        "download_btn_a": "rgba(255, 95, 191, 0.86)",
+        "download_btn_b": "rgba(166, 115, 255, 0.82)",
+        "nav_button_text": "#73f8ff",
+        "support_btn_text": "#08101a",
+        "button_hover_bg_a": "rgba(115, 248, 255, 0.25)",
+        "button_hover_bg_b": "rgba(166, 115, 255, 0.25)",
+        "card_hover_border": "rgba(166, 115, 255, 0.7)",
+        "download_btn_text": "#f6f8ff",
+        "footer_text_color": "#66708a",
+        "nav_button_border": "rgba(115, 248, 255, 0.3)",
+        "header_title_color": "#eaf0ff",
+        "header_subtitle_color": "#7f8ba7",
+        "nav_button_hover_bg_a": "rgba(115, 248, 255, 0.25)",
+        "nav_button_hover_bg_b": "rgba(166, 115, 255, 0.25)",
+        "nav_button_hover_text": "#ffffff"
+      },
+      "enabled": false,
+      "background": {
+        "body_video": {
+          "url": "",
+          "blur_px": 0,
+          "enabled": false,
+          "opacity": 0.45
+        },
+        "header_glow": {
+          "size": "600px 240px",
+          "color": "rgba(115, 248, 255, 0.18)",
+          "enabled": false,
+          "opacity": 1,
+          "position": "center top"
+        },
+        "body_gradient": {
+          "size": "100% 100%",
+          "type": "linear",
+          "angle": 130,
+          "stops": [
+            {
+              "id": "g1",
+              "color": "#05070d",
+              "position": 0
+            },
+            {
+              "id": "g2",
+              "color": "#0d111a",
+              "position": 100
+            }
+          ],
+          "position": "center"
+        },
+        "body_image_url": "",
+        "body_image_size": "cover",
+        "body_image_blend": "overlay",
+        "body_image_fixed": true,
+        "body_image_opacity": 0.35,
+        "body_radial_accent": {
+          "size": "800px 600px",
+          "color": "rgba(166, 115, 255, 0.10)",
+          "enabled": true,
+          "falloff": 60,
+          "opacity": 1,
+          "position": "85% 10%"
+        }
+      },
+      "display_name": "Default — Cyber Violet"
+    },
+    "effects": {
+      "noise": {
+        "color": "rgba(255, 255, 255, 0.09)",
+        "enabled": true,
+        "opacity": 0.06,
+        "size_px": 3,
+        "speed_s": 0.18
+      },
+      "vignette": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "enabled": true,
+        "opacity": 1,
+        "inner_stop": 45
+      },
+      "hue_shift": {
+        "blend": "screen",
+        "color_a": "rgba(255, 95, 191, 0.03)",
+        "color_b": "rgba(115, 248, 255, 0.02)",
+        "color_c": "rgba(166, 115, 255, 0.03)",
+        "enabled": true,
+        "opacity": 0.72,
+        "speed_s": 8
+      },
+      "scanlines": {
+        "enabled": true,
+        "opacity": 0.22,
+        "gap_color": "rgba(0, 0, 0, 0.08)",
+        "line_color": "rgba(255, 255, 255, 0.03)",
+        "spacing_px": 3
+      },
+      "card_hover": {
+        "shine": true,
+        "enabled": true,
+        "lift_px": 6,
+        "skew_deg": 0.5,
+        "glow_color": "rgba(115, 248, 255, 0.24)",
+        "glow_strength": 28
+      },
+      "custom_css": "",
+      "edge_sweep": {
+        "color": "var(--accent)",
+        "enabled": true,
+        "period_s": 4
+      },
+      "title_glitch": {
+        "enabled": true,
+        "period_s": 5,
+        "intensity_px": 1
+      },
+      "reduce_motion": {
+        "honor_prefers": true
+      },
+      "scroll_jitter": {
+        "enabled": true
+      },
+      "cursor_spotlight": {
+        "color": "rgba(115, 248, 255, 0.09)",
+        "enabled": true,
+        "opacity": 1,
+        "radius_x_px": 1100,
+        "radius_y_px": 700
+      },
+      "card_in_animation": {
+        "enabled": true,
+        "stagger_ms": 35,
+        "duration_ms": 450
+      }
+    },
+    "typography": {
+      "body_weight": 400,
+      "heading_weight": 700,
+      "link_underline": "hover",
+      "base_line_height": 1.5,
+      "font_family_base": "'Consolas', 'Space Mono', 'Courier New', monospace",
+      "font_family_mono": "'Courier New', monospace",
+      "google_fonts_url": "",
+      "base_font_size_px": 16,
+      "letter_spacing_em": 0.0125,
+      "card_title_size_rem": 1.3,
+      "font_family_heading": "'Consolas', 'Space Mono', 'Courier New', monospace",
+      "heading_text_shadow": "0 0 12px rgba(115, 248, 255, 0.35), 0 0 26px rgba(166, 115, 255, 0.22)",
+      "hero_title_size_rem": 3.5,
+      "heading_text_transform": "uppercase",
+      "hero_subtitle_size_rem": 0.9,
+      "heading_letter_spacing_em": 0.1875
+    },
+    "layout": {
+      "nav_gap_px": 10,
+      "card_gap_px": 25,
+      "nav_position": "top",
+      "nav_alignment": "center",
+      "base_padding_px": 20,
+      "card_min_width_px": 280,
+      "footer_padding_px": 30,
+      "footer_text_align": "center",
+      "header_text_align": "center",
+      "card_force_columns": 0,
+      "header_padding_h_px": 20,
+      "header_padding_v_px": 40,
+      "container_padding_px": 20,
+      "border_radius_card_px": 12,
+      "border_radius_panel_px": 12,
+      "container_max_width_px": 1400,
+      "border_radius_button_px": 4,
+      "header_margin_bottom_px": 60,
+      "card_thumbnail_height_px": 200
+    },
+    "components": {
+      "card": {
+        "shadow": "0 20px 30px rgba(2, 4, 10, 0.35)",
+        "padding_px": 20,
+        "hover_shadow": "0 0 0 1px rgba(166, 115, 255, 0.4), 0 18px 38px rgba(0, 0, 0, 0.55), 0 0 28px rgba(115, 248, 255, 0.24)",
+        "border_width_px": 1,
+        "title_letter_spacing_em": 0
+      },
+      "modal": {
+        "width_max_px": 800,
+        "backdrop_color": "rgba(2, 4, 10, 0.82)",
+        "backdrop_blur_px": 3
+      },
+      "panel": {
+        "shadow": "0 8px 28px rgba(0, 0, 0, 0.25)",
+        "blur_px": 6,
+        "border_width_px": 1
+      },
+      "button": {
+        "padding_h_px": 25,
+        "padding_v_px": 10,
+        "font_size_rem": 0.9,
+        "text_transform": "uppercase",
+        "border_width_px": 1,
+        "letter_spacing_em": 0,
+        "hover_translate_y_px": -1
+      },
+      "promo_card": {
+        "accent_border": false,
+        "title_uppercase": true
+      }
+    },
+    "behavior": {
+      "show_footer": true,
+      "homepage_intro": {
+        "html": "",
+        "enabled": false
+      },
+      "click_sound_url": "",
+      "show_vault_link": true,
+      "maintenance_mode": {
+        "title": "We’ll be right back",
+        "enabled": true,
+        "message": "The hub is in maintenance. Check back soon.",
+        "allow_admin_bypass": true
+      },
+      "show_devlog_link": true,
+      "click_sound_volume": 0.4,
+      "show_apps_lab_link": false,
+      "show_home_nav_link": true,
+      "default_game_filter": "all",
+      "show_filter_buttons": true,
+      "show_support_section": true,
+      "game_card_hover_effect": "lift",
+      "show_admin_link_in_nav": true,
+      "show_header_brand_strip": true,
+      "show_player_sign_in_nav": true,
+      "show_primary_nav_footer": false,
+      "show_primary_nav_header": true,
+      "comments_globally_enabled": true,
+      "homepage_autoplay_previews": false,
+      "first_party_analytics_enabled": true,
+      "player_google_sign_in_enabled": true
+    },
+    "seo": {
+      "favicon_url": "",
+      "theme_color": "#0d111a",
+      "analytics_id": "",
+      "og_image_url": "",
+      "title_template": "%s — Criminally Dev Dads",
+      "twitter_handle": "",
+      "analytics_provider": "none",
+      "analytics_script_src": "",
+      "default_meta_description": "Criminally Dev Dads is a small indie collective making fast, weird browser games and tools."
+    },
+    "custom_head_html": "",
+    "theme_presets": []
   },
   "pages": [
     {
@@ -36,27 +344,18 @@
         }
       ],
       "show_in_nav": true,
-      "sort_order": 0,
+      "sort_order": 2,
       "created_at": "2026-05-07T16:09:13.395135+00:00",
-      "updated_at": "2026-05-07T16:09:13.395135+00:00"
-    },
-    {
-      "id": "4ab8d992-adcd-4280-b64c-cdc41b045271",
-      "slug": "shop",
-      "title": "shop",
-      "body": "",
-      "sections": [
-        {
-          "id": "642f747b-0803-4182-9814-594092bd5f8d",
-          "kind": "heading",
-          "title": "Shop Store front ",
-          "subtitle": "(coming soon)"
-        }
-      ],
-      "show_in_nav": true,
-      "sort_order": 0,
-      "created_at": "2026-05-07T16:11:07.759571+00:00",
-      "updated_at": "2026-05-07T16:11:07.759571+00:00"
+      "updated_at": "2026-05-07T16:09:13.395135+00:00",
+      "visual_preset": null,
+      "immersive_layout": false,
+      "custom_mood_css": "",
+      "page_mode": "blocks",
+      "raw_html": "",
+      "unlisted": false,
+      "show_on_apps_hub": true,
+      "html_app_summary": "",
+      "html_iframe_compat": false
     }
   ],
   "nav": [],
