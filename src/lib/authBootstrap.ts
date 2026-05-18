@@ -58,6 +58,16 @@ export function bootstrapSpaAuthPaths(): void {
   }
 
   if (hash.startsWith('#/')) {
+    const root = pathname.replace(/\/index\.html$/i, '') || '/';
+    if (root !== '/') {
+      window.history.replaceState(window.history.state, '', `${origin}/${hash}${search}`);
+    }
+    return;
+  }
+
+  const appPath = pathname.replace(/\/index\.html$/i, '') || '/';
+  if (appPath !== '/') {
+    window.history.replaceState(window.history.state, '', `${origin}/#${appPath}${search}`);
     return;
   }
 

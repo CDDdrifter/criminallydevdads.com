@@ -55,5 +55,6 @@ function cmsDevPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), gamesJsonDevPlugin(), cmsDevPlugin()],
-  base: './',
+  // Absolute paths so refresh on deep links still loads /assets/* (not /play/assets/*).
+  base: '/',
 });

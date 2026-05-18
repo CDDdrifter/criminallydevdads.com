@@ -104,16 +104,18 @@ function PrimaryNavRow({
   className: string;
 }) {
   return (
-    <nav className={className} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: 1 }}>
+    <nav className={className} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div className="top-nav__links" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
         <NavLinkList links={links} />
         {navExtra}
         {adminLinkVisible ? (
           <Link to="/admin">{adminLabel}</Link>
         ) : null}
       </div>
-      <UserAuthNav />
-      <SiteSocialFollow slot={socialSlot} />
+      <div className="top-nav__meta" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <UserAuthNav />
+        <SiteSocialFollow slot={socialSlot} />
+      </div>
     </nav>
   );
 }

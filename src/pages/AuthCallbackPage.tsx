@@ -69,8 +69,14 @@ export function AuthCallbackPage() {
       }
 
       if (!code) {
+        if (session?.user) {
+          cleanOAuthQueryFromUrl();
+          navigate(popAuthReturn(), { replace: true });
+          return;
+        }
         if (!cancelled) {
-          setDetail('No sign-in code in the URL. Try Sign in with Google again.');
+          cleanOAuthQueryFromUrl();
+          navigate('/', { replace: true });
         }
         return;
       }
