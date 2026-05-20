@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import {
   deleteDevLogSlug,
   deleteGameBySlug,
@@ -51,6 +52,7 @@ import { formatSupabaseWriteError, isRlsOrPermissionError } from '../lib/supabas
 import { ADMIN_CMS_TABS, ADMIN_OVERVIEW_CARDS, ADMIN_STUDIO_TABS } from '../lib/adminLabels';
 import { defaultRouteFxOverride, normalizeRouteFxOverride } from '../lib/routeFx';
 import { normalizeVisualPresetInput } from '../lib/visualPresets';
+import { AdminStudioPreview } from '../components/admin/AdminStudioPreview';
 import { RouteAppearancePanel } from '../components/admin/RouteAppearancePanel';
 import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
 import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
@@ -79,6 +81,7 @@ import type {
   SupportButton,
   ThemePreset,
 } from '../types';
+import { hireUsPageDraft } from '../lib/pageTemplates';
 import { defaultSiteSettings } from '../types';
 
 /**
@@ -109,8 +112,6 @@ type Tab =
   | 'motion'
   | 'media'
   | 'system'
-  // Studio expansion (migration 018).
-  | 'homepage'
   | 'analytics'
   | 'mailing';
 
@@ -340,8 +341,35 @@ function summarizePageSave(args: {
   return `Saved page “${args.title}” (${args.slug}) · ${mode} · ${blocks} · ${mood} · ${nav}${idx} · ${imm} · ${css}.`;
 }
 
+const adminJumpBtnStyle: CSSProperties = {
+  background: 'none',
+  border: 'none',
+  color: 'var(--accent)',
+  cursor: 'pointer',
+  padding: 0,
+  textDecoration: 'underline',
+  font: 'inherit',
+};
+
+const STUDIO_PREVIEW_TABS: Tab[] = [
+  'settings',
+  'theme',
+  'effects',
+  'typography',
+  'layout',
+  'components',
+  'behavior',
+  'seo',
+  'brand',
+  'social',
+  'motion',
+  'media',
+  'system',
+];
+
 export function AdminPage() {
   const auth = useAuth();
+  const { refresh: refreshSiteSettings } = useSiteSettings();
   const [tab, setTab] = useState<Tab>('overview');
   const [analyticsDaysBack, setAnalyticsDaysBack] = useState(30);
   const [busy, setBusy] = useState(false);
@@ -538,8 +566,9 @@ export function AdminPage() {
       await saveSiteSettings(settings);
       const fresh = await fetchSiteSettings();
       setSettings(fresh);
+      await refreshSiteSettings();
       setSettingsSaveStatus('success');
-      flash('Site settings saved.');
+      flash('Site settings saved — live site updated.');
       if (settingsSaveSuccessTimerRef.current) {
         clearTimeout(settingsSaveSuccessTimerRef.current);
       }
@@ -1366,8 +1395,28 @@ export function AdminPage() {
         ))}
       </div>
 
+      <AdminStudioPreview settings={settings} active={STUDIO_PREVIEW_TABS.includes(tab)} />
+
       {tab === 'overview' && (
         <>
+        <div className="admin-panel" style={{ marginBottom: 20, borderColor: 'rgba(115, 248, 255, 0.35)' }}>
+          <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>🏠 Homepage builder</h2>
+          <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55, fontSize: '0.88rem' }}>
+            Edit homepage blocks here (same as the old Homepage tab). Hero title/logo: <strong>Brand + Hero</strong>.
+            Hub mood colours: <strong>Effects → Site mood</strong>. Support/footer: <strong>Site copy</strong>.
+          </p>
+          <HomepageStudio settings={settings} setSettings={setSettings} />
+          <div className="admin-row" style={{ marginTop: 16, gap: 12, flexWrap: 'wrap' }}>
+            <button type="button" disabled={busy} onClick={onSaveSettings}>
+              Save homepage &amp; studio settings
+            </button>
+            {settingsSaveStatus === 'success' ? (
+              <span style={{ color: '#3ecf8e' }} aria-label="Saved">
+                ✓ Saved
+              </span>
+            ) : null}
+          </div>
+        </div>
         <div
           className="admin-grid"
           style={{
@@ -1390,6 +1439,18 @@ export function AdminPage() {
               </p>
             </button>
           ))}
+        </div>
+        <div className="admin-panel" style={{ marginTop: 20, borderColor: 'rgba(255, 191, 95, 0.35)' }}>
+          <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>💰 Monetization (no new API keys)</h2>
+          <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55, fontSize: '0.88rem' }}>
+            <strong>Games tab:</strong> upload ZIP builds + thumbnails, set pricing (free / fixed / pay-what-you-want /
+            donation), Stripe Price ID, Gumroad, or external purchase URL. <strong>Site copy:</strong> Stripe donation
+            link for the homepage. <strong>Pages:</strong> pricing blocks + hire-us template. Stripe Checkout uses your
+            existing Supabase Edge Function secrets — nothing new in GitHub.
+          </p>
+          <button type="button" onClick={() => setTab('games')}>
+            Open Games &amp; commerce →
+          </button>
         </div>
         <div className="admin-panel" style={{ marginTop: 20, borderColor: 'rgba(115, 248, 255, 0.25)' }}>
           <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>
@@ -1503,22 +1564,21 @@ export function AdminPage() {
               {settingsFieldErrors._migration}
             </div>
           ) : null}
-          <div className="admin-field">
-            <label htmlFor="hero_title">Hero title</label>
-            <input
-              id="hero_title"
-              value={settings.hero_title}
-              onChange={(e) => setSettings({ ...settings, hero_title: e.target.value })}
-            />
-          </div>
-          <div className="admin-field">
-            <label htmlFor="hero_subtitle">Hero subtitle</label>
-            <input
-              id="hero_subtitle"
-              value={settings.hero_subtitle}
-              onChange={(e) => setSettings({ ...settings, hero_subtitle: e.target.value })}
-            />
-          </div>
+          <p className="admin-muted" style={{ gridColumn: '1 / -1', lineHeight: 1.55, fontSize: '0.88rem' }}>
+            Hero title, logo, and tagline:{' '}
+            <button type="button" style={adminJumpBtnStyle} onClick={() => setTab('brand')}>
+              Brand + Hero
+            </button>
+            . Homepage blocks:{' '}
+            <button type="button" style={adminJumpBtnStyle} onClick={() => setTab('overview')}>
+              Overview → Homepage builder
+            </button>
+            . Site mood preset:{' '}
+            <button type="button" style={adminJumpBtnStyle} onClick={() => setTab('effects')}>
+              Effects
+            </button>
+            .
+          </p>
           <div className="admin-field">
             <label htmlFor="support_title">Support section title</label>
             <input
@@ -2992,6 +3052,26 @@ export function AdminPage() {
             <h2 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--muted)' }}>
               Custom page editor
             </h2>
+            <div className="admin-row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const draft = hireUsPageDraft();
+                  setPageDraft({
+                    ...emptyPageDraft(),
+                    ...draft,
+                    sections: ensureSectionIds(draft.sections),
+                  });
+                  setPageFieldErrors({});
+                  flash('Hire Us template loaded — edit and Save page.');
+                }}
+              >
+                New: Hire Us page
+              </button>
+              <span className="admin-muted" style={{ fontSize: '0.82rem' }}>
+                Creates <code>/#/p/hire-us</code> with hero + CTA blocks.
+              </span>
+            </div>
             <p className="admin-muted">
               Public URL: <code>/#/p/&lt;slug&gt;</code>. Pick <strong>Block composer</strong> for structured content, or{' '}
               <strong>HTML app</strong> for a single-file export. Turn off <strong>Show in top nav</strong> for a vault-style
@@ -3647,8 +3727,7 @@ export function AdminPage() {
         tab === 'social' ||
         tab === 'motion' ||
         tab === 'media' ||
-        tab === 'system' ||
-        tab === 'homepage') && (
+        tab === 'system') && (
         <>
           {tab === 'theme' && (
             <ThemeStudio
@@ -3673,8 +3752,6 @@ export function AdminPage() {
           {tab === 'motion' && <MotionStudio settings={settings} setSettings={setSettings} />}
           {tab === 'media' && <MediaStudio settings={settings} setSettings={setSettings} />}
           {tab === 'system' && <SystemStudio settings={settings} setSettings={setSettings} />}
-          {tab === 'homepage' && <HomepageStudio settings={settings} setSettings={setSettings} />}
-
           {/* Shared save bar — sticky at the bottom of the studio shell. */}
           <div
             className="admin-panel"
@@ -3702,7 +3779,7 @@ export function AdminPage() {
                 </span>
               ) : null}
               <span className="admin-muted" style={{ fontSize: '0.78rem', lineHeight: 1.4 }}>
-                Studio changes preview live as you edit; this button persists them so other visitors see them.
+                Mood, colours, and FX preview live while you edit. Save pushes to the public site immediately.
               </span>
             </div>
           </div>

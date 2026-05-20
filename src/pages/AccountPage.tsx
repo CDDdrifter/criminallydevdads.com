@@ -8,6 +8,7 @@ import {
   type SiteGameSave,
 } from '../lib/communityData';
 import { supabaseConfigured } from '../lib/supabase';
+import { MailingListOptInCard } from '../components/MailingListOptInCard';
 import { SiteChrome } from '../components/SiteChrome';
 
 export function AccountPage() {
@@ -16,7 +17,6 @@ export function AccountPage() {
   const [loadingSaves, setLoadingSaves] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
-  const [mailingOptIn, setMailingOptIn] = useState(false);
   const [usernameHint, setUsernameHint] = useState<string | null>(null);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -43,7 +43,6 @@ export function AccountPage() {
     if (auth.profile) {
       setDisplayName(auth.profile.display_name);
       setUsername(auth.profile.username);
-      setMailingOptIn(auth.profile.mailing_list_opt_in);
     }
   }, [auth.profile]);
 
@@ -83,6 +82,9 @@ export function AccountPage() {
   }
 
   const name = auth.profile?.display_name || auth.user?.email || 'Player';
+  const isNewAccount =
+    auth.profile?.created_at != null &&
+    Date.now() - new Date(auth.profile.created_at).getTime() < 1000 * 60 * 60 * 24 * 3;
 
   return (
     <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
@@ -113,13 +115,15 @@ export function AccountPage() {
           </div>
         </header>
 
+        <MailingListOptInCard variant={isNewAccount ? 'welcome' : 'default'} />
+
         <section style={{ marginTop: 28 }}>
           <h2 className="page-section-title" style={{ fontSize: '0.85rem', textTransform: 'uppercase' }}>
-            Profile &amp; email list
+            Profile
           </h2>
           <p className="admin-muted" style={{ lineHeight: 1.55, marginBottom: 12 }}>
-            Usernames are unique site-wide (lowercase, 3–32 characters). Mailing list is optional — we only email people
-            who opt in here.
+            Usernames are unique site-wide (lowercase, 3–32 characters). Newsletter opt-in is in the card above — toggle
+            anytime.
           </p>
           <div className="admin-field" style={{ maxWidth: 420 }}>
             <label htmlFor="acct_display_name">Display name</label>
@@ -155,16 +159,6 @@ export function AccountPage() {
             />
             {usernameHint ? <p className="admin-muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>{usernameHint}</p> : null}
           </div>
-          <label className="admin-row" style={{ gap: 10, marginTop: 8, alignItems: 'flex-start' }}>
-            <input
-              type="checkbox"
-              checked={mailingOptIn}
-              onChange={(e) => setMailingOptIn(e.target.checked)}
-            />
-            <span style={{ lineHeight: 1.5 }}>
-              Email me occasional updates about new games and site news (site owners only; you can unsubscribe anytime).
-            </span>
-          </label>
           {profileMessage ? (
             <p className="admin-muted" style={{ marginTop: 10, lineHeight: 1.5 }}>
               {profileMessage}
@@ -181,7 +175,7 @@ export function AccountPage() {
                 void updateMyProfile(auth.user.id, {
                   display_name: displayName,
                   username: username.trim().toLowerCase(),
-                  mailing_list_opt_in: mailingOptIn,
+                  mailing_list_opt_in: auth.profile?.mailing_list_opt_in ?? false,
                 }).then(async (r) => {
                   setProfileSaving(false);
                   if (r.ok) {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { SiteSettings } from '../types';
 import { defaultSiteSettings } from '../types';
 import { fetchSiteSettings } from '../lib/cmsData';
@@ -7,6 +7,8 @@ export type SiteSettingsState = {
   settings: SiteSettings;
   /** True only after the first shared `fetchSiteSettings()` completes. */
   ready: boolean;
+  /** Reload settings from Supabase (call after Admin save). */
+  refresh: () => Promise<SiteSettings>;
 };
 
 const SiteSettingsContext = createContext<SiteSettingsState | null>(null);
@@ -18,6 +20,11 @@ function loadSiteSettingsOnce(): Promise<SiteSettings> {
     siteSettingsPromise = fetchSiteSettings();
   }
   return siteSettingsPromise;
+}
+
+/** Force the next load (and provider refresh) to pull fresh CMS data. */
+export function resetSiteSettingsCache(): void {
+  siteSettingsPromise = null;
 }
 
 function SiteBootstrapSplash() {
@@ -36,6 +43,15 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [ready, setReady] = useState(false);
 
+  const refresh = useCallback(async () => {
+    resetSiteSettingsCache();
+    const s = await fetchSiteSettings();
+    siteSettingsPromise = Promise.resolve(s);
+    setSettings(s);
+    setReady(true);
+    return s;
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     loadSiteSettingsOnce().then((s) => {
@@ -49,7 +65,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const value = useMemo<SiteSettingsState>(() => ({ settings, ready }), [settings, ready]);
+  const value = useMemo<SiteSettingsState>(() => ({ settings, ready, refresh }), [settings, ready, refresh]);
 
   if (!ready) {
     return <SiteBootstrapSplash />;

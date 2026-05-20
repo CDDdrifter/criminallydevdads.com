@@ -21,13 +21,12 @@ export const ADMIN_STUDIO_TABS = [
   { id: 'motion', label: '🎬 Motion' },
   { id: 'media', label: '🎵 Audio + FX' },
   { id: 'system', label: '♿ System' },
-  { id: 'homepage', label: '🏠 Homepage' },
   { id: 'analytics', label: '📊 Analytics' },
   { id: 'mailing', label: '✉️ Mailing' },
 ] as const;
 
 export const ADMIN_OVERVIEW_CARDS: { id: string; title: string; desc: string }[] = [
-  { id: 'settings', title: '⚙️ Site copy', desc: 'Hero text, support block, promos, footer — not global FX (see Effects).' },
+  { id: 'settings', title: '⚙️ Site copy', desc: 'Support block, promos, footer, donations — hero/mood on Overview + Brand + Effects.' },
   { id: 'games', title: '🎮 Games', desc: 'ZIP uploads, itch links, per-game 🎨 appearance + blocks.' },
   { id: 'pages', title: '📄 Pages & panels', desc: 'Custom URLs, HTML apps, per-page 🎨 appearance + blocks.' },
   {
@@ -48,7 +47,6 @@ export const ADMIN_OVERVIEW_CARDS: { id: string; title: string; desc: string }[]
   { id: 'motion', title: '🎬 Motion + Cards', desc: 'Page entrance, route fade, promo motion.' },
   { id: 'media', title: '🎵 Audio + Cursor', desc: 'BGM, hover sounds, cursor, particles.' },
   { id: 'system', title: '♿ Performance + A11y', desc: 'Reduce motion, contrast, focus ring.' },
-  { id: 'homepage', title: '🏠 Homepage builder', desc: 'Hero, galleries, columns, tabs, FAQs — any block.' },
   {
     id: 'analytics',
     title: '📊 Analytics',

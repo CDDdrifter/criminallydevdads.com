@@ -40,7 +40,7 @@ export function MailingListStudio() {
   return (
     <div className="admin-grid" style={{ gap: 16 }}>
       <FieldGroup
-        title="Mailing list (double opt-in from account page)"
+        title="Mailing list (opt-in on /account)"
         description={
           <>
             Subscribers are users who checked &quot;Email me updates&quot; on{' '}

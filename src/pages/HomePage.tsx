@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { GameCardMetaChips } from '../components/GameCardMetaChips';
 import { GameCardThumbnail } from '../components/GameCardThumbnail';
@@ -22,10 +22,6 @@ export function HomePage() {
   const showSupport = settings.behavior?.show_support_section !== false;
   const showFooter = settings.behavior?.show_footer !== false;
   const intro = settings.behavior?.homepage_intro;
-
-  useEffect(() => {
-    delete document.documentElement.dataset.visualPreset;
-  }, []);
 
   const filtered =
     filter === 'all' ? games : games.filter((g) => g.type.toLowerCase() === filter);

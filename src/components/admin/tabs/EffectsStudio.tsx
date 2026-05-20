@@ -87,7 +87,7 @@ export function EffectsStudio({ settings, setSettings }: Props) {
       <FieldGroup
         title="🌐 Site mood (hub default)"
         tone="accent"
-        description="Accent palette for Home, Vault, Dev log, and any route without its own mood. Games/Pages can override in their 🎨 Appearance panel."
+        description="Accent palette for the whole hub including the homepage. Save studio settings to apply on the live site. Games/Pages can override in 🎨 Appearance."
       >
         <SelectField
           label="Hub mood preset"

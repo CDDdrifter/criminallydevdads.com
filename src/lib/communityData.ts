@@ -42,6 +42,37 @@ export type SiteGameSave = {
   updated_at: string;
 };
 
+export type GameAnalyticsRow = {
+  game_slug: string;
+  game_title: string;
+  plays: number;
+  page_views: number;
+  comments: number;
+  unique_sessions: number;
+};
+
+export type AdminCommentRow = {
+  id: string;
+  user_id: string;
+  target_type: string;
+  target_key: string;
+  body: string;
+  created_at: string;
+  display_name: string;
+  username: string;
+  author_email: string;
+};
+
+export type AdminProfileRow = {
+  id: string;
+  email: string;
+  display_name: string;
+  username: string;
+  mailing_list_opt_in: boolean;
+  mailing_list_opted_in_at: string | null;
+  created_at: string;
+};
+
 export type AnalyticsSummary = {
   since: string;
   days_back: number;
@@ -59,6 +90,8 @@ export type AnalyticsSummary = {
   top_games: { game_slug: string; plays: number }[];
   /** HTML mini-apps / sandbox pages tracked as `app_open`. */
   top_app_opens: { app_key: string; opens: number }[];
+  /** Per published game (migration 024). */
+  game_analytics: GameAnalyticsRow[];
 };
 
 export async function ensureProfile(userId: string, meta?: { name?: string; avatar?: string }) {
@@ -340,9 +373,37 @@ export async function fetchAnalyticsSummary(daysBack = 30): Promise<AnalyticsSum
   const raw = data as Record<string, unknown>;
   const byType = raw.events_by_type;
   const opens = raw.top_app_opens;
+  const gameAnalytics = raw.game_analytics;
   return {
     ...(data as AnalyticsSummary),
     events_by_type: byType && typeof byType === 'object' && !Array.isArray(byType) ? (byType as Record<string, number>) : {},
     top_app_opens: Array.isArray(opens) ? (opens as AnalyticsSummary['top_app_opens']) : [],
+    game_analytics: Array.isArray(gameAnalytics) ? (gameAnalytics as GameAnalyticsRow[]) : [],
   };
+}
+
+export async function adminListComments(
+  limit = 200,
+  daysBack = 365,
+): Promise<AdminCommentRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc('admin_list_comments', {
+    p_limit: limit,
+    days_back: daysBack,
+  });
+  if (error) {
+    console.warn('[admin] comments', error.message);
+    return [];
+  }
+  return (data ?? []) as AdminCommentRow[];
+}
+
+export async function adminListRecentProfiles(limit = 200): Promise<AdminProfileRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc('admin_list_recent_profiles', { p_limit: limit });
+  if (error) {
+    console.warn('[admin] profiles', error.message);
+    return [];
+  }
+  return (data ?? []) as AdminProfileRow[];
 }
