@@ -2459,6 +2459,25 @@ html[data-game-embed-active='on'] body {
   border-color: rgba(166, 115, 255, 0.35);
 }
 
+.admin-copilot__chip {
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(115, 248, 255, 0.35);
+  background: rgba(115, 248, 255, 0.06);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+.admin-copilot__chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(115, 248, 255, 0.12);
+}
+.admin-copilot__chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 720px) {
   .user-auth-nav__name {
     display: none;
