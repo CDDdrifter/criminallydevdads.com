@@ -108,6 +108,12 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
           onChange={(show_apps_lab_link) => set({ show_apps_lab_link })}
           help="Lists HTML-app pages that opt into the hub. Off by default — turn on when you publish sandboxed tools."
         />
+        <ToggleField
+          label="Show Services link in primary navigation (/services)"
+          checked={b.show_services_link !== false}
+          onChange={(show_services_link) => set({ show_services_link })}
+          help="Gigs, tips, commissions — catalog from Admin → Services (migration 025)."
+        />
       </FieldGroup>
 
       <FieldGroup

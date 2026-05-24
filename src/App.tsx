@@ -35,6 +35,7 @@ import { AccountPage } from './pages/AccountPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { OAuthConsentPage } from './pages/OAuthConsentPage';
 import { SiteAnalytics } from './components/SiteAnalytics';
+import { ServicesPage } from './pages/ServicesPage';
 
 export function App() {
   return (
@@ -54,6 +55,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/apps" element={<AppsHubPage />} />
+        <Route path="/services" element={<ServicesPage />} />
         <Route path="/vault" element={<VaultPage />} />
         <Route path="/game/:slug" element={<GamePage />} />
         <Route path="/play/:slug" element={<PlayPage />} />

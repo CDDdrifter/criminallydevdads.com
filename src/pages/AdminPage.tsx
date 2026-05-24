@@ -56,6 +56,7 @@ import { AdminStudioPreview } from '../components/admin/AdminStudioPreview';
 import { RouteAppearancePanel } from '../components/admin/RouteAppearancePanel';
 import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
 import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
+import { ServicesAdminTab } from '../components/admin/tabs/ServicesAdminTab';
 import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
 import { BrandHeroStudio } from '../components/admin/tabs/BrandHeroStudio';
 import { ComponentsStudio } from '../components/admin/tabs/ComponentsStudio';
@@ -95,6 +96,7 @@ import { defaultSiteSettings } from '../types';
 type Tab =
   | 'overview'
   | 'settings'
+  | 'services'
   | 'games'
   | 'pages'
   | 'nav'
@@ -1443,14 +1445,18 @@ export function AdminPage() {
         <div className="admin-panel" style={{ marginTop: 20, borderColor: 'rgba(255, 191, 95, 0.35)' }}>
           <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>💰 Monetization (no new API keys)</h2>
           <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55, fontSize: '0.88rem' }}>
-            <strong>Games tab:</strong> upload ZIP builds + thumbnails, set pricing (free / fixed / pay-what-you-want /
-            donation), Stripe Price ID, Gumroad, or external purchase URL. <strong>Site copy:</strong> Stripe donation
-            link for the homepage. <strong>Pages:</strong> pricing blocks + hire-us template. Stripe Checkout uses your
-            existing Supabase Edge Function secrets — nothing new in GitHub.
+            <strong>Services tab:</strong> tips, demos, website/app/game gigs, merch — Stripe + email requests at{' '}
+            <code>/#/services</code>. <strong>Games tab:</strong> sell playable builds. <strong>Site copy:</strong>{' '}
+            donation link. Stripe uses one Edge Function (<code>create-checkout-session</code>) — set secrets when ready.
           </p>
-          <button type="button" onClick={() => setTab('games')}>
-            Open Games &amp; commerce →
-          </button>
+          <div className="admin-row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => setTab('services')}>
+              Open Services →
+            </button>
+            <button type="button" onClick={() => setTab('games')}>
+              Open Games →
+            </button>
+          </div>
         </div>
         <div className="admin-panel" style={{ marginTop: 20, borderColor: 'rgba(115, 248, 255, 0.25)' }}>
           <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>
@@ -1541,6 +1547,8 @@ export function AdminPage() {
         </div>
         </>
       )}
+
+      {tab === 'services' && <ServicesAdminTab />}
 
       {tab === 'settings' && (
         <div className="admin-panel admin-grid">

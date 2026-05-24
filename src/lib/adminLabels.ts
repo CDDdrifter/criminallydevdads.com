@@ -2,6 +2,7 @@
 export const ADMIN_CMS_TABS = [
   { id: 'overview', label: '📋 Overview' },
   { id: 'settings', label: '⚙️ Site copy' },
+  { id: 'services', label: '💼 Services' },
   { id: 'games', label: '🎮 Games' },
   { id: 'pages', label: '📄 Pages' },
   { id: 'nav', label: '🧭 Navigation' },
@@ -27,6 +28,11 @@ export const ADMIN_STUDIO_TABS = [
 
 export const ADMIN_OVERVIEW_CARDS: { id: string; title: string; desc: string }[] = [
   { id: 'settings', title: '⚙️ Site copy', desc: 'Support block, promos, footer, donations — hero/mood on Overview + Brand + Effects.' },
+  {
+    id: 'services',
+    title: '💼 Services & gigs',
+    desc: 'Tips, demos, commissions, merch — Stripe + request forms (/services).',
+  },
   { id: 'games', title: '🎮 Games', desc: 'ZIP uploads, itch links, per-game 🎨 appearance + blocks.' },
   { id: 'pages', title: '📄 Pages & panels', desc: 'Custom URLs, HTML apps, per-page 🎨 appearance + blocks.' },
   {

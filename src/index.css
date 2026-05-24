@@ -2325,6 +2325,140 @@ html[data-game-embed-active='on'] body {
   margin-top: 4px;
 }
 
+/* ---- Services / gigs page ---------------------------------------------- */
+.services-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding-bottom: 48px;
+}
+.services-hero {
+  text-align: center;
+  margin-bottom: 32px;
+  padding: 24px 16px;
+  border-radius: var(--radius, 12px);
+  border: 1px solid rgba(115, 248, 255, 0.25);
+  background: linear-gradient(145deg, rgba(11, 16, 25, 0.9), rgba(30, 20, 50, 0.5));
+}
+.services-hero__eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.services-hero__title {
+  margin: 0 0 12px;
+}
+.services-hero__lead {
+  margin: 0 auto;
+  max-width: 640px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.services-category {
+  margin-bottom: 28px;
+}
+.services-category__title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin: 0 0 14px;
+}
+.services-grid {
+  display: grid;
+  gap: 12px;
+}
+.service-card {
+  padding: 0;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.service-card--open {
+  border-color: rgba(115, 248, 255, 0.45);
+}
+.service-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.service-card__icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+.service-card__title {
+  display: block;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.service-card__tagline {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.45;
+}
+.service-card__body {
+  padding: 0 18px 18px;
+  border-top: 1px solid rgba(115, 248, 255, 0.12);
+}
+.service-card__image {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin: 14px 0;
+}
+.service-card__desc {
+  line-height: 1.6;
+  margin: 12px 0;
+  white-space: pre-wrap;
+}
+.service-card__features {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.service-card__meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+.service-card__meta dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+.service-card__actions {
+  display: grid;
+  gap: 16px;
+}
+.service-buy__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.service-buy__presets button {
+  min-width: 56px;
+}
+.service-request-form {
+  margin-top: 4px;
+}
+.services-inquiry {
+  border-color: rgba(166, 115, 255, 0.35);
+}
+
 @media (max-width: 720px) {
   .user-auth-nav__name {
     display: none;

@@ -152,6 +152,73 @@ export type RouteFxOverride = {
  */
 export type GamePricingModel = 'free' | 'fixed' | 'pwyw' | 'donation';
 
+/** Services / gigs: `quote` = request form only (no Stripe on this row). */
+export type ServicePricingModel = GamePricingModel | 'quote';
+
+export type ServiceCategory =
+  | 'game_dev'
+  | 'asset'
+  | 'web'
+  | 'app'
+  | 'merch'
+  | 'support'
+  | 'other';
+
+export type ServiceKind = 'service' | 'product' | 'tip' | 'deposit';
+
+export type SiteService = {
+  slug: string;
+  title: string;
+  tagline: string;
+  description: string;
+  category: ServiceCategory | string;
+  kind: ServiceKind | string;
+  icon_emoji: string;
+  image_url: string;
+  features: string[];
+  deliverables: string;
+  turnaround: string;
+  pricing_model: ServicePricingModel | string;
+  price_cents: number | null;
+  stripe_price_id: string | null;
+  purchase_url: string | null;
+  gumroad_url: string | null;
+  pwyw_min_cents: number | null;
+  pwyw_suggested_cents: number | null;
+  donation_presets_cents: number[];
+  cta_label: string;
+  request_only: boolean;
+  request_form_enabled: boolean;
+  published: boolean;
+  show_on_services_hub: boolean;
+  sort_order: number;
+};
+
+export type ServiceView = {
+  slug: string;
+  title: string;
+  tagline: string;
+  description: string;
+  category: string;
+  kind: string;
+  icon_emoji: string;
+  image_url: string;
+  features: string[];
+  deliverables: string;
+  turnaround: string;
+  pricing_model: ServicePricingModel;
+  price_cents: number;
+  purchase_url: string;
+  gumroad_url: string;
+  stripe_price_id: string;
+  pwyw_min_cents: number;
+  pwyw_suggested_cents: number;
+  donation_presets_cents: number[];
+  cta_label: string;
+  request_only: boolean;
+  request_form_enabled: boolean;
+};
+
 export type GameRecord = {
   id: string;
   slug: string;
@@ -620,6 +687,8 @@ export type BehaviorConfig = {
   show_home_nav_link: boolean;
   /** Adds an “Apps” link to the primary nav → `/#/apps` (HTML app hub). */
   show_apps_lab_link: boolean;
+  /** Adds a “Services” link → `/#/services` (gigs, tips, commissions). */
+  show_services_link: boolean;
   /** Public Google sign-in (comments + cloud saves). Requires Supabase + Google provider. */
   player_google_sign_in_enabled: boolean;
   /** Show “Sign in with Google” / account chip in the header. */

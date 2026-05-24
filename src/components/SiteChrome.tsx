@@ -22,6 +22,9 @@ function buildCoreNavLinks(behavior: BehaviorConfig | undefined): SiteNavLink[] 
   if (b?.show_apps_lab_link) {
     out.push({ label: '⚡ Apps', href: '/apps', external: false });
   }
+  if (b?.show_services_link !== false) {
+    out.push({ label: '💼 Services', href: '/services', external: false });
+  }
   if (b?.show_vault_link !== false) {
     out.push({ label: '🔐 Vault', href: '/vault', external: false });
   }
@@ -38,6 +41,7 @@ function buildCoreNavLinks(behavior: BehaviorConfig | undefined): SiteNavLink[] 
 export function useSiteNavLinks(): SiteNavLink[] {
   const { settings } = useSiteSettings();
   const showApps = Boolean(settings.behavior?.show_apps_lab_link);
+  const showServices = settings.behavior?.show_services_link !== false;
   const showHome = settings.behavior?.show_home_nav_link !== false;
   const showVault = settings.behavior?.show_vault_link !== false;
   const showDevlog = settings.behavior?.show_devlog_link !== false;
@@ -66,7 +70,7 @@ export function useSiteNavLinks(): SiteNavLink[] {
       out.push(item);
     }
     return out;
-  }, [showHome, showVault, showDevlog, showApps, settings.behavior]);
+  }, [showHome, showVault, showDevlog, showApps, showServices, settings.behavior]);
   return useMemo(() => computed ?? buildCoreNavLinks(settings.behavior), [computed, settings.behavior]);
 }
 

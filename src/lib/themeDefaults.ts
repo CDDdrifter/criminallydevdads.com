@@ -327,6 +327,7 @@ export function defaultBehaviorConfig(): BehaviorConfig {
     show_primary_nav_footer: false,
     show_home_nav_link: true,
     show_apps_lab_link: false,
+    show_services_link: true,
     player_google_sign_in_enabled: true,
     show_player_sign_in_nav: true,
     comments_globally_enabled: true,

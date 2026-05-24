@@ -398,6 +398,55 @@ export async function adminListComments(
   return (data ?? []) as AdminCommentRow[];
 }
 
+export type ServiceRequestRow = {
+  id: string;
+  service_slug: string | null;
+  service_title: string;
+  contact_name: string;
+  contact_email: string;
+  message: string;
+  budget_note: string;
+  status: string;
+  created_at: string;
+};
+
+export async function submitServiceRequest(args: {
+  serviceSlug?: string;
+  contactName: string;
+  contactEmail: string;
+  message: string;
+  budgetNote?: string;
+  userId?: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  const email = args.contactEmail.trim();
+  const message = args.message.trim();
+  if (!email.includes('@')) return { ok: false, error: 'Enter a valid email.' };
+  if (message.length < 10) return { ok: false, error: 'Tell us a bit more (at least 10 characters).' };
+
+  const { error } = await supabase.from('site_service_requests').insert({
+    service_slug: args.serviceSlug?.trim() || null,
+    contact_name: args.contactName.trim(),
+    contact_email: email,
+    message,
+    budget_note: (args.budgetNote ?? '').trim(),
+    user_id: args.userId ?? null,
+    status: 'new',
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function adminListServiceRequests(limit = 100): Promise<ServiceRequestRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc('admin_list_service_requests', { p_limit: limit });
+  if (error) {
+    console.warn('[services] requests', error.message);
+    return [];
+  }
+  return (data ?? []) as ServiceRequestRow[];
+}
+
 export async function adminListRecentProfiles(limit = 200): Promise<AdminProfileRow[]> {
   if (!supabase) return [];
   const { data, error } = await supabase.rpc('admin_list_recent_profiles', { p_limit: limit });

@@ -8,6 +8,10 @@ import { SiteChrome } from '../components/SiteChrome';
 export function PurchaseSuccessPage() {
   const [params] = useSearchParams();
   const sessionId = params.get('session_id');
+  const kind = params.get('kind');
+  const slug = params.get('slug');
+
+  const isService = kind === 'service';
 
   return (
     <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
@@ -16,9 +20,16 @@ export function PurchaseSuccessPage() {
           Thank you
         </h1>
         <p className="admin-muted" style={{ lineHeight: 1.6 }}>
-          Your payment was submitted through Stripe. You should receive a receipt by email from Stripe if you entered
-          an address at checkout.
+          Your payment was submitted through Stripe
+          {isService ? ' for our services' : ''}. You should receive a receipt by email from Stripe if you entered an
+          address at checkout.
+          {isService ? ' We will follow up about your order or project brief soon.' : ''}
         </p>
+        {slug && isService ? (
+          <p className="admin-muted" style={{ fontSize: '0.88rem' }}>
+            Item: <code>{slug}</code>
+          </p>
+        ) : null}
         {sessionId ? (
           <p className="admin-muted" style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>
             Reference: <code>{sessionId}</code>
