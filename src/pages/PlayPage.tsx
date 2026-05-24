@@ -4,7 +4,9 @@ import { GameEmbedSection } from '../components/GameEmbedSection';
 import { RouteScopedCss } from '../components/RouteScopedCss';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchGameViewBySlug } from '../lib/cmsData';
+import { useRouteBranding } from '../hooks/useRouteBranding';
 import { useRouteFxSync } from '../hooks/useRouteFxSync';
+import { resolveGameTabIcon } from '../lib/routeBranding';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { applyVisualPresetToDocument, resolveVisualPreset } from '../lib/routeFx';
 import { trackGamePlay } from '../lib/analytics';
@@ -47,6 +49,12 @@ export function PlayPage() {
   }, [slug]);
 
   useRouteFxSync(game?.route_fx);
+
+  useRouteBranding({
+    active: Boolean(game?.title),
+    title: game?.title ? `${game.title} — Play` : null,
+    faviconUrl: game ? resolveGameTabIcon(game, settings) : null,
+  });
 
   useEffect(() => {
     const preset = resolveVisualPreset(game?.visual_preset, settings.site_visual_preset);

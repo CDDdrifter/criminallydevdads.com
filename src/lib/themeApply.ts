@@ -15,6 +15,12 @@
  * Idempotent: call repeatedly. Replaces the previous generated rules.
  */
 
+import {
+  applyAppleTouchIcon,
+  applyDocumentFavicon,
+  resolveSiteAppleTouch,
+  resolveSiteFavicon,
+} from './routeBranding';
 import type {
   AccessibilityConfig,
   AnimationsConfig,
@@ -684,16 +690,6 @@ function applyHeadHtml(html: string) {
   el.innerHTML = html;
 }
 
-function applyFavicon(url: string) {
-  if (!url.trim()) return;
-  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-  if (!link) {
-    link = document.createElement('link');
-    link.rel = 'icon';
-    document.head.appendChild(link);
-  }
-  if (link.href !== url) link.href = url;
-}
 
 function applyThemeColor(color: string) {
   if (!color.trim()) return;
@@ -918,7 +914,8 @@ export function applyStudioTheme(settings: SiteSettings) {
   applyGoogleFonts(settings.typography.google_fonts_url.trim());
   applyAnalytics(settings.seo);
   applyHeadHtml(settings.custom_head_html);
-  applyFavicon(settings.seo.favicon_url || settings.branding.header_logo_url);
+  applyDocumentFavicon(resolveSiteFavicon(settings));
+  applyAppleTouchIcon(resolveSiteAppleTouch(settings));
   applyThemeColor(settings.seo.theme_color);
   applyMetaDescription(settings.seo.default_meta_description);
   applyOgImage(settings.seo.og_image_url);

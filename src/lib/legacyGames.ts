@@ -243,6 +243,7 @@ async function buildGameFromFolder(
       metadata.details ??
       'This game was auto-added because a web build was detected in the games directory.',
     thumbnail: resolvedThumbnail || metadata.thumbnail || '',
+    tab_icon: '',
     preview_video: previewRaw ? resolvePublicAssetUrl(previewRaw) : '',
     external_url: external,
     local_folder: folderId,

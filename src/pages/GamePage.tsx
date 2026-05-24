@@ -9,7 +9,9 @@ import { ShareStrip } from '../components/ShareStrip';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchGameViewBySlug } from '../lib/cmsData';
 import { formatGamePriceLabel, gameHasGumroadUrl } from '../lib/gamePricing';
+import { useRouteBranding } from '../hooks/useRouteBranding';
 import { useRouteFxSync } from '../hooks/useRouteFxSync';
+import { resolveGameTabIcon } from '../lib/routeBranding';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { applyVisualPresetToDocument, resolveVisualPreset } from '../lib/routeFx';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
@@ -54,6 +56,12 @@ export function GamePage() {
   }, [slug]);
 
   useRouteFxSync(game?.route_fx);
+
+  useRouteBranding({
+    active: Boolean(game?.title),
+    title: game?.title,
+    faviconUrl: game ? resolveGameTabIcon(game, settings) : null,
+  });
 
   useEffect(() => {
     const preset = resolveVisualPreset(game?.visual_preset, settings.site_visual_preset);
@@ -133,7 +141,13 @@ export function GamePage() {
       <RouteScopedCss id={cssId} css={game.custom_mood_css} />
       <GameEmbedSection game={game} showPlayingLabel={false} />
 
-      <article className="admin-panel page-article game-detail-article">
+      {game.isPlayable ? (
+        <p className="admin-muted game-embed-scroll-hint">
+          <a href="#game-details">↓ Scroll for details, purchase, and comments</a>
+        </p>
+      ) : null}
+
+      <article id="game-details" className="admin-panel page-article game-detail-article">
         <h1 className="header-title" style={{ fontSize: '2rem', textAlign: 'left', marginBottom: 8 }}>
           {game.title}
         </h1>

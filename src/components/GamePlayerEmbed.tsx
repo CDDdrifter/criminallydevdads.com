@@ -1,8 +1,5 @@
 /**
- * GamePlayerEmbed — game iframe + enter-fullscreen control.
- *
- * Routes keyboard / gamepad to the embedded game via a click-to-play gate, iframe focus,
- * and capture-phase key handling so Space / WASD / arrows do not scroll the hub page.
+ * GamePlayerEmbed — game iframe + docked player toolbar (fullscreen always reachable).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -12,6 +9,7 @@ import {
   isGameControlKey,
   isTypingTarget,
   setGameEmbedActiveDocument,
+  setGameEmbedFullscreenDocument,
 } from '../lib/gameEmbedInput';
 
 type Props = {
@@ -87,14 +85,28 @@ export function GamePlayerEmbed({ title, src }: Props) {
     });
   }, []);
 
+  const exitFullscreen = useCallback(() => {
+    if (pseudoFs) {
+      setPseudoFs(false);
+      return;
+    }
+    tryNativeExit();
+  }, [pseudoFs]);
+
   useEffect(() => {
     setEngaged(false);
+    setPseudoFs(false);
   }, [src]);
 
   useEffect(() => {
     setGameEmbedActiveDocument(engaged);
     return () => setGameEmbedActiveDocument(false);
   }, [engaged]);
+
+  useEffect(() => {
+    setGameEmbedFullscreenDocument(isFullscreen);
+    return () => setGameEmbedFullscreenDocument(false);
+  }, [isFullscreen]);
 
   useEffect(() => {
     const sync = () => {
@@ -134,7 +146,6 @@ export function GamePlayerEmbed({ title, src }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [pseudoFs]);
 
-  /** After engage: steal game keys from the parent page and refocus the iframe. */
   useEffect(() => {
     if (!engaged) {
       return undefined;
@@ -159,7 +170,6 @@ export function GamePlayerEmbed({ title, src }: Props) {
     return () => document.removeEventListener('keydown', onKeyDownCapture, true);
   }, [engaged]);
 
-  /** Any key while the gate is up → engage (same as click). */
   useEffect(() => {
     if (engaged) {
       return undefined;
@@ -176,7 +186,6 @@ export function GamePlayerEmbed({ title, src }: Props) {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [engaged, engage]);
 
-  /** Web gamepads: first button press should engage + focus (Godot often needs this). */
   useEffect(() => {
     if (engaged) {
       return undefined;
@@ -192,7 +201,6 @@ export function GamePlayerEmbed({ title, src }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [engaged, engage]);
 
-  /** Keep routing gamepad input to the iframe while playing. */
   useEffect(() => {
     if (!engaged) {
       return undefined;
@@ -209,7 +217,7 @@ export function GamePlayerEmbed({ title, src }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [engaged]);
 
-  const enter = useCallback(() => {
+  const enterFullscreen = useCallback(() => {
     const el = shellRef.current as FullscreenElement | null;
     if (!el) {
       return;
@@ -222,7 +230,7 @@ export function GamePlayerEmbed({ title, src }: Props) {
 
   const onShellPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if ((e.target as HTMLElement).closest('.game-embed-fs-btn')) {
+      if ((e.target as HTMLElement).closest('.game-embed-toolbar, .game-embed-play-gate')) {
         return;
       }
       if (!engaged) {
@@ -236,37 +244,54 @@ export function GamePlayerEmbed({ title, src }: Props) {
 
   return (
     <div
-      className={`game-embed-shell${pseudoFs ? ' game-embed-shell--pseudo-fs' : ''}${engaged ? ' game-embed-shell--engaged' : ''}`}
+      className={`game-embed-shell${pseudoFs ? ' game-embed-shell--pseudo-fs' : ''}${engaged ? ' game-embed-shell--engaged' : ''}${isFullscreen ? ' game-embed-shell--fs' : ''}`}
       ref={shellRef}
       onPointerDown={onShellPointerDown}
     >
-      <iframe
-        ref={iframeRef}
-        title={title}
-        src={src}
-        className="game-embed-iframe"
-        tabIndex={0}
-        allow={GAME_EMBED_ALLOW}
-        allowFullScreen
-      />
-      {!engaged ? (
-        <button type="button" className="game-embed-play-gate" onClick={engage}>
-          <span className="game-embed-play-gate__title">🎮 Click to play</span>
-          <span className="game-embed-play-gate__hint">
-            Focuses keyboard &amp; controller here. Press any gamepad button if controls do not respond.
-          </span>
-        </button>
-      ) : null}
-      {!isFullscreen ? (
-        <button
-          type="button"
-          className="game-embed-fs-btn"
-          onClick={enter}
-          aria-label="Enter fullscreen"
-        >
-          ⛶ Fullscreen
-        </button>
-      ) : null}
+      <div className="game-embed-stage">
+        <iframe
+          ref={iframeRef}
+          title={title}
+          src={src}
+          className="game-embed-iframe"
+          tabIndex={0}
+          allow={GAME_EMBED_ALLOW}
+          allowFullScreen
+        />
+        {!engaged ? (
+          <button type="button" className="game-embed-play-gate" onClick={engage}>
+            <span className="game-embed-play-gate__title">🎮 Click to play</span>
+            <span className="game-embed-play-gate__hint">
+              Focuses keyboard &amp; controller here. Use the toolbar below for fullscreen.
+            </span>
+          </button>
+        ) : null}
+      </div>
+
+      <div className="game-embed-toolbar" role="toolbar" aria-label="Game player">
+        <span className="game-embed-toolbar__hint">
+          {isFullscreen ? 'Press Esc or Exit to leave fullscreen' : engaged ? 'Playing — scroll down for game info' : 'Click the game area to start'}
+        </span>
+        {isFullscreen ? (
+          <button
+            type="button"
+            className="game-embed-fs-btn game-embed-fs-btn--exit"
+            onClick={exitFullscreen}
+            aria-label="Exit fullscreen"
+          >
+            ✕ Exit fullscreen
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="game-embed-fs-btn"
+            onClick={enterFullscreen}
+            aria-label="Enter fullscreen"
+          >
+            ⛶ Fullscreen
+          </button>
+        )}
+      </div>
     </div>
   );
 }

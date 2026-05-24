@@ -37,6 +37,7 @@ import {
   repairGameBuildContentTypes,
   sanitizeGameStorageSlug,
   uploadGamePreviewVideo,
+  uploadGameTabIcon,
   uploadGameThumbnail,
   uploadGameZip,
 } from '../lib/gameStorageUpload';
@@ -125,7 +126,7 @@ function describeAdminWriteFailure(err: unknown): string {
   if (isRlsOrPermissionError(err)) {
     return `${core}\n\nRow security / permission: you must be signed in as an allowed editor. In Supabase, check site_admin_domains and site_admin_emails for this project. Try Sign out, then sign in again.`;
   }
-    return `${core}\n\nIf a database column is missing, run migrations 014, 019, 020, and 022 in supabase/migrations/ once in the Supabase SQL Editor.`;
+    return `${core}\n\nIf a database column is missing, run migrations 014, 019, 020, 022, and 026 in supabase/migrations/ once in the Supabase SQL Editor.`;
 }
 
 function emptyPageDraft(): Partial<SitePage> & {
@@ -160,6 +161,7 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
   description: '',
   details: '',
   thumbnail_url: '',
+  tab_icon_url: '',
   preview_video_url: '',
   external_url: '',
   local_folder: '',
@@ -253,6 +255,7 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     description: draft.description ?? '',
     details: draft.details ?? '',
     thumbnail_url: draft.thumbnail_url ?? '',
+    tab_icon_url: draft.tab_icon_url?.trim() || null,
     preview_video_url: draft.preview_video_url ?? '',
     external_url: draft.external_url ?? '',
     local_folder: draft.local_folder?.trim() || draft.slug.trim(),
@@ -422,6 +425,7 @@ export function AdminPage() {
   /** Selected playable entry from uploaded ZIP (persisted to site_games.storage_entry_in_zip). */
   const [zipEntryPick, setZipEntryPick] = useState('');
   const thumbFileRef = useRef<HTMLInputElement>(null);
+  const tabIconFileRef = useRef<HTMLInputElement>(null);
   const previewVideoFileRef = useRef<HTMLInputElement>(null);
   const [navDraft, setNavDraft] = useState<Partial<NavItem> & { label: string; href: string }>({
     label: '',
@@ -833,6 +837,44 @@ export function AdminPage() {
     } catch (e) {
       console.error(e);
       flash(e instanceof Error ? e.message : 'Thumbnail upload failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onUploadGameTabIconFile = async (picked?: File) => {
+    const file = picked ?? tabIconFileRef.current?.files?.[0];
+    const slug = gameSlugEffective;
+    if (!slug) {
+      flash('Enter a title or slug first (URL id).');
+      return;
+    }
+    if (!file) {
+      flash('Choose a tab icon image.');
+      return;
+    }
+    const titleForRow = gameDraft.title.trim() || slug;
+    setBusy(true);
+    try {
+      const url = await uploadGameTabIcon(slug, file);
+      await upsertGame({
+        ...gameUpsertPayload({ ...gameDraft, slug, title: titleForRow }),
+        tab_icon_url: url,
+      });
+      setGameDraft((prev) => ({
+        ...prev,
+        slug: prev.slug.trim() || slug,
+        tab_icon_url: url,
+        title: prev.title?.trim() ? prev.title : titleForRow,
+      }));
+      if (tabIconFileRef.current) {
+        tabIconFileRef.current.value = '';
+      }
+      await reload();
+      flash('Browser tab icon uploaded and saved.');
+    } catch (e) {
+      console.error(e);
+      flash(e instanceof Error ? e.message : 'Tab icon upload failed');
     } finally {
       setBusy(false);
     }
@@ -2536,6 +2578,53 @@ export function AdminPage() {
                   placeholder="https://…"
                   value={gameDraft.thumbnail_url ?? ''}
                   onChange={(e) => setGameDraft({ ...gameDraft, thumbnail_url: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="admin-field">
+              <label htmlFor="g_tab_icon">Browser tab icon (optional)</label>
+              <p className="admin-muted" style={{ margin: '0 0 8px', textTransform: 'none', fontSize: '0.82rem' }}>
+                Shown in the browser tab on this game&apos;s detail and play pages. Square 32–64px PNG or
+                SVG works best. If empty, the hub thumbnail is used, then the site favicon from{' '}
+                <strong>SEO + Head</strong>.
+              </p>
+              {gameDraft.tab_icon_url?.trim() ? (
+                <img
+                  src={gameDraft.tab_icon_url}
+                  alt=""
+                  width={48}
+                  height={48}
+                  style={{ display: 'block', marginBottom: 10, borderRadius: 8, border: '1px solid var(--border)' }}
+                />
+              ) : null}
+              <input
+                id="g_tab_icon_file"
+                ref={tabIconFileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.png,.jpg,.jpeg,.gif,.webp,.svg"
+                disabled={busy || !gameSlugEffective}
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void onUploadGameTabIconFile(f);
+                }}
+              />
+              <button
+                type="button"
+                disabled={busy || !gameSlugEffective}
+                onClick={() => tabIconFileRef.current?.click()}
+              >
+                Upload tab icon
+              </button>
+              <div className="admin-field" style={{ marginTop: 12, marginBottom: 0 }}>
+                <label htmlFor="g_tab_icon" className="admin-muted" style={{ fontSize: '0.85rem' }}>
+                  Or paste image URL
+                </label>
+                <input
+                  id="g_tab_icon"
+                  placeholder="https://…"
+                  value={gameDraft.tab_icon_url ?? ''}
+                  onChange={(e) => setGameDraft({ ...gameDraft, tab_icon_url: e.target.value })}
                 />
               </div>
             </div>

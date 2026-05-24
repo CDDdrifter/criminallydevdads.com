@@ -1184,8 +1184,8 @@ body.scrolling .container {
     min-height: min(75vh, 720px);
   }
 
-  .game-embed-shell iframe {
-    height: min(75vh, 720px);
+  .game-embed-shell {
+    min-height: min(75vh, 720px);
   }
 }
 
@@ -1217,6 +1217,16 @@ body.scrolling .container {
     align-items: center;
     justify-content: center;
   }
+}
+
+.game-embed-scroll-hint {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.game-embed-scroll-hint a {
+  color: var(--accent);
 }
 
 .game-embed-wrap {
@@ -1278,81 +1288,128 @@ html[data-game-embed-active='on'] {
   overscroll-behavior: none;
 }
 
-html[data-game-embed-active='on'] body {
+/* Only lock the hub scroll when actually fullscreen — playing inline must still scroll to game info. */
+html[data-game-embed-fs='on'] body {
   overflow: hidden;
 }
 
-.game-embed-shell iframe {
+.game-embed-shell iframe,
+.game-embed-iframe {
   width: 100%;
-  height: 75vh;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   border: 0;
   display: block;
-  vertical-align: top;
 }
 
-.game-embed-shell:fullscreen {
+.game-embed-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(10, 14, 24, 0.94), rgba(5, 8, 14, 0.98));
+  border-top: 1px solid rgba(115, 248, 255, 0.38);
+  z-index: 30;
+}
+
+.game-embed-toolbar__hint {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted, #9aa3bc);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.game-embed-shell:fullscreen,
+.game-embed-shell--pseudo-fs {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background: #000;
   border-radius: 0;
 }
 
-.game-embed-shell:fullscreen iframe {
-  flex: 1;
-  min-height: 0;
-  height: 100%;
+.game-embed-shell:fullscreen {
+  min-height: 100vh;
 }
 
 .game-embed-shell--pseudo-fs {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  display: flex;
-  flex-direction: column;
   width: 100vw;
   height: 100dvh;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: #000;
-  border-radius: 0;
   margin: 0;
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
     env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
 
-.game-embed-shell--pseudo-fs iframe {
-  flex: 1;
-  width: 100%;
-  height: 100%;
+.game-embed-shell:fullscreen .game-embed-stage,
+.game-embed-shell--pseudo-fs .game-embed-stage {
+  flex: 1 1 auto;
   min-height: 0;
 }
 
+.game-embed-shell:fullscreen .game-embed-iframe,
+.game-embed-shell--pseudo-fs .game-embed-iframe {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.game-embed-shell:fullscreen .game-embed-toolbar,
+.game-embed-shell--pseudo-fs .game-embed-toolbar {
+  flex-shrink: 0;
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+}
+
 .game-embed-fs-btn {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  z-index: 20;
-  padding: 8px 14px;
+  flex: 0 0 auto;
+  padding: 10px 16px;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-family: inherit;
   color: var(--text, #eaf0ff);
-  background: rgba(8, 12, 22, 0.85);
+  background: rgba(8, 12, 22, 0.92);
   border: 1px solid rgba(115, 248, 255, 0.45);
   border-radius: 8px;
   cursor: pointer;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   transition: border-color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
 }
 
 .game-embed-fs-btn:hover {
   border-color: rgba(166, 115, 255, 0.65);
-  background: rgba(18, 24, 40, 0.92);
+  background: rgba(18, 24, 40, 0.96);
+}
+
+.game-embed-fs-btn--exit {
+  border-color: rgba(255, 120, 120, 0.55);
+  color: #ffe8e8;
+}
+
+.game-embed-fs-btn--exit:hover {
+  border-color: rgba(255, 150, 150, 0.75);
+  background: rgba(40, 12, 18, 0.92);
+}
+
+@media (max-width: 560px) {
+  .game-embed-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .game-embed-toolbar__hint {
+    flex-basis: 100%;
+  }
 }
 
 .prose {

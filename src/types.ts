@@ -227,6 +227,8 @@ export type GameRecord = {
   description: string | null;
   details: string | null;
   thumbnail_url: string | null;
+  /** Optional browser-tab icon for this game's detail + play routes. */
+  tab_icon_url?: string | null;
   /** Optional preview clip (Storage URL or any https URL). */
   preview_video_url?: string | null;
   external_url: string | null;
@@ -295,6 +297,8 @@ export type GameView = {
   description: string;
   details: string;
   thumbnail: string;
+  /** Browser tab icon; empty → thumbnail → site favicon. */
+  tab_icon: string;
   preview_video: string;
   external_url: string;
   local_folder: string;
@@ -725,6 +729,8 @@ export type SeoConfig = {
   og_image_url: string;
   twitter_handle: string;
   favicon_url: string;
+  /** Home-screen / iOS bookmark icon (180×180 PNG or SVG recommended). */
+  apple_touch_icon_url: string;
   analytics_provider: 'none' | 'umami' | 'plausible' | 'ga4' | 'custom';
   analytics_id: string;
   analytics_script_src: string;

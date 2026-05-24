@@ -563,6 +563,33 @@ export async function uploadGameZip(
   return { fileCount: files.length, exportRootLabel, indexCandidates, detectedEntry };
 }
 
+export async function uploadGameTabIcon(gameSlug: string, file: File): Promise<string> {
+  if (!supabase) {
+    throw new Error('Supabase not configured');
+  }
+  const slug = sanitizeGameStorageSlug(gameSlug);
+  if (!slug) {
+    throw new Error('Invalid game slug for tab icon upload.');
+  }
+  const ext = extFromFilename(file.name);
+  if (!THUMB_EXT.has(ext)) {
+    throw new Error('Tab icon must be PNG, JPG, GIF, WebP, or SVG.');
+  }
+  if (file.size > MAX_THUMBNAIL_BYTES) {
+    throw new Error(`Tab icon must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
+  }
+  const objectPath = `${slug}/tab-icon.${ext}`;
+  const { error } = await supabase.storage.from(GAME_THUMBNAILS_BUCKET).upload(objectPath, file, {
+    upsert: true,
+    contentType: guessContentType(`x.${ext}`),
+    cacheControl: '3600',
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return publicStorageObjectUrl(GAME_THUMBNAILS_BUCKET, objectPath);
+}
+
 export async function uploadGameThumbnail(gameSlug: string, file: File): Promise<string> {
   if (!supabase) {
     throw new Error('Supabase not configured');

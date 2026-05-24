@@ -9,6 +9,7 @@
  * analytics adoption.
  */
 import type { SiteSettings } from '../../../types';
+import { BrandingAssetsGuide } from '../BrandingAssetsGuide';
 import {
   AssetUploadField,
   ColorField,
@@ -29,6 +30,8 @@ export function SeoStudio({ settings, setSettings }: Props) {
 
   return (
     <div className="admin-grid" style={{ gap: 16 }}>
+      <BrandingAssetsGuide />
+
       <FieldGroup
         title="Page meta"
         tone="accent"
@@ -71,7 +74,14 @@ export function SeoStudio({ settings, setSettings }: Props) {
           value={s.favicon_url}
           onChange={(favicon_url) => set({ favicon_url })}
           placeholder="https://…/favicon.png"
-          help="PNG / ICO / SVG. Leave empty to keep the bundled favicon."
+          help="Browser tab icon (32×32 or 64×64 square). Leave empty to use /favicon.svg bundled with the site."
+        />
+        <AssetUploadField
+          label="Apple touch icon URL"
+          value={s.apple_touch_icon_url}
+          onChange={(apple_touch_icon_url) => set({ apple_touch_icon_url })}
+          placeholder="https://…/apple-touch-icon.png"
+          help="180×180 for Add to Home Screen. Empty → favicon → bundled /apple-touch-icon.svg."
         />
         <ColorField
           label="Browser theme colour"

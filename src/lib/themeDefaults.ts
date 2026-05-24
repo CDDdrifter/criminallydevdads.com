@@ -364,6 +364,7 @@ export function defaultSeoConfig(): SeoConfig {
     og_image_url: '',
     twitter_handle: '',
     favicon_url: '',
+    apple_touch_icon_url: '',
     analytics_provider: 'none',
     analytics_id: '',
     analytics_script_src: '',

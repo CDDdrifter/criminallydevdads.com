@@ -100,3 +100,12 @@ export function setGameEmbedActiveDocument(active: boolean): void {
     delete document.documentElement.dataset.gameEmbedActive;
   }
 }
+
+/** Locks page scroll only while the player is in true fullscreen (native or pseudo). */
+export function setGameEmbedFullscreenDocument(active: boolean): void {
+  if (active) {
+    document.documentElement.dataset.gameEmbedFs = 'on';
+  } else {
+    delete document.documentElement.dataset.gameEmbedFs;
+  }
+}
