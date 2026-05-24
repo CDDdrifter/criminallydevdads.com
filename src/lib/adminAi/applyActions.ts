@@ -1,0 +1,94 @@
+import type { Dispatch, SetStateAction } from 'react';
+import type { SiteService, SiteSettings } from '../../types';
+import { ADMIN_AI_SERVICE_DRAFT_KEY, type AdminAiAction } from './types';
+
+const SETTINGS_KEYS = new Set([
+  'hero_title',
+  'hero_subtitle',
+  'site_visual_preset',
+  'support_title',
+  'support_body',
+  'footer_text',
+  'stripe_donation_url',
+  'support_page_href',
+]);
+
+const BEHAVIOR_KEYS = new Set([
+  'show_services_link',
+  'show_apps_lab_link',
+  'show_home_nav_link',
+  'show_vault_link',
+  'show_devlog_link',
+  'first_party_analytics_enabled',
+  'maintenance_mode',
+]);
+
+export type ApplyAdminAiArgs = {
+  actions: AdminAiAction[];
+  setTab: (tab: string) => void;
+  setSettings: Dispatch<SetStateAction<SiteSettings>>;
+  flash: (msg: string) => void;
+};
+
+export function applyAdminAiActions({ actions, setTab, setSettings, flash }: ApplyAdminAiArgs): string[] {
+  const notes: string[] = [];
+
+  for (const action of actions) {
+    switch (action.type) {
+      case 'navigate':
+        setTab(action.tab);
+        notes.push(`Opened tab: ${action.tab}`);
+        break;
+      case 'patch_settings': {
+        const patch: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(action.patch)) {
+          if (SETTINGS_KEYS.has(k)) patch[k] = v;
+        }
+        if (Object.keys(patch).length) {
+          setSettings((s) => ({ ...s, ...patch }));
+          notes.push(`Updated settings: ${Object.keys(patch).join(', ')}`);
+        }
+        break;
+      }
+      case 'patch_behavior': {
+        const bp: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(action.patch)) {
+          if (BEHAVIOR_KEYS.has(k)) bp[k] = v;
+        }
+        if (Object.keys(bp).length) {
+          setSettings((s) => ({
+            ...s,
+            behavior: { ...s.behavior, ...bp },
+          }));
+          notes.push(`Updated behavior: ${Object.keys(bp).join(', ')}`);
+        }
+        break;
+      }
+      case 'set_service_draft': {
+        const draft = action.draft as Partial<SiteService> & { slug: string; title: string };
+        try {
+          sessionStorage.setItem(ADMIN_AI_SERVICE_DRAFT_KEY, JSON.stringify(draft));
+          setTab('services');
+          notes.push(`Loaded service draft “${draft.title}” — open Services tab and Save.`);
+        } catch {
+          notes.push('Could not stash service draft (storage blocked).');
+        }
+        break;
+      }
+      case 'remind_save':
+        flash(
+          action.target === 'settings'
+            ? 'AI updated draft — click Save on Site copy or Studio.'
+            : action.target === 'services'
+              ? 'AI loaded a service draft — review Services tab and Save.'
+              : 'AI updated studio draft — click Save studio settings.',
+        );
+        notes.push(`Reminder: save ${action.target}`);
+        break;
+      default:
+        break;
+    }
+  }
+
+  return notes;
+}

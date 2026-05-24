@@ -1,6 +1,7 @@
 /** Single source for Admin tab labels — keep emojis consistent everywhere. */
 export const ADMIN_CMS_TABS = [
   { id: 'overview', label: '📋 Overview' },
+  { id: 'ai', label: '🤖 AI' },
   { id: 'settings', label: '⚙️ Site copy' },
   { id: 'services', label: '💼 Services' },
   { id: 'games', label: '🎮 Games' },
@@ -27,6 +28,7 @@ export const ADMIN_STUDIO_TABS = [
 ] as const;
 
 export const ADMIN_OVERVIEW_CARDS: { id: string; title: string; desc: string }[] = [
+  { id: 'ai', title: '🤖 Admin AI', desc: 'Gemini copilot — navigate tabs, edit drafts, service gigs (free API key, this browser only).' },
   { id: 'settings', title: '⚙️ Site copy', desc: 'Support block, promos, footer, donations — hero/mood on Overview + Brand + Effects.' },
   {
     id: 'services',

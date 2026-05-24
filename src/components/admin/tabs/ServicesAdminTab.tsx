@@ -9,6 +9,7 @@ import {
 } from '../../../lib/servicesData';
 import { adminListServiceRequests, type ServiceRequestRow } from '../../../lib/communityData';
 import { donationPresetsFromUnknown } from '../../../lib/gamePricing';
+import { ADMIN_AI_SERVICE_DRAFT_KEY } from '../../../lib/adminAi/types';
 import type { ServicePricingModel, SiteService } from '../../../types';
 
 function emptyService(): SiteService {
@@ -56,6 +57,19 @@ export function ServicesAdminTab() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(ADMIN_AI_SERVICE_DRAFT_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(ADMIN_AI_SERVICE_DRAFT_KEY);
+      const parsed = JSON.parse(raw) as Partial<SiteService>;
+      setDraft({ ...emptyService(), ...parsed, slug: String(parsed.slug ?? ''), title: String(parsed.title ?? '') });
+      setMsg('Loaded draft from Admin AI — review and Save service.');
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const featuresText = draft.features.join('\n');
 

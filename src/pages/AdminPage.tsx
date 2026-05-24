@@ -57,6 +57,8 @@ import { RouteAppearancePanel } from '../components/admin/RouteAppearancePanel';
 import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
 import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
 import { ServicesAdminTab } from '../components/admin/tabs/ServicesAdminTab';
+import { AdminAiAssistant } from '../components/admin/AdminAiAssistant';
+import { fetchAllServicesAdmin } from '../lib/servicesData';
 import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
 import { BrandHeroStudio } from '../components/admin/tabs/BrandHeroStudio';
 import { ComponentsStudio } from '../components/admin/tabs/ComponentsStudio';
@@ -95,6 +97,7 @@ import { defaultSiteSettings } from '../types';
  */
 type Tab =
   | 'overview'
+  | 'ai'
   | 'settings'
   | 'services'
   | 'games'
@@ -403,6 +406,7 @@ export function AdminPage() {
   const [pages, setPages] = useState<SitePage[]>([]);
   const [nav, setNav] = useState<NavItem[]>([]);
   const [logs, setLogs] = useState<DevLogPost[]>([]);
+  const [servicesCount, setServicesCount] = useState(0);
 
   const [gameDraft, setGameDraft] = useState(emptyGame());
   const [pageDraft, setPageDraft] = useState(emptyPageDraft());
@@ -442,15 +446,17 @@ export function AdminPage() {
     if (!supabaseConfigured || !auth.isAdmin) {
       return;
     }
-    const [s, g, p, n, l] = await Promise.all([
+    const [s, g, svc, p, n, l] = await Promise.all([
       fetchSiteSettings(),
       fetchAllGamesAdmin(),
+      fetchAllServicesAdmin(),
       fetchAllPagesAdmin(),
       fetchAllNavAdmin(),
       fetchAllDevLogsAdmin(),
     ]);
     setSettings(s);
     setGames(g);
+    setServicesCount(svc.length);
     setPages(p);
     setNav(n);
     setLogs(l);
@@ -1546,6 +1552,19 @@ export function AdminPage() {
           ) : null}
         </div>
         </>
+      )}
+
+      {tab === 'ai' && (
+        <AdminAiAssistant
+          currentTab={tab}
+          settings={settings}
+          gamesCount={games.length}
+          pagesCount={pages.length}
+          servicesCount={servicesCount}
+          setTab={(t) => setTab(t as Tab)}
+          setSettings={setSettings}
+          flash={flash}
+        />
       )}
 
       {tab === 'services' && <ServicesAdminTab />}
