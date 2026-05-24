@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { applyAdminAiActions } from '../../lib/adminAi/applyActions';
 import { askAdminCopilot, chromeAiAvailable } from '../../lib/adminAi/askCopilot';
+import type { CopilotHistoryTurn } from '../../lib/adminAi/edgeCopilot';
 import { summarizeSettingsForAi } from '../../lib/adminAi/buildContext';
-import type { AdminAiAction, AdminAiResponse } from '../../lib/adminAi/types';
+import { ADMIN_AI_GEMINI_KEY_STORAGE, type AdminAiAction, type AdminAiResponse } from '../../lib/adminAi/types';
 import type { SiteSettings } from '../../types';
 
 type Props = {
@@ -26,12 +27,18 @@ type Msg = {
 
 const QUICK_PROMPTS = [
   'help',
-  'open effects',
+  'add button Hire us → /p/hire-us',
+  'hide services page while I edit',
   'set mood to ember',
-  'go to services',
-  'how do I set up stripe',
-  'create game demo service',
+  'open pages',
 ];
+
+const ENGINE_LABEL: Record<string, string> = {
+  'gemini-edge': 'Gemini (Supabase)',
+  'gemini-byok': 'Gemini (your API key)',
+  'chrome-on-device': 'Chrome on-device AI',
+  builtin: 'Built-in commands',
+};
 
 export function AdminAiAssistant({
   currentTab,
@@ -48,16 +55,37 @@ export function AdminAiAssistant({
   const [error, setError] = useState<string | null>(null);
   const [chromeAi, setChromeAi] = useState(false);
   const [autoApply, setAutoApply] = useState(true);
+  const [geminiKey, setGeminiKey] = useState('');
+  const historyRef = useRef<CopilotHistoryTurn[]>([]);
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: 'assistant',
-      text: 'Built-in site copilot — no API keys, no payment. I understand this admin panel and can open tabs, change hero copy, hub mood, nav flags, and draft services. Say "help" or use a quick button below.',
+      text: 'Site copilot — can add homepage buttons, change copy/mood, hide built-in pages, and draft CMS pages.\n\nBest: add GEMINI_API_KEY in Supabase Edge secrets (free at Google AI Studio) and deploy admin-copilot. Optional: paste your own Gemini key below (stored only in this browser).',
     },
   ]);
   const [lastResponse, setLastResponse] = useState<(AdminAiResponse & { engine?: string }) | null>(null);
 
   useEffect(() => {
     void chromeAiAvailable().then(setChromeAi);
+    try {
+      const stored = localStorage.getItem(ADMIN_AI_GEMINI_KEY_STORAGE);
+      if (stored) setGeminiKey(stored);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const persistGeminiKey = useCallback((key: string) => {
+    setGeminiKey(key);
+    try {
+      if (key.trim()) {
+        localStorage.setItem(ADMIN_AI_GEMINI_KEY_STORAGE, key.trim());
+      } else {
+        localStorage.removeItem(ADMIN_AI_GEMINI_KEY_STORAGE);
+      }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const runMessage = useCallback(
@@ -70,6 +98,8 @@ export function AdminAiAssistant({
       try {
         const res = await askAdminCopilot({
           userMessage: text,
+          geminiApiKey: geminiKey,
+          history: historyRef.current,
           context: {
             currentTab,
             settingsSummary: summarizeSettingsForAi(settings),
@@ -78,6 +108,12 @@ export function AdminAiAssistant({
             servicesCount,
           },
         });
+
+        historyRef.current = [
+          ...historyRef.current,
+          { role: 'user' as const, text },
+          { role: 'model' as const, text: res.reply },
+        ].slice(-14);
 
         setLastResponse(res);
 
@@ -122,6 +158,7 @@ export function AdminAiAssistant({
       currentTab,
       flash,
       gamesCount,
+      geminiKey,
       pagesCount,
       servicesCount,
       setSettings,
@@ -152,22 +189,30 @@ export function AdminAiAssistant({
   return (
     <div className="admin-grid admin-copilot" style={{ gap: 16 }}>
       <div className="admin-panel" style={{ borderColor: 'rgba(62, 207, 142, 0.35)' }}>
-        <h2 style={{ margin: '0 0 8px', fontSize: '1rem', color: 'var(--accent)' }}>🤖 Site copilot (free)</h2>
+        <h2 style={{ margin: '0 0 8px', fontSize: '1rem', color: 'var(--accent)' }}>🤖 Site copilot</h2>
         <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55, fontSize: '0.88rem' }}>
-          Runs <strong>in your browser</strong> — no Gemini key, no Supabase secrets, nothing to pay. Uses built-in
-          commands + site knowledge.{' '}
+          Tries <strong>Gemini on Supabase</strong> first (one free API key for all editors — secret{' '}
+          <code>GEMINI_API_KEY</code>, deploy <code>admin-copilot</code>). Then your optional browser key, then Chrome
+          on-device AI, then built-in commands.{' '}
           {chromeAi ? (
-            <span style={{ color: '#3ecf8e' }}>Chrome on-device AI is available as a bonus.</span>
-          ) : (
-            <span>Use Chrome desktop for optional on-device AI boost (still free).</span>
-          )}
+            <span style={{ color: '#3ecf8e' }}>Chrome AI available.</span>
+          ) : null}
         </p>
-        <label className="admin-row" style={{ gap: 8, marginTop: 10 }}>
+        <div className="admin-field" style={{ marginTop: 12, marginBottom: 0 }}>
+          <label htmlFor="ai_gemini_key" className="admin-muted" style={{ fontSize: '0.85rem' }}>
+            Optional: your Gemini API key (browser only — overrides server if Edge is down)
+          </label>
           <input
-            type="checkbox"
-            checked={autoApply}
-            onChange={(e) => setAutoApply(e.target.checked)}
+            id="ai_gemini_key"
+            type="password"
+            autoComplete="off"
+            placeholder="AIza…"
+            value={geminiKey}
+            onChange={(e) => persistGeminiKey(e.target.value)}
           />
+        </div>
+        <label className="admin-row" style={{ gap: 8, marginTop: 10 }}>
+          <input type="checkbox" checked={autoApply} onChange={(e) => setAutoApply(e.target.checked)} />
           <span style={{ fontSize: '0.88rem' }}>Auto-apply edits (recommended)</span>
         </label>
       </div>
@@ -202,7 +247,7 @@ export function AdminAiAssistant({
             >
               {m.engine ? (
                 <span className="admin-muted" style={{ fontSize: '0.72rem', display: 'block', marginBottom: 6 }}>
-                  via {m.engine === 'chrome-on-device' ? 'Chrome on-device AI' : 'built-in copilot'}
+                  via {ENGINE_LABEL[m.engine] ?? m.engine}
                 </span>
               ) : null}
               {m.text}
@@ -225,7 +270,7 @@ export function AdminAiAssistant({
                 send();
               }
             }}
-            placeholder="Tell me what to change…"
+            placeholder='e.g. "add button Play now → /play/my-game"'
             disabled={busy}
           />
           <button type="button" disabled={busy || !input.trim()} onClick={send}>
@@ -250,8 +295,9 @@ export function AdminAiAssistant({
       </div>
 
       <p className="admin-muted" style={{ fontSize: '0.78rem', lineHeight: 1.5 }}>
-        Not a full ChatGPT — for open-ended writing, edit text in Site copy / Pages. This copilot is tuned for{' '}
-        <strong>this admin panel</strong> only.
+        After AI changes studio fields, click <strong>Save studio settings</strong>. Page/service drafts need Save on
+        their tabs. CMS pages: uncheck <strong>Published</strong> while editing; built-in routes: Behavior → Built-in
+        pages.
       </p>
     </div>
   );

@@ -28,7 +28,7 @@ export const ADMIN_STUDIO_TABS = [
 ] as const;
 
 export const ADMIN_OVERVIEW_CARDS: { id: string; title: string; desc: string }[] = [
-  { id: 'ai', title: '🤖 Site copilot', desc: 'Free in-browser agent — commands, navigation, draft edits (no API key).' },
+  { id: 'ai', title: '🤖 Site copilot', desc: 'Gemini AI + commands — add buttons, hide pages, edit site draft.' },
   { id: 'settings', title: '⚙️ Site copy', desc: 'Support block, promos, footer, donations — hero/mood on Overview + Brand + Effects.' },
   {
     id: 'services',

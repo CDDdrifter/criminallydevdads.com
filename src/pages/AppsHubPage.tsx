@@ -16,7 +16,9 @@ export function AppsHubPage() {
     (async () => {
       const pages = await fetchSitePages();
       if (cancelled) return;
-      const list = pages.filter((p) => p.page_mode === 'html_app' && p.show_on_apps_hub !== false);
+      const list = pages.filter(
+        (p) => p.page_mode === 'html_app' && p.show_on_apps_hub !== false && p.published !== false,
+      );
       setApps(list);
     })();
     return () => {

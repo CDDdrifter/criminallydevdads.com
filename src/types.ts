@@ -345,6 +345,8 @@ export type SitePage = {
   /** Ordered blocks: headings, text, panels, images, dividers */
   sections: PageSection[];
   show_in_nav: boolean;
+  /** When false, public visitors see “unavailable”; site admins can preview. */
+  published: boolean;
   sort_order: number;
   /** Page-only mood; same keys as hub / game presets (Admin + index.css). */
   visual_preset?: string | null;
@@ -693,6 +695,14 @@ export type BehaviorConfig = {
   show_apps_lab_link: boolean;
   /** Adds a “Services” link → `/#/services` (gigs, tips, commissions). */
   show_services_link: boolean;
+  /** Public URL `/#/services` is reachable (off = hidden while editing). */
+  enable_services_page: boolean;
+  /** Public URL `/#/apps` is reachable. */
+  enable_apps_hub_page: boolean;
+  /** Public URL `/#/vault` is reachable. */
+  enable_vault_page: boolean;
+  /** Public URLs `/#/devlog` and posts are reachable. */
+  enable_devlog_section: boolean;
   /** Public Google sign-in (comments + cloud saves). Requires Supabase + Google provider. */
   player_google_sign_in_enabled: boolean;
   /** Show “Sign in with Google” / account chip in the header. */

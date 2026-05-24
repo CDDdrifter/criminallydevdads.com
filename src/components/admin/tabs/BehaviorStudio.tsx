@@ -156,6 +156,37 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
       </FieldGroup>
 
       <FieldGroup
+        title="Built-in pages (public URLs)"
+        description={
+          <>
+            Turn entire hub sections off while you edit — visitors get a short “unavailable” message instead of
+            half-finished content. Nav links for a section hide automatically when its page is off.
+          </>
+        }
+      >
+        <ToggleField
+          label="Services page live (/#/services)"
+          checked={b.enable_services_page !== false}
+          onChange={(enable_services_page) => set({ enable_services_page })}
+        />
+        <ToggleField
+          label="Apps lab live (/#/apps)"
+          checked={b.enable_apps_hub_page !== false}
+          onChange={(enable_apps_hub_page) => set({ enable_apps_hub_page })}
+        />
+        <ToggleField
+          label="Vault live (/#/vault)"
+          checked={b.enable_vault_page !== false}
+          onChange={(enable_vault_page) => set({ enable_vault_page })}
+        />
+        <ToggleField
+          label="Dev log live (/#/devlog)"
+          checked={b.enable_devlog_section !== false}
+          onChange={(enable_devlog_section) => set({ enable_devlog_section })}
+        />
+      </FieldGroup>
+
+      <FieldGroup
         title="Visibility — what shows on the homepage"
         description="Toggle whole sections off without deleting them."
       >

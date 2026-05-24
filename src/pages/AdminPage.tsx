@@ -59,6 +59,7 @@ import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
 import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
 import { ServicesAdminTab } from '../components/admin/tabs/ServicesAdminTab';
 import { AdminAiAssistant } from '../components/admin/AdminAiAssistant';
+import { ADMIN_AI_PAGE_DRAFT_KEY } from '../lib/adminAi/types';
 import { fetchAllServicesAdmin } from '../lib/servicesData';
 import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
 import { BrandHeroStudio } from '../components/admin/tabs/BrandHeroStudio';
@@ -126,7 +127,7 @@ function describeAdminWriteFailure(err: unknown): string {
   if (isRlsOrPermissionError(err)) {
     return `${core}\n\nRow security / permission: you must be signed in as an allowed editor. In Supabase, check site_admin_domains and site_admin_emails for this project. Try Sign out, then sign in again.`;
   }
-    return `${core}\n\nIf a database column is missing, run migrations 014, 019, 020, 022, and 026 in supabase/migrations/ once in the Supabase SQL Editor.`;
+    return `${core}\n\nIf a database column is missing, run migrations 014, 019, 020, 022, 026, and 027 in supabase/migrations/ once in the Supabase SQL Editor.`;
 }
 
 function emptyPageDraft(): Partial<SitePage> & {
@@ -147,6 +148,7 @@ function emptyPageDraft(): Partial<SitePage> & {
     page_mode: 'blocks',
     raw_html: '',
     unlisted: false,
+    published: true,
     show_on_apps_hub: true,
     html_app_summary: '',
     html_iframe_compat: false,
@@ -445,6 +447,24 @@ export function AdminPage() {
   const settingsLinkHints = useMemo(() => softSiteSettingsLinkHints(settings, pages), [settings, pages]);
 
   const gameSlugEffective = useMemo(() => effectiveGameSlug(gameDraft), [gameDraft.slug, gameDraft.title]);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(ADMIN_AI_PAGE_DRAFT_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(ADMIN_AI_PAGE_DRAFT_KEY);
+      const draft = JSON.parse(raw) as Partial<SitePage> & { slug: string; title: string };
+      setPageDraft({
+        ...emptyPageDraft(),
+        ...draft,
+        sections: ensureSectionIds(draft.sections ?? []),
+      });
+      setTab('pages');
+      flash('AI loaded a page draft — review and Save page.');
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const reload = useCallback(async () => {
     if (!supabaseConfigured || !auth.isAdmin) {
@@ -955,6 +975,7 @@ export function AdminPage() {
     const customPageCss = String(pageDraft.custom_mood_css ?? '');
     const rawHtmlSaved = String(pageDraft.raw_html ?? '');
     const unlistedPage = Boolean(pageDraft.unlisted);
+    const publishedPage = pageDraft.published !== false;
     const showOnAppsHub = pageDraft.show_on_apps_hub !== false;
     const htmlSummary = String(pageDraft.html_app_summary ?? '');
     const iframeCompat = Boolean(pageDraft.html_iframe_compat);
@@ -973,6 +994,7 @@ export function AdminPage() {
         page_mode: pageMode,
         raw_html: pageMode === 'html_app' ? rawHtmlSaved : '',
         unlisted: unlistedPage,
+        published: publishedPage,
         show_on_apps_hub: showOnAppsHub,
         html_app_summary: htmlSummary,
         html_iframe_compat: iframeCompat,
@@ -3409,6 +3431,14 @@ export function AdminPage() {
             <label className="admin-row" style={{ gap: 8 }}>
               <input
                 type="checkbox"
+                checked={pageDraft.published !== false}
+                onChange={(e) => setPageDraft({ ...pageDraft, published: e.target.checked })}
+              />
+              Published — visitors can open this page (off = draft; only signed-in admins preview)
+            </label>
+            <label className="admin-row" style={{ gap: 8 }}>
+              <input
+                type="checkbox"
                 checked={pageDraft.show_in_nav ?? true}
                 onChange={(e) => setPageDraft({ ...pageDraft, show_in_nav: e.target.checked })}
               />
@@ -3468,6 +3498,7 @@ export function AdminPage() {
                     <span className="admin-muted">
                       /p/{p.slug}
                       {p.page_mode === 'html_app' ? ' · HTML app' : ''}
+                      {p.published === false ? ' · draft' : ''}
                       {p.show_in_nav ? ' · in nav' : ' · link-only'}
                       {p.unlisted ? ' · unlisted' : ''}
                       {p.visual_preset ? ` · ${p.visual_preset}` : ''}

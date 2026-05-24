@@ -1,7 +1,7 @@
 /**
- * Zero-cost admin copilot — runs entirely in the browser (no API keys).
- * Pattern matching + built-in site knowledge + structured edit actions.
+ * Zero-cost admin copilot fallback — pattern matching + structured edit actions.
  */
+import { hireUsPageDraft } from '../pageTemplates';
 import type { AdminAiAction, AdminAiContext, AdminAiResponse } from './types';
 
 const TABS = [
@@ -115,14 +115,14 @@ const FAQ: FaqEntry[] = [
   {
     id: 'help',
     test: (m) => /^(help|what can you do|commands)\??$/.test(norm(m)),
-    reply: `I'm your built-in admin copilot (100% free, no API keys). I can:
-• Open admin tabs ("open effects", "go to services")
-• Change hero title/subtitle, hub mood, support copy
-• Toggle Services nav, maintenance mode, analytics
-• Draft a service gig and load it into Services
-• Explain Stripe, migrations, and where to click Save
+    reply: `I'm the built-in fallback copilot. For real AI edits, add GEMINI_API_KEY in Supabase Edge secrets (free Google AI Studio key).
 
-Try: "set mood to ember" or "set hero title to CRIMINALLY DEV DADS" then Apply.`,
+I can still:
+• Add homepage buttons ("add button Hire us → /p/hire-us")
+• Open tabs, change hero/mood, hide built-in pages while editing
+• Draft services/pages and load them into Admin
+
+Try: "add button Get a quote → /services" or "hide services page while I edit".`,
   },
   {
     id: 'stripe',
@@ -207,6 +207,84 @@ export function askCopilotAgent(userMessage: string, ctx: AdminAiContext): Admin
     actions.push({ type: 'patch_settings', patch: { hero_subtitle: heroSub } });
     actions.push({ type: 'remind_save', target: 'studio' });
     lines.push(`Hero subtitle → "${heroSub}".`);
+  }
+
+  if (/\b(hide|turn off|disable)\b.*\b(services|vault|dev ?log|apps)\b.*\b(page|section|route)\b/.test(n)) {
+    const patch: Record<string, unknown> = {};
+    if (/\bservices\b/.test(n)) {
+      patch.enable_services_page = false;
+      patch.show_services_link = false;
+    }
+    if (/\bvault\b/.test(n)) {
+      patch.enable_vault_page = false;
+      patch.show_vault_link = false;
+    }
+    if (/\bdev\b/.test(n)) {
+      patch.enable_devlog_section = false;
+      patch.show_devlog_link = false;
+    }
+    if (/\bapps\b/.test(n)) {
+      patch.enable_apps_hub_page = false;
+      patch.show_apps_lab_link = false;
+    }
+    if (Object.keys(patch).length) {
+      actions.push({ type: 'patch_behavior', patch });
+      actions.push({ type: 'remind_save', target: 'studio' });
+      lines.push('Turned off the requested built-in page(s) for visitors — Save studio settings.');
+    }
+  }
+
+  if (/\b(show|enable|turn on)\b.*\b(services|vault|dev ?log|apps)\b.*\b(page|section|route)\b/.test(n)) {
+    const patch: Record<string, unknown> = {};
+    if (/\bservices\b/.test(n)) {
+      patch.enable_services_page = true;
+      patch.show_services_link = true;
+    }
+    if (/\bvault\b/.test(n)) {
+      patch.enable_vault_page = true;
+      patch.show_vault_link = true;
+    }
+    if (/\bdev\b/.test(n)) {
+      patch.enable_devlog_section = true;
+      patch.show_devlog_link = true;
+    }
+    if (/\bapps\b/.test(n)) {
+      patch.enable_apps_hub_page = true;
+      patch.show_apps_lab_link = true;
+    }
+    if (Object.keys(patch).length) {
+      actions.push({ type: 'patch_behavior', patch });
+      actions.push({ type: 'remind_save', target: 'studio' });
+      lines.push('Re-enabled the requested built-in page(s) for visitors.');
+    }
+  }
+
+  if (/\b(add|create|put)\b.*\bbutton\b/.test(n) || /\bbutton\b.*\b(add|to)\b/.test(n)) {
+    const label =
+      extractQuotedOrAfter(msg, ['button', 'labeled', 'label', 'called', 'saying', 'text']) ||
+      (n.match(/\bbutton\s+(?:to|for)\s+([^.]+)/)?.[1]?.trim() ?? 'Learn more');
+    const hrefMatch = msg.match(
+      /(?:to|href|link|→|->)\s*(\/[\w/-]+|https?:\/\/[^\s"'<>]+)/i,
+    );
+    const href = hrefMatch?.[1]?.trim() ?? '/services';
+    actions.push({
+      type: 'append_homepage_button',
+      label: label.slice(0, 80),
+      href,
+      variant: /\bsecondary\b/.test(n) ? 'secondary' : 'primary',
+    });
+    actions.push({ type: 'navigate', tab: 'overview' });
+    actions.push({ type: 'remind_save', target: 'studio' });
+    lines.push(`Added homepage button “${label.slice(0, 40)}” → ${href}. Save studio settings.`);
+  }
+
+  if (/\b(draft|load|edit)\b.*\bhire\b/.test(n) || /\bhire us page\b/.test(n)) {
+    actions.push({
+      type: 'set_page_draft',
+      draft: { ...hireUsPageDraft(), published: false, show_in_nav: false },
+    });
+    actions.push({ type: 'remind_save', target: 'pages' });
+    lines.push('Loaded Hire Us page draft (unpublished) → Pages tab.');
   }
 
   if (/\b(enable|turn on|show)\b.*\bservices\b.*\b(nav|link)\b/.test(n) || /\bservices nav on\b/.test(n)) {
@@ -304,16 +382,12 @@ export function askCopilotAgent(userMessage: string, ctx: AdminAiContext): Admin
   }
 
   return {
-    reply: `I didn't match that command yet (I run free, on-device — no ChatGPT).
+    reply: `No match in built-in fallback. For natural-language edits, set **GEMINI_API_KEY** in Supabase → Edge Functions → Secrets (free key from Google AI Studio), deploy \`admin-copilot\`, and sign in as admin.
 
-**Try:**
-• "help"
-• "open effects" / "go to services"
-• "set mood to ember"
-• "set hero title to CRIMINALLY DEV DADS"
-• "turn on services nav"
-• "how do I set up stripe"
-• "create game demo service"
+**Built-in still understands:**
+• "add button Hire us → /p/hire-us"
+• "hide services page while I edit"
+• "set mood to ember" · "open pages"
 
 **Now:** tab \`${ctx.currentTab}\` · ${ctx.gamesCount} games · ${ctx.pagesCount} pages · ${ctx.servicesCount} services.`,
     actions: [],

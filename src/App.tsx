@@ -35,6 +35,7 @@ import { AccountPage } from './pages/AccountPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { OAuthConsentPage } from './pages/OAuthConsentPage';
 import { SiteAnalytics } from './components/SiteAnalytics';
+import { PrebuiltRouteGate } from './components/PrebuiltRouteGate';
 import { ServicesPage } from './pages/ServicesPage';
 
 export function App() {
@@ -54,13 +55,48 @@ export function App() {
       <MaintenanceGate>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/apps" element={<AppsHubPage />} />
-        <Route path="/services" element={<ServicesPage />} />
-        <Route path="/vault" element={<VaultPage />} />
+        <Route
+          path="/apps"
+          element={
+            <PrebuiltRouteGate flag="enable_apps_hub_page">
+              <AppsHubPage />
+            </PrebuiltRouteGate>
+          }
+        />
+        <Route
+          path="/services"
+          element={
+            <PrebuiltRouteGate flag="enable_services_page">
+              <ServicesPage />
+            </PrebuiltRouteGate>
+          }
+        />
+        <Route
+          path="/vault"
+          element={
+            <PrebuiltRouteGate flag="enable_vault_page">
+              <VaultPage />
+            </PrebuiltRouteGate>
+          }
+        />
         <Route path="/game/:slug" element={<GamePage />} />
         <Route path="/play/:slug" element={<PlayPage />} />
-        <Route path="/devlog" element={<DevLogListPage />} />
-        <Route path="/devlog/:slug" element={<DevLogPostPage />} />
+        <Route
+          path="/devlog"
+          element={
+            <PrebuiltRouteGate flag="enable_devlog_section">
+              <DevLogListPage />
+            </PrebuiltRouteGate>
+          }
+        />
+        <Route
+          path="/devlog/:slug"
+          element={
+            <PrebuiltRouteGate flag="enable_devlog_section">
+              <DevLogPostPage />
+            </PrebuiltRouteGate>
+          }
+        />
         <Route path="/p/:slug" element={<StaticPage />} />
         {/* Stripe redirects: success/cancel URLs built with SITE_URL in create-checkout-session */}
         <Route path="/purchase/success" element={<PurchaseSuccessPage />} />

@@ -19,16 +19,16 @@ function buildCoreNavLinks(behavior: BehaviorConfig | undefined): SiteNavLink[] 
   if (b?.show_home_nav_link !== false) {
     out.push({ label: '🏠 Home', href: '/', external: false });
   }
-  if (b?.show_apps_lab_link) {
+  if (b?.show_apps_lab_link && b?.enable_apps_hub_page !== false) {
     out.push({ label: '⚡ Apps', href: '/apps', external: false });
   }
-  if (b?.show_services_link !== false) {
+  if (b?.show_services_link !== false && b?.enable_services_page !== false) {
     out.push({ label: '💼 Services', href: '/services', external: false });
   }
-  if (b?.show_vault_link !== false) {
+  if (b?.show_vault_link !== false && b?.enable_vault_page !== false) {
     out.push({ label: '🔐 Vault', href: '/vault', external: false });
   }
-  if (b?.show_devlog_link !== false) {
+  if (b?.show_devlog_link !== false && b?.enable_devlog_section !== false) {
     out.push({ label: '📝 Dev log', href: '/devlog', external: false });
   }
   return out;
@@ -48,7 +48,7 @@ export function useSiteNavLinks(): SiteNavLink[] {
   const computed = useAsyncMemo(async () => {
     const [nav, pages] = await Promise.all([fetchNavItems(), fetchSitePages()]);
     const fromPages = pages
-      .filter((p) => p.show_in_nav)
+      .filter((p) => p.show_in_nav && p.published !== false)
       .map((p) => ({ label: p.title, href: `/p/${p.slug}`, external: false as const }));
     const custom = nav.map((n) => ({
       label: n.label,

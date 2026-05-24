@@ -44,9 +44,28 @@ function sanitizeActions(actions: unknown[]): AdminAiAction[] {
           draft: d as { slug: string; title: string } & Record<string, unknown>,
         });
       }
+    } else if (type === 'set_page_draft' && o.draft && typeof o.draft === 'object') {
+      const d = o.draft as Record<string, unknown>;
+      if (typeof d.slug === 'string' && typeof d.title === 'string') {
+        out.push({
+          type: 'set_page_draft',
+          draft: d as { slug: string; title: string } & Record<string, unknown>,
+        });
+      }
+    } else if (type === 'append_homepage_button' && typeof o.label === 'string' && typeof o.href === 'string') {
+      out.push({
+        type: 'append_homepage_button',
+        label: o.label,
+        href: o.href,
+        variant:
+          o.variant === 'secondary' || o.variant === 'ghost' || o.variant === 'primary'
+            ? o.variant
+            : 'primary',
+        align: o.align === 'left' || o.align === 'right' ? o.align : 'center',
+      });
     } else if (
       type === 'remind_save' &&
-      (o.target === 'studio' || o.target === 'settings' || o.target === 'services')
+      (o.target === 'studio' || o.target === 'settings' || o.target === 'services' || o.target === 'pages')
     ) {
       out.push({ type: 'remind_save', target: o.target });
     }

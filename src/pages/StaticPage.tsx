@@ -6,7 +6,9 @@ import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
 import { ShareStrip } from '../components/ShareStrip';
 import { SiteChrome } from '../components/SiteChrome';
+import { useAuth } from '../context/AuthContext';
 import { fetchPageBySlug } from '../lib/cmsData';
+import { useRouteBranding } from '../hooks/useRouteBranding';
 import { useRouteFxSync } from '../hooks/useRouteFxSync';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { applyVisualPresetToDocument, resolveVisualPreset } from '../lib/routeFx';
@@ -16,6 +18,7 @@ import type { SitePage } from '../types';
 export function StaticPage() {
   const { slug } = useParams<{ slug: string }>();
   const { settings } = useSiteSettings();
+  const { isAdmin } = useAuth();
   const [page, setPage] = useState<SitePage | null | undefined>(undefined);
 
   useEffect(() => {
@@ -51,6 +54,12 @@ export function StaticPage() {
   }, [page, settings.site_visual_preset]);
 
   useRouteFxSync(page?.route_fx);
+
+  useRouteBranding({
+    active: Boolean(page?.title),
+    title: page?.title ?? null,
+    faviconUrl: null,
+  });
 
   useEffect(() => {
     if (page === undefined || !page) {
@@ -111,6 +120,18 @@ export function StaticPage() {
     );
   }
 
+  if (page.published === false && !isAdmin) {
+    return (
+      <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
+        <div className="admin-panel" style={{ maxWidth: 480, margin: '24px auto', textAlign: 'center' }}>
+          <p className="admin-muted" style={{ margin: 0, lineHeight: 1.6 }}>
+            This page is not published yet. Sign in as a site editor to preview drafts in Admin.
+          </p>
+        </div>
+      </SiteChrome>
+    );
+  }
+
   const isHtmlApp = page.page_mode === 'html_app';
 
   return (
@@ -121,6 +142,11 @@ export function StaticPage() {
           <h1 className="header-title" style={{ fontSize: 'clamp(1.6rem, 4vw, 2.1rem)', textAlign: 'left' }}>
             {page.title}
           </h1>
+          {page.published === false ? (
+            <span className="admin-muted" style={{ fontSize: '0.75rem', color: 'var(--warning)' }}>
+              Draft · admins only
+            </span>
+          ) : null}
           {page.unlisted ? (
             <span className="admin-muted" style={{ fontSize: '0.75rem' }}>
               Unlisted · share URL only
