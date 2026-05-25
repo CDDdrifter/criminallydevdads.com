@@ -5,6 +5,7 @@
  * niceties (click sound, autoplay previews, homepage intro HTML). Writes
  * into `SiteSettings.behavior`.
  */
+import type { CSSProperties } from 'react';
 import type { SiteSettings } from '../../../types';
 import {
   FieldGroup,
@@ -14,6 +15,69 @@ import {
   TextField,
   ToggleField,
 } from '../StudioFields';
+
+type RouteVisibilityProps = {
+  label: string;
+  publicUrl: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+};
+
+const pillStyle = (live: boolean): CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '4px 10px',
+  borderRadius: 999,
+  fontSize: '0.72rem',
+  fontWeight: 700,
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
+  background: live ? 'rgba(62, 207, 142, 0.18)' : 'rgba(255, 120, 120, 0.18)',
+  color: live ? '#7be1b1' : '#ffb0b0',
+  border: `1px solid ${live ? 'rgba(62, 207, 142, 0.55)' : 'rgba(255, 120, 120, 0.55)'}`,
+});
+
+function RouteVisibilityToggle({ label, publicUrl, checked, onChange }: RouteVisibilityProps) {
+  return (
+    <div
+      className="admin-row"
+      style={{
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        flexWrap: 'wrap',
+        padding: '8px 0',
+        borderBottom: '1px dashed rgba(115, 248, 255, 0.15)',
+      }}
+    >
+      <label
+        className="admin-row"
+        style={{ alignItems: 'center', gap: 10, cursor: 'pointer', flex: '1 1 240px', minWidth: 0 }}
+      >
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          style={{ width: 18, height: 18 }}
+        />
+        <span style={{ fontWeight: 600 }}>{label}</span>
+        <code style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>{publicUrl}</code>
+      </label>
+      <div className="admin-row" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={pillStyle(checked)}>{checked ? '● Live · public' : '● Hidden · admin only'}</span>
+        <a
+          href={publicUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ fontSize: '0.78rem', color: 'var(--accent)' }}
+        >
+          Open in new tab ↗
+        </a>
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   settings: SiteSettings;
@@ -156,31 +220,38 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
       </FieldGroup>
 
       <FieldGroup
-        title="Built-in pages (public URLs)"
+        title="Built-in pages — public visibility (page-down mode per route)"
+        tone="accent"
         description={
           <>
-            Turn entire hub sections off while you edit — visitors get a short “unavailable” message instead of
-            half-finished content. Nav links for a section hide automatically when its page is off.
+            Each toggle is a kill switch for one entire hub section. <strong>Off</strong> = visitors see a short “section
+            offline” card and the nav link disappears; <strong>signed-in admins still see the page</strong> with a yellow
+            banner so you can keep editing. Save with the floating <em>Save site settings</em> bar at the bottom — these
+            apply instantly across the whole site.
           </>
         }
       >
-        <ToggleField
-          label="Services page live (/#/services)"
+        <RouteVisibilityToggle
+          label="Services page"
+          publicUrl="/#/services"
           checked={b.enable_services_page !== false}
           onChange={(enable_services_page) => set({ enable_services_page })}
         />
-        <ToggleField
-          label="Apps lab live (/#/apps)"
+        <RouteVisibilityToggle
+          label="Apps lab"
+          publicUrl="/#/apps"
           checked={b.enable_apps_hub_page !== false}
           onChange={(enable_apps_hub_page) => set({ enable_apps_hub_page })}
         />
-        <ToggleField
-          label="Vault live (/#/vault)"
+        <RouteVisibilityToggle
+          label="Vault (secret catalog)"
+          publicUrl="/#/vault"
           checked={b.enable_vault_page !== false}
           onChange={(enable_vault_page) => set({ enable_vault_page })}
         />
-        <ToggleField
-          label="Dev log live (/#/devlog)"
+        <RouteVisibilityToggle
+          label="Dev log"
+          publicUrl="/#/devlog"
           checked={b.enable_devlog_section !== false}
           onChange={(enable_devlog_section) => set({ enable_devlog_section })}
         />

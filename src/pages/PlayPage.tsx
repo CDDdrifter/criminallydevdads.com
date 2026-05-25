@@ -8,6 +8,7 @@ import { useRouteBranding } from '../hooks/useRouteBranding';
 import { useRouteFxSync } from '../hooks/useRouteFxSync';
 import { resolveGameTabIcon } from '../lib/routeBranding';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { useAuth } from '../context/AuthContext';
 import { applyVisualPresetToDocument, resolveVisualPreset } from '../lib/routeFx';
 import { trackGamePlay } from '../lib/analytics';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
@@ -16,6 +17,7 @@ import type { GameView } from '../types';
 export function PlayPage() {
   const { slug } = useParams<{ slug: string }>();
   const { settings } = useSiteSettings();
+  const { isAdmin } = useAuth();
   const [game, setGame] = useState<GameView | null | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -95,6 +97,22 @@ export function PlayPage() {
         <p style={{ textAlign: 'center' }}>
           <Link to="/">← Back</Link>
         </p>
+      </SiteChrome>
+    );
+  }
+
+  if (game.published === false && !isAdmin) {
+    return (
+      <SiteChrome>
+        <div
+          className="admin-panel"
+          style={{ maxWidth: 520, margin: '24px auto', textAlign: 'center', borderColor: 'rgba(115, 248, 255, 0.45)' }}
+        >
+          <h2 style={{ marginTop: 0, color: 'var(--accent)' }}>This game isn’t live yet</h2>
+          <p className="admin-muted" style={{ margin: 0, lineHeight: 1.6 }}>
+            We’re polishing it up — check back soon. <Link to="/">Back to hub</Link>.
+          </p>
+        </div>
       </SiteChrome>
     );
   }

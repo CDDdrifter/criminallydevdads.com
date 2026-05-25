@@ -13,6 +13,7 @@ import { useRouteBranding } from '../hooks/useRouteBranding';
 import { useRouteFxSync } from '../hooks/useRouteFxSync';
 import { resolveGameTabIcon } from '../lib/routeBranding';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { useAuth } from '../context/AuthContext';
 import { applyVisualPresetToDocument, resolveVisualPreset } from '../lib/routeFx';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
 import type { GameView } from '../types';
@@ -20,6 +21,7 @@ import type { GameView } from '../types';
 export function GamePage() {
   const { slug } = useParams<{ slug: string }>();
   const { settings } = useSiteSettings();
+  const { isAdmin } = useAuth();
   const [game, setGame] = useState<GameView | null | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [screenshotLightbox, setScreenshotLightbox] = useState<number | null>(null);
@@ -132,6 +134,22 @@ export function GamePage() {
     );
   }
 
+  if (game.published === false && !isAdmin) {
+    return (
+      <SiteChrome>
+        <div
+          className="admin-panel"
+          style={{ maxWidth: 520, margin: '24px auto', textAlign: 'center', borderColor: 'rgba(115, 248, 255, 0.45)' }}
+        >
+          <h2 style={{ marginTop: 0, color: 'var(--accent)' }}>This game isn’t live yet</h2>
+          <p className="admin-muted" style={{ margin: 0, lineHeight: 1.6 }}>
+            We’re polishing it up — check back soon. <Link to="/">Back to hub</Link>.
+          </p>
+        </div>
+      </SiteChrome>
+    );
+  }
+
   const hasBlocks = game.sections.length > 0;
   const priceText = formatGamePriceLabel(game);
   const cssId = `game-${game.slug}`;
@@ -139,6 +157,23 @@ export function GamePage() {
   return (
     <SiteChrome navExtra={<Link to="/">← Hub</Link>} immersive={game.immersive_layout}>
       <RouteScopedCss id={cssId} css={game.custom_mood_css} />
+      {game.published === false ? (
+        <div
+          style={{
+            padding: '10px 16px',
+            margin: '0 0 12px',
+            background: 'rgba(255, 191, 95, 0.18)',
+            border: '1px solid rgba(255, 191, 95, 0.55)',
+            borderRadius: 10,
+            color: '#ffd9a3',
+            fontSize: '0.85rem',
+            textAlign: 'center',
+          }}
+          role="status"
+        >
+          <strong>Draft — hidden from the public.</strong> Toggle <em>Published</em> in Admin → Games to release.
+        </div>
+      ) : null}
       <GameEmbedSection game={game} showPlayingLabel={false} />
 
       {game.isPlayable ? (

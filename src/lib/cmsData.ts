@@ -290,6 +290,7 @@ function recordToView(g: GameRecord): GameView {
     pwyw_suggested_cents: Math.max(0, Number(g.pwyw_suggested_cents ?? 0)),
     donation_presets_cents: donationPresetsFromUnknown(g.donation_presets_cents),
     in_vault: Boolean(g.in_vault ?? false),
+    published: g.published !== false,
     immersive_layout: Boolean(g.immersive_layout ?? false),
     custom_mood_css: String(g.custom_mood_css ?? '').trim(),
     route_fx: normalizeRouteFxOverride(g.route_fx),

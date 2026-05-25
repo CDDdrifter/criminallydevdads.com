@@ -321,6 +321,8 @@ export type GameView = {
   /** USD cents; donation preset chip amounts. */
   donation_presets_cents: number[];
   in_vault: boolean;
+  /** False = draft / page-down mode. Public sees “not live yet”; admins still preview the page with a banner. */
+  published: boolean;
   immersive_layout: boolean;
   custom_mood_css: string;
   route_fx: RouteFxOverride;
