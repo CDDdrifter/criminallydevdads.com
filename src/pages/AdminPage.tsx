@@ -59,6 +59,7 @@ import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
 import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
 import { ServicesAdminTab } from '../components/admin/tabs/ServicesAdminTab';
 import { AdminAiAssistant } from '../components/admin/AdminAiAssistant';
+import { FloatingSettingsSaveBar } from '../components/admin/FloatingSettingsSaveBar';
 import { ADMIN_AI_PAGE_DRAFT_KEY } from '../lib/adminAi/types';
 import { fetchAllServicesAdmin } from '../lib/servicesData';
 import { BehaviorStudio } from '../components/admin/tabs/BehaviorStudio';
@@ -407,6 +408,9 @@ export function AdminPage() {
   const [pageFieldErrors, setPageFieldErrors] = useState<Record<string, string>>({});
 
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
+  const [savedSettingsSnapshot, setSavedSettingsSnapshot] = useState<string>(() =>
+    JSON.stringify(defaultSiteSettings),
+  );
   const [games, setGames] = useState<GameRecord[]>([]);
   const [pages, setPages] = useState<SitePage[]>([]);
   const [nav, setNav] = useState<NavItem[]>([]);
@@ -446,6 +450,48 @@ export function AdminPage() {
 
   const settingsLinkHints = useMemo(() => softSiteSettingsLinkHints(settings, pages), [settings, pages]);
 
+  const settingsDirty = useMemo(
+    () => JSON.stringify(settings) !== savedSettingsSnapshot,
+    [settings, savedSettingsSnapshot],
+  );
+
+  const SETTINGS_EDITABLE_TABS = useMemo(
+    () =>
+      new Set<string>([
+        'overview',
+        'ai',
+        'settings',
+        'theme',
+        'effects',
+        'typography',
+        'layout',
+        'components',
+        'behavior',
+        'seo',
+        'brand',
+        'social',
+        'motion',
+        'media',
+        'system',
+      ]),
+    [],
+  );
+
+  const showFloatingSettingsSave = SETTINGS_EDITABLE_TABS.has(tab);
+
+  const onDiscardSettings = useCallback(() => {
+    try {
+      const parsed = JSON.parse(savedSettingsSnapshot) as SiteSettings;
+      setSettings(parsed);
+      setSettingsSaveStatus('idle');
+      setSettingsSaveDetail(null);
+      setSettingsFieldErrors({});
+      flash('Reverted unsaved changes.');
+    } catch {
+      flash('Could not revert — try reloading the page.');
+    }
+  }, [savedSettingsSnapshot]);
+
   const gameSlugEffective = useMemo(() => effectiveGameSlug(gameDraft), [gameDraft.slug, gameDraft.title]);
 
   useEffect(() => {
@@ -479,6 +525,7 @@ export function AdminPage() {
       fetchAllDevLogsAdmin(),
     ]);
     setSettings(s);
+    setSavedSettingsSnapshot(JSON.stringify(s));
     setGames(g);
     setServicesCount(svc.length);
     setPages(p);
@@ -598,6 +645,7 @@ export function AdminPage() {
       await saveSiteSettings(settings);
       const fresh = await fetchSiteSettings();
       setSettings(fresh);
+      setSavedSettingsSnapshot(JSON.stringify(fresh));
       await refreshSiteSettings();
       setSettingsSaveStatus('success');
       flash('Site settings saved — live site updated.');
@@ -1424,7 +1472,7 @@ export function AdminPage() {
     Boolean(gameDraft.storage_slug?.trim()) && gameZipFile === null;
 
   return (
-    <div className="admin-shell">
+    <div className="admin-shell" style={{ paddingBottom: showFloatingSettingsSave ? 120 : 24 }}>
       <div className="admin-row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
         <h1 className="header-title" style={{ fontSize: '1.6rem' }}>
           Site admin
@@ -1478,13 +1526,18 @@ export function AdminPage() {
             Hub mood colours: <strong>Effects → Site mood</strong>. Support/footer: <strong>Site copy</strong>.
           </p>
           <HomepageStudio settings={settings} setSettings={setSettings} />
-          <div className="admin-row" style={{ marginTop: 16, gap: 12, flexWrap: 'wrap' }}>
-            <button type="button" disabled={busy} onClick={onSaveSettings}>
-              Save homepage &amp; studio settings
+          <div className="admin-row" style={{ marginTop: 16, gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" disabled={busy || !settingsDirty} onClick={onSaveSettings}>
+              {busy ? 'Saving…' : settingsDirty ? 'Save homepage & studio settings' : 'Saved'}
             </button>
-            {settingsSaveStatus === 'success' ? (
+            {settingsSaveStatus === 'success' && !settingsDirty ? (
               <span style={{ color: '#3ecf8e' }} aria-label="Saved">
                 ✓ Saved
+              </span>
+            ) : null}
+            {settingsDirty ? (
+              <span className="admin-muted" style={{ fontSize: '0.78rem', color: '#ffbf5f' }}>
+                You have unsaved changes — floating Save bar at the bottom works on every tab.
               </span>
             ) : null}
           </div>
@@ -2135,10 +2188,10 @@ export function AdminPage() {
             />
           </div>
           <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <button type="button" disabled={busy} onClick={onSaveSettings}>
-              Save settings
+            <button type="button" disabled={busy || !settingsDirty} onClick={onSaveSettings}>
+              {busy ? 'Saving…' : settingsDirty ? 'Save settings' : 'Saved'}
             </button>
-            {settingsSaveStatus === 'success' ? (
+            {settingsSaveStatus === 'success' && !settingsDirty ? (
               <span
                 style={{ color: '#3ecf8e', fontSize: '1.35rem', lineHeight: 1 }}
                 title="Saved successfully"
@@ -2154,6 +2207,11 @@ export function AdminPage() {
                 aria-label="Save failed or validation error"
               >
                 ✗
+              </span>
+            ) : null}
+            {settingsDirty ? (
+              <span className="admin-muted" style={{ fontSize: '0.78rem', color: '#ffbf5f' }}>
+                Unsaved changes — floating Save bar at the bottom is also active.
               </span>
             ) : null}
           </div>
@@ -3903,19 +3961,16 @@ export function AdminPage() {
           <div
             className="admin-panel"
             style={{
-              position: 'sticky',
-              bottom: 16,
               marginTop: 16,
-              zIndex: 4,
               borderColor: 'rgba(115, 248, 255, 0.45)',
               background: 'rgba(11, 16, 25, 0.95)',
             }}
           >
             <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button type="button" disabled={busy} onClick={onSaveSettings}>
-                Save studio settings
+              <button type="button" disabled={busy || !settingsDirty} onClick={onSaveSettings}>
+                {busy ? 'Saving…' : settingsDirty ? 'Save studio settings' : 'Saved'}
               </button>
-              {settingsSaveStatus === 'success' ? (
+              {settingsSaveStatus === 'success' && !settingsDirty ? (
                 <span style={{ color: '#3ecf8e', fontSize: '1.35rem', lineHeight: 1 }} aria-label="Saved">
                   ✓ Saved
                 </span>
@@ -3926,12 +3981,22 @@ export function AdminPage() {
                 </span>
               ) : null}
               <span className="admin-muted" style={{ fontSize: '0.78rem', lineHeight: 1.4 }}>
-                Mood, colours, and FX preview live while you edit. Save pushes to the public site immediately.
+                Floating Save bar at the bottom is always active when you have unsaved changes.
               </span>
             </div>
           </div>
         </>
       )}
+
+      <FloatingSettingsSaveBar
+        visible={showFloatingSettingsSave}
+        busy={busy}
+        dirty={settingsDirty}
+        status={settingsSaveStatus}
+        detail={settingsSaveDetail}
+        onSave={onSaveSettings}
+        onDiscard={onDiscardSettings}
+      />
     </div>
   );
 }
