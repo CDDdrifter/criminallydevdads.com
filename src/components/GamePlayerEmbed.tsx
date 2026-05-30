@@ -260,11 +260,11 @@ export function GamePlayerEmbed({ title, src }: Props) {
         ) : null}
       </div>
 
-      <div className="game-embed-toolbar" role="toolbar" aria-label="Game player">
-        <span className="game-embed-toolbar__hint">
-          {isFullscreen ? 'Use your device back button to leave fullscreen' : engaged ? 'Playing — scroll down for game info' : 'Click the game area to start'}
-        </span>
-        {!isFullscreen ? (
+      {!isFullscreen ? (
+        <div className="game-embed-toolbar" role="toolbar" aria-label="Game player">
+          <span className="game-embed-toolbar__hint">
+            {engaged ? 'Playing — scroll down for game info' : 'Click the game area to start'}
+          </span>
           <button
             type="button"
             className="game-embed-fs-btn"
@@ -273,8 +273,8 @@ export function GamePlayerEmbed({ title, src }: Props) {
           >
             ⛶ Fullscreen
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }
