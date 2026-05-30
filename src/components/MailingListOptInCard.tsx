@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { updateMyProfile } from '../lib/communityData';
+import { FormPrivacyNote } from './FormPrivacyNote';
 
 type Props = {
   /** Show extra welcome copy for brand-new accounts. */
@@ -72,6 +73,7 @@ export function MailingListOptInCard({ variant = 'default' }: Props) {
           {message}
         </p>
       ) : null}
+      <FormPrivacyNote context="newsletter updates" />
     </section>
   );
 }

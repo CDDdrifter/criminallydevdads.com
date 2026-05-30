@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { submitServiceRequest } from '../lib/communityData';
 import { supabaseConfigured } from '../lib/supabase';
 import type { ServiceView } from '../types';
+import { FormPrivacyNote } from './FormPrivacyNote';
 
 type Props = {
   service?: ServiceView | null;
@@ -91,6 +92,7 @@ export function ServiceRequestForm({ service, heading }: Props) {
       <button type="submit" className="btn-play" disabled={busy}>
         {busy ? 'Sending…' : 'Send request'}
       </button>
+      <FormPrivacyNote context="your request" />
       {status ? (
         <p className="admin-muted" style={{ marginTop: 12, lineHeight: 1.5 }} role="status">
           {status}

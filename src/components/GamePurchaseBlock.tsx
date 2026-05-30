@@ -19,6 +19,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { GameView } from '../types';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import {
   formatGamePriceLabel,
   gameExternalStoreIsGumroad,
@@ -27,10 +28,15 @@ import {
   stripeMinimumUsdCents,
 } from '../lib/gamePricing';
 import { startGameCheckout } from '../lib/stripeCheckout';
+import { PurchaseConsent } from './PurchaseConsent';
 
 type Props = { game: GameView };
 
 export function GamePurchaseBlock({ game }: Props) {
+  const { settings } = useSiteSettings();
+  const consentRequired = settings.legal?.require_purchase_consent ?? false;
+  const [agreed, setAgreed] = useState(false);
+  const consentBlocked = consentRequired && !agreed;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [amountDollars, setAmountDollars] = useState('5.00');
@@ -125,7 +131,8 @@ export function GamePurchaseBlock({ game }: Props) {
   if (game.pricing_model === 'fixed') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-        <button type="button" className="btn-play" disabled={busy} onClick={() => void submitFixed()}>
+        <PurchaseConsent required={consentRequired} agreed={agreed} onChange={setAgreed} />
+        <button type="button" className="btn-play" disabled={busy || consentBlocked} onClick={() => void submitFixed()}>
           {busy ? 'Redirecting…' : asset ? `Buy asset (${priceText})` : `Buy (${priceText})`}
         </button>
         {err ? (
@@ -168,7 +175,8 @@ export function GamePurchaseBlock({ game }: Props) {
           ))}
         </div>
       ) : null}
-      <button type="button" className="btn-play" disabled={busy} onClick={() => void submitVariable()}>
+      <PurchaseConsent required={consentRequired} agreed={agreed} onChange={setAgreed} />
+      <button type="button" className="btn-play" disabled={busy || consentBlocked} onClick={() => void submitVariable()}>
         {busy
           ? 'Redirecting…'
           : game.pricing_model === 'donation'

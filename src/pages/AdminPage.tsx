@@ -59,6 +59,7 @@ import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
 import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
 import { ServicesAdminTab } from '../components/admin/tabs/ServicesAdminTab';
 import { PrebuiltPagesStudio } from '../components/admin/tabs/PrebuiltPagesStudio';
+import { LegalStudio } from '../components/admin/tabs/LegalStudio';
 import { AdminAiAssistant } from '../components/admin/AdminAiAssistant';
 import { FloatingSettingsSaveBar } from '../components/admin/FloatingSettingsSaveBar';
 import { ADMIN_AI_PAGE_DRAFT_KEY } from '../lib/adminAi/types';
@@ -109,6 +110,7 @@ type Tab =
   | 'prebuilt'
   | 'nav'
   | 'devlogs'
+  | 'legal'
   | 'theme'
   | 'effects'
   | 'typography'
@@ -466,6 +468,7 @@ export function AdminPage() {
         'settings',
         'services',
         'prebuilt',
+        'legal',
         'theme',
         'effects',
         'typography',
@@ -1696,6 +1699,8 @@ export function AdminPage() {
       {tab === 'prebuilt' && (
         <PrebuiltPagesStudio settings={settings} setSettings={setSettings} onNotify={flash} />
       )}
+
+      {tab === 'legal' && <LegalStudio settings={settings} setSettings={setSettings} />}
 
       {tab === 'settings' && (
         <div className="admin-panel admin-grid">

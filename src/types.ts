@@ -1199,6 +1199,8 @@ export type SiteSettings = {
   shipping: ShippingConfig;
   /** Editable header + block zones for the built-in Services/Vault/Apps/Dev-log routes. */
   prebuilt_pages: PrebuiltPagesConfig;
+  /** Legal footer, purchase consent gate, and cookie banner config. */
+  legal: LegalConfig;
 };
 
 /** One flat-rate shipping option offered at checkout for physical products. */
@@ -1225,6 +1227,56 @@ export const defaultShippingConfig = (): ShippingConfig => ({
   enabled: false,
   allowed_countries: ['US'],
   rates: [{ id: 'standard', label: 'Standard shipping', amount_cents: 599, delivery_estimate: '3-7 business days' }],
+});
+
+// ---------------------------------------------------------------------------
+// Legal / compliance config — drives the site-wide legal footer, the purchase
+// consent gate, and the cookie banner. Not legal advice; gives the owner the
+// switches to surface policies and require agreement before checkout.
+// ---------------------------------------------------------------------------
+
+export type LegalLink = {
+  id: string;
+  label: string;
+  /** Internal CMS page (e.g. /p/terms) or external URL. */
+  href: string;
+};
+
+export type LegalConfig = {
+  /** Legal/business name shown in the footer copyright + checkout. */
+  business_name: string;
+  /** Public contact email for legal / support notices. */
+  contact_email: string;
+  /** Render the site-wide legal footer (links + copyright). */
+  show_footer: boolean;
+  /** Policy links shown in the legal footer. */
+  links: LegalLink[];
+  /** Require buyers to accept Terms + Refund policy before any checkout. */
+  require_purchase_consent: boolean;
+  /** Short notice shown next to the consent checkbox (e.g. all sales final). */
+  purchase_consent_notice: string;
+  /** Show the dismissible cookie banner on first visit. */
+  cookie_banner_enabled: boolean;
+  /** Body text of the cookie banner. */
+  cookie_notice: string;
+};
+
+export const defaultLegalConfig = (): LegalConfig => ({
+  business_name: 'Criminally Dev Dads',
+  contact_email: '',
+  show_footer: true,
+  links: [
+    { id: 'terms', label: 'Terms of Service', href: '/p/terms' },
+    { id: 'privacy', label: 'Privacy Policy', href: '/p/privacy' },
+    { id: 'refund', label: 'Refund Policy', href: '/p/refund' },
+    { id: 'cookie', label: 'Cookie Policy', href: '/p/cookie' },
+  ],
+  require_purchase_consent: true,
+  purchase_consent_notice:
+    'I agree to the Terms of Service and the Refund Policy. Digital goods and commissioned work are non-refundable once delivered or started.',
+  cookie_banner_enabled: true,
+  cookie_notice:
+    'We use essential cookies to run this site and remember your preferences. By using the site you agree to our Cookie Policy.',
 });
 
 // ---------------------------------------------------------------------------
@@ -1302,4 +1354,5 @@ export const defaultSiteSettings: SiteSettings = {
   homepage_layout_mode: 'append',
   shipping: defaultShippingConfig(),
   prebuilt_pages: defaultPrebuiltPagesConfig(),
+  legal: defaultLegalConfig(),
 };

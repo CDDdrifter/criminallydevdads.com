@@ -10,6 +10,7 @@
  */
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { ClickSound } from './components/ClickSound';
+import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { FxBackdrop } from './components/FxBackdrop';
 import { GlobalHtmlFxSync } from './components/GlobalHtmlFxSync';
 import { MaintenanceGate } from './components/MaintenanceGate';
@@ -107,6 +108,7 @@ export function App() {
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
       </MaintenanceGate>
+      <CookieConsentBanner />
     </HashRouter>
   );
 }

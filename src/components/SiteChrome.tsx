@@ -7,6 +7,7 @@ import { supabaseConfigured } from '../lib/supabase';
 import { useAsyncMemo } from '../hooks/useAsyncMemo';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import type { BehaviorConfig } from '../types';
+import { LegalFooter } from './LegalFooter';
 import { SiteSocialFollow } from './SiteSocialFollow';
 import { UserAuthNav } from './UserAuthNav';
 
@@ -232,6 +233,8 @@ export function SiteChrome({
           className="site-footer-nav"
         />
       ) : null}
+
+      <LegalFooter />
     </div>
   );
 }

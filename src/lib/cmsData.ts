@@ -18,6 +18,8 @@ import type {
   ParticlesConfig,
   PerformanceConfig,
   SeoConfig,
+  LegalConfig,
+  LegalLink,
   PrebuiltPageConfig,
   PrebuiltPageKey,
   PrebuiltPagesConfig,
@@ -32,7 +34,12 @@ import type {
   ThemePreset,
   TypographyConfig,
 } from '../types';
-import { defaultPrebuiltPagesConfig, defaultShippingConfig, defaultSiteSettings } from '../types';
+import {
+  defaultLegalConfig,
+  defaultPrebuiltPagesConfig,
+  defaultShippingConfig,
+  defaultSiteSettings,
+} from '../types';
 import {
   defaultAccessibilityConfig,
   defaultAnimationsConfig,
@@ -214,6 +221,38 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
         : 'append',
     shipping: normalizeShippingConfig(raw.shipping),
     prebuilt_pages: normalizePrebuiltPages(raw.prebuilt_pages),
+    legal: normalizeLegalConfig(raw.legal),
+  };
+}
+
+function normalizeLegalConfig(raw: unknown): LegalConfig {
+  const base = defaultLegalConfig();
+  if (!raw || typeof raw !== 'object') return base;
+  const r = raw as Record<string, unknown>;
+  const links: LegalLink[] = Array.isArray(r.links)
+    ? r.links
+        .map((l, i): LegalLink | null => {
+          if (!l || typeof l !== 'object') return null;
+          const lr = l as Record<string, unknown>;
+          const label = String(lr.label ?? '').trim();
+          const href = String(lr.href ?? '').trim();
+          if (!label || !href) return null;
+          return { id: String(lr.id ?? '').trim() || `legal-${i + 1}`, label, href };
+        })
+        .filter((x): x is LegalLink => x !== null)
+    : base.links;
+  return {
+    business_name: r.business_name != null ? String(r.business_name) : base.business_name,
+    contact_email: r.contact_email != null ? String(r.contact_email) : base.contact_email,
+    show_footer: typeof r.show_footer === 'boolean' ? r.show_footer : base.show_footer,
+    links,
+    require_purchase_consent:
+      typeof r.require_purchase_consent === 'boolean' ? r.require_purchase_consent : base.require_purchase_consent,
+    purchase_consent_notice:
+      r.purchase_consent_notice != null ? String(r.purchase_consent_notice) : base.purchase_consent_notice,
+    cookie_banner_enabled:
+      typeof r.cookie_banner_enabled === 'boolean' ? r.cookie_banner_enabled : base.cookie_banner_enabled,
+    cookie_notice: r.cookie_notice != null ? String(r.cookie_notice) : base.cookie_notice,
   };
 }
 
@@ -679,6 +718,7 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     homepage_layout_mode: merged.homepage_layout_mode,
     shipping: merged.shipping,
     prebuilt_pages: merged.prebuilt_pages,
+    legal: merged.legal,
   };
   for (let attempt = 0; attempt < 16; attempt++) {
     const { error } = await supabase.from('site_settings').upsert(payload);

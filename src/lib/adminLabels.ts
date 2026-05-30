@@ -9,6 +9,7 @@ export const ADMIN_CMS_TABS = [
   { id: 'prebuilt', label: '🧱 Built-in pages' },
   { id: 'nav', label: '🧭 Navigation' },
   { id: 'devlogs', label: '📝 Dev logs' },
+  { id: 'legal', label: '⚖️ Legal' },
 ] as const;
 
 export const ADMIN_STUDIO_TABS = [
@@ -49,6 +50,11 @@ export const ADMIN_OVERVIEW_CARDS: { id: string; title: string; desc: string }[]
     desc: 'Extra top-bar links after Home / Vault / Dev log (Discord, press kit, …).',
   },
   { id: 'devlogs', title: '📝 Dev logs', desc: 'News and build notes.' },
+  {
+    id: 'legal',
+    title: '⚖️ Legal & policies',
+    desc: 'Footer policy links, purchase consent gate, cookie banner, business identity.',
+  },
   { id: 'theme', title: '🎨 Theme Studio', desc: 'Colours, gradients, background image/video.' },
   { id: 'effects', title: '⚡ Effects Studio', desc: 'Scanlines, grain, moods, card FX — one place for all layers.' },
   { id: 'typography', title: '🔤 Typography', desc: 'Google Fonts, sizes, hero shadow, links.' },

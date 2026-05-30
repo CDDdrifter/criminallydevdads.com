@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ServiceView } from '../types';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import {
   defaultVariantSelection,
   effectiveUnitPriceCents,
@@ -11,12 +12,17 @@ import {
   type VariantSelection,
 } from '../lib/servicePricing';
 import { startServiceCheckout } from '../lib/stripeCheckout';
+import { PurchaseConsent } from './PurchaseConsent';
 
 type Props = { service: ServiceView; compact?: boolean };
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 export function ServicePurchaseBlock({ service, compact }: Props) {
+  const { settings } = useSiteSettings();
+  const consentRequired = settings.legal?.require_purchase_consent ?? false;
+  const [agreed, setAgreed] = useState(false);
+  const consentBlocked = consentRequired && !agreed;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [amountDollars, setAmountDollars] = useState('5.00');
@@ -137,7 +143,8 @@ export function ServicePurchaseBlock({ service, compact }: Props) {
       <div className={compact ? 'service-buy service-buy--compact' : 'service-buy'}>
         {variantControls}
         {qtyControl}
-        <button type="button" className="btn-play" disabled={busy} onClick={() => void submitFixed()}>
+        <PurchaseConsent required={consentRequired} agreed={agreed} onChange={setAgreed} />
+        <button type="button" className="btn-play" disabled={busy || consentBlocked} onClick={() => void submitFixed()}>
           {busy ? 'Opening Stripe…' : buyLabel}
         </button>
         {(hasVariants || qty > 1) && (
@@ -153,13 +160,14 @@ export function ServicePurchaseBlock({ service, compact }: Props) {
 
   return (
     <div className={compact ? 'service-buy service-buy--compact' : 'service-buy'}>
+      <PurchaseConsent required={consentRequired} agreed={agreed} onChange={setAgreed} />
       {service.donation_presets_cents.length > 0 ? (
         <div className="service-buy__presets">
           {service.donation_presets_cents.map((c) => (
             <button
               key={c}
               type="button"
-              disabled={busy}
+              disabled={busy || consentBlocked}
               onClick={() => {
                 setAmountDollars((c / 100).toFixed(2));
                 void submitVariable(c);
@@ -186,7 +194,7 @@ export function ServicePurchaseBlock({ service, compact }: Props) {
         type="button"
         className="btn-play"
         style={{ marginTop: 8 }}
-        disabled={busy}
+        disabled={busy || consentBlocked}
         onClick={() => void submitVariable(Math.round(parseFloat(amountDollars) * 100))}
       >
         {busy ? 'Opening Stripe…' : service.cta_label}
