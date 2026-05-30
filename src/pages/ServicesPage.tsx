@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PageSectionsView } from '../components/PageSectionsView';
 import { ServicePurchaseBlock } from '../components/ServicePurchaseBlock';
 import { ServiceRequestForm } from '../components/ServiceRequestForm';
 import { SiteChrome } from '../components/SiteChrome';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import { fetchPublishedServices } from '../lib/servicesData';
 import { serviceCategoryLabel } from '../lib/servicePricing';
 import { supabaseConfigured } from '../lib/supabase';
 import type { ServiceView } from '../types';
 
 export function ServicesPage() {
+  const { settings } = useSiteSettings();
+  const cfg = settings.prebuilt_pages.services;
   const [services, setServices] = useState<ServiceView[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -40,13 +44,12 @@ export function ServicesPage() {
     <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
       <div className="services-page">
         <header className="services-hero">
-          <p className="services-hero__eyebrow">Commission · Build · Support</p>
-          <h1 className="header-title services-hero__title">Services &amp; gigs</h1>
-          <p className="services-hero__lead">
-            Games, websites, apps, assets, tips, and merch — pay through Stripe when configured, or send a project brief
-            and we will quote you.
-          </p>
+          {cfg.eyebrow ? <p className="services-hero__eyebrow">{cfg.eyebrow}</p> : null}
+          <h1 className="header-title services-hero__title">{cfg.heading}</h1>
+          {cfg.subtitle ? <p className="services-hero__lead">{cfg.subtitle}</p> : null}
         </header>
+
+        {cfg.intro_sections.length > 0 ? <PageSectionsView sections={cfg.intro_sections} /> : null}
 
         {!supabaseConfigured ? (
           <p className="empty-state">Connect Supabase to load the services catalog (migration 025).</p>
@@ -135,6 +138,8 @@ export function ServicesPage() {
           </p>
           <ServiceRequestForm heading="Tell us what you are building" />
         </section>
+
+        {cfg.outro_sections.length > 0 ? <PageSectionsView sections={cfg.outro_sections} /> : null}
       </div>
     </SiteChrome>
   );

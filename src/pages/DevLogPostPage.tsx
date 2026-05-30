@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CommentSection } from '../components/CommentSection';
+import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
 import { fetchDevLogBySlug } from '../lib/cmsData';
+import { normalizePageSections } from '../lib/pageSections';
 import type { DevLogPost } from '../types';
 
 export function DevLogPostPage() {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<DevLogPost | null | undefined>(undefined);
+  const sections = useMemo(() => normalizePageSections(post?.sections), [post]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,9 +63,15 @@ export function DevLogPostPage() {
         <h1 className="header-title" style={{ fontSize: '2rem', textAlign: 'left' }}>
           {post.title}
         </h1>
-        <div className="prose" style={{ marginTop: 24, whiteSpace: 'pre-wrap' }}>
-          {post.body}
-        </div>
+        {sections.length > 0 ? (
+          <div style={{ marginTop: 24 }}>
+            <PageSectionsView sections={sections} />
+          </div>
+        ) : (
+          <div className="prose" style={{ marginTop: 24, whiteSpace: 'pre-wrap' }}>
+            {post.body}
+          </div>
+        )}
         {slug ? <CommentSection targetType="devlog" targetKey={slug} /> : null}
       </article>
     </SiteChrome>

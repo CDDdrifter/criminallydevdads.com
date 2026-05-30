@@ -429,8 +429,11 @@ export type DevLogPost = {
   id: string;
   slug: string;
   title: string;
+  /** Legacy plain-text body; still shown when `sections` is empty. */
   body: string;
   published_at: string;
+  /** Rich block content (same engine as CMS pages). Optional for legacy rows. */
+  sections?: PageSection[];
 };
 
 // ---------------------------------------------------------------------------
@@ -1048,6 +1051,62 @@ export type ThemePreset = {
   theme: Pick<ThemeConfig, 'colors' | 'background' | 'display_name'>;
 };
 
+// ---------------------------------------------------------------------------
+// Prebuilt (built-in) page content. The four hub routes that aren't CMS pages
+// — Services, Vault, Apps, Dev log — expose an editable header plus block
+// zones above (intro) and below (outro) their built-in body, so admins can
+// reshape them with the same block engine as CMS pages.
+// ---------------------------------------------------------------------------
+
+export type PrebuiltPageKey = 'services' | 'vault' | 'apps' | 'devlog';
+
+export type PrebuiltPageConfig = {
+  /** Small label above the heading. */
+  eyebrow: string;
+  /** Main page title. */
+  heading: string;
+  /** Lead paragraph under the title. */
+  subtitle: string;
+  /** Blocks rendered ABOVE the built-in body (catalog / grid / list). */
+  intro_sections: PageSection[];
+  /** Blocks rendered BELOW the built-in body. */
+  outro_sections: PageSection[];
+};
+
+export type PrebuiltPagesConfig = Record<PrebuiltPageKey, PrebuiltPageConfig>;
+
+export const defaultPrebuiltPagesConfig = (): PrebuiltPagesConfig => ({
+  services: {
+    eyebrow: 'Commission · Build · Support',
+    heading: 'Services & gigs',
+    subtitle:
+      'Games, websites, apps, assets, tips, and merch — pay through Stripe when configured, or send a project brief and we will quote you.',
+    intro_sections: [],
+    outro_sections: [],
+  },
+  vault: {
+    eyebrow: '',
+    heading: 'Vault library',
+    subtitle: 'Alternate catalog — not the main hub. Share /#/game/<slug> links directly.',
+    intro_sections: [],
+    outro_sections: [],
+  },
+  apps: {
+    eyebrow: '',
+    heading: 'Apps & tools',
+    subtitle: 'Stand-alone HTML exports you host as CMS pages.',
+    intro_sections: [],
+    outro_sections: [],
+  },
+  devlog: {
+    eyebrow: '',
+    heading: 'Dev log',
+    subtitle: 'Build notes · design · chaos',
+    intro_sections: [],
+    outro_sections: [],
+  },
+});
+
 export type SiteSettings = {
   hero_title: string;
   hero_subtitle: string;
@@ -1138,6 +1197,8 @@ export type SiteSettings = {
   homepage_layout_mode: 'append' | 'prepend' | 'replace';
   /** Physical-product shipping options offered at Stripe Checkout. */
   shipping: ShippingConfig;
+  /** Editable header + block zones for the built-in Services/Vault/Apps/Dev-log routes. */
+  prebuilt_pages: PrebuiltPagesConfig;
 };
 
 /** One flat-rate shipping option offered at checkout for physical products. */
@@ -1240,4 +1301,5 @@ export const defaultSiteSettings: SiteSettings = {
   homepage_sections: [],
   homepage_layout_mode: 'append',
   shipping: defaultShippingConfig(),
+  prebuilt_pages: defaultPrebuiltPagesConfig(),
 };

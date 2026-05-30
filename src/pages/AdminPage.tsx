@@ -58,6 +58,7 @@ import { RouteAppearancePanel } from '../components/admin/RouteAppearancePanel';
 import { AnalyticsStudio } from '../components/admin/tabs/AnalyticsStudio';
 import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
 import { ServicesAdminTab } from '../components/admin/tabs/ServicesAdminTab';
+import { PrebuiltPagesStudio } from '../components/admin/tabs/PrebuiltPagesStudio';
 import { AdminAiAssistant } from '../components/admin/AdminAiAssistant';
 import { FloatingSettingsSaveBar } from '../components/admin/FloatingSettingsSaveBar';
 import { ADMIN_AI_PAGE_DRAFT_KEY } from '../lib/adminAi/types';
@@ -105,6 +106,7 @@ type Tab =
   | 'services'
   | 'games'
   | 'pages'
+  | 'prebuilt'
   | 'nav'
   | 'devlogs'
   | 'theme'
@@ -446,6 +448,7 @@ export function AdminPage() {
     title: '',
     body: '',
     published_at: new Date().toISOString().slice(0, 16),
+    sections: [],
   });
 
   const settingsLinkHints = useMemo(() => softSiteSettingsLinkHints(settings, pages), [settings, pages]);
@@ -461,6 +464,8 @@ export function AdminPage() {
         'overview',
         'ai',
         'settings',
+        'services',
+        'prebuilt',
         'theme',
         'effects',
         'typography',
@@ -1163,12 +1168,14 @@ export function AdminPage() {
         title: savedLogTitle,
         body: logDraft.body ?? '',
         published_at: iso,
+        sections: logDraft.sections ?? [],
       });
       setLogDraft({
         slug: '',
         title: '',
         body: '',
         published_at: new Date().toISOString().slice(0, 16),
+        sections: [],
       });
       await reload();
       setLogSaveStatus('success');
@@ -1685,6 +1692,10 @@ export function AdminPage() {
       )}
 
       {tab === 'services' && <ServicesAdminTab settings={settings} setSettings={setSettings} />}
+
+      {tab === 'prebuilt' && (
+        <PrebuiltPagesStudio settings={settings} setSettings={setSettings} onNotify={flash} />
+      )}
 
       {tab === 'settings' && (
         <div className="admin-panel admin-grid">
@@ -3834,11 +3845,24 @@ export function AdminPage() {
               />
             </div>
             <div className="admin-field">
-              <label htmlFor="l_body">Body</label>
+              <label htmlFor="l_body">Body (plain-text fallback)</label>
               <textarea
                 id="l_body"
                 value={logDraft.body ?? ''}
                 onChange={(e) => setLogDraft({ ...logDraft, body: e.target.value })}
+              />
+              <p className="admin-muted" style={{ fontSize: '0.78rem', marginTop: 6 }}>
+                Shown only when there are no blocks below. Add blocks for rich posts (images, galleries, embeds…).
+              </p>
+            </div>
+            <div className="admin-field">
+              <label>Post blocks</label>
+              <PageSectionsForm
+                sections={logDraft.sections ?? []}
+                onChange={(sections) => setLogDraft({ ...logDraft, sections })}
+                pageSlug={logDraft.slug?.trim() ? `devlog-${logDraft.slug.trim()}` : 'devlog-draft'}
+                mediaStorageFolder="devlog"
+                onNotify={flash}
               />
             </div>
             <div className="admin-field">

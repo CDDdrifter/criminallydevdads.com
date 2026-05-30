@@ -6,6 +6,7 @@ export const ADMIN_CMS_TABS = [
   { id: 'services', label: '💼 Services' },
   { id: 'games', label: '🎮 Games' },
   { id: 'pages', label: '📄 Pages' },
+  { id: 'prebuilt', label: '🧱 Built-in pages' },
   { id: 'nav', label: '🧭 Navigation' },
   { id: 'devlogs', label: '📝 Dev logs' },
 ] as const;
@@ -37,6 +38,11 @@ export const ADMIN_OVERVIEW_CARDS: { id: string; title: string; desc: string }[]
   },
   { id: 'games', title: '🎮 Games', desc: 'ZIP uploads, itch links, per-game 🎨 appearance + blocks.' },
   { id: 'pages', title: '📄 Pages & panels', desc: 'Custom URLs, HTML apps, per-page 🎨 appearance + blocks.' },
+  {
+    id: 'prebuilt',
+    title: '🧱 Built-in pages',
+    desc: 'Edit Services / Vault / Apps / Dev-log headers + add blocks above & below.',
+  },
   {
     id: 'nav',
     title: '🧭 Navigation',

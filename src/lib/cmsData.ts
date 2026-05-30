@@ -18,6 +18,9 @@ import type {
   ParticlesConfig,
   PerformanceConfig,
   SeoConfig,
+  PrebuiltPageConfig,
+  PrebuiltPageKey,
+  PrebuiltPagesConfig,
   SharingConfig,
   ShippingConfig,
   ShippingRate,
@@ -29,7 +32,7 @@ import type {
   ThemePreset,
   TypographyConfig,
 } from '../types';
-import { defaultShippingConfig, defaultSiteSettings } from '../types';
+import { defaultPrebuiltPagesConfig, defaultShippingConfig, defaultSiteSettings } from '../types';
 import {
   defaultAccessibilityConfig,
   defaultAnimationsConfig,
@@ -210,7 +213,34 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
         ? raw.homepage_layout_mode
         : 'append',
     shipping: normalizeShippingConfig(raw.shipping),
+    prebuilt_pages: normalizePrebuiltPages(raw.prebuilt_pages),
   };
+}
+
+function normalizePrebuiltPages(raw: unknown): PrebuiltPagesConfig {
+  const base = defaultPrebuiltPagesConfig();
+  if (!raw || typeof raw !== 'object') return base;
+  const rec = raw as Record<string, unknown>;
+  const keys: PrebuiltPageKey[] = ['services', 'vault', 'apps', 'devlog'];
+  const out = {} as PrebuiltPagesConfig;
+  for (const key of keys) {
+    const fallback = base[key];
+    const src = rec[key];
+    if (!src || typeof src !== 'object') {
+      out[key] = fallback;
+      continue;
+    }
+    const s = src as Record<string, unknown>;
+    const cfg: PrebuiltPageConfig = {
+      eyebrow: s.eyebrow != null ? String(s.eyebrow) : fallback.eyebrow,
+      heading: s.heading != null ? String(s.heading) : fallback.heading,
+      subtitle: s.subtitle != null ? String(s.subtitle) : fallback.subtitle,
+      intro_sections: normalizePageSections(s.intro_sections),
+      outro_sections: normalizePageSections(s.outro_sections),
+    };
+    out[key] = cfg;
+  }
+  return out;
 }
 
 function normalizeShippingConfig(raw: unknown): ShippingConfig {
@@ -648,6 +678,7 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     homepage_sections: merged.homepage_sections,
     homepage_layout_mode: merged.homepage_layout_mode,
     shipping: merged.shipping,
+    prebuilt_pages: merged.prebuilt_pages,
   };
   for (let attempt = 0; attempt < 16; attempt++) {
     const { error } = await supabase.from('site_settings').upsert(payload);
@@ -792,11 +823,17 @@ export async function upsertDevLog(
     title: row.title.trim(),
     body: row.body ?? '',
     published_at: publishedAt,
+    sections: row.sections ?? [],
   };
-  const { error } = await supabase.from('site_dev_logs').upsert(payload, { onConflict: 'slug' });
-  if (error) {
-    throw error;
+  // Retry without `sections` if the column hasn't been migrated yet (030).
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const { error } = await supabase.from('site_dev_logs').upsert(payload, { onConflict: 'slug' });
+    if (!error) return;
+    const unknown = unknownColumnFromPostgrestMessage(error.message ?? '');
+    if (!unknown || !(unknown in payload)) throw error;
+    delete payload[unknown];
   }
+  throw new Error('Could not save dev log (run migration 030).');
 }
 
 export async function deleteDevLogSlug(slug: string) {

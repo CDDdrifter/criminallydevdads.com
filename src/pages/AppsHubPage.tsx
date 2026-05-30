@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import { fetchSitePages } from '../lib/cmsData';
 import type { SitePage } from '../types';
 
@@ -9,6 +11,8 @@ import type { SitePage } from '../types';
  * `show_on_apps_hub`). Each card links to `/#/p/{slug}`.
  */
 export function AppsHubPage() {
+  const { settings } = useSiteSettings();
+  const cfg = settings.prebuilt_pages.apps;
   const [apps, setApps] = useState<SitePage[] | null>(null);
 
   useEffect(() => {
@@ -29,12 +33,16 @@ export function AppsHubPage() {
   return (
     <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
       <header style={{ textAlign: 'center', marginBottom: 28 }}>
-        <h1 className="header-title">Apps & tools</h1>
-        <p className="admin-muted" style={{ maxWidth: 560, margin: '0 auto', lineHeight: 1.55 }}>
-          Stand-alone HTML exports you host as CMS pages. Add more under <strong>Admin → Pages</strong> — set page
-          type to <strong>HTML app</strong> and toggle <strong>Show on Apps hub</strong>.
-        </p>
+        {cfg.eyebrow ? <p className="services-hero__eyebrow">{cfg.eyebrow}</p> : null}
+        <h1 className="header-title">{cfg.heading}</h1>
+        {cfg.subtitle ? (
+          <p className="admin-muted" style={{ maxWidth: 560, margin: '0 auto', lineHeight: 1.55 }}>
+            {cfg.subtitle}
+          </p>
+        ) : null}
       </header>
+
+      {cfg.intro_sections.length > 0 ? <PageSectionsView sections={cfg.intro_sections} /> : null}
 
       {apps === null ? (
         <div className="empty-state">Loading…</div>
@@ -60,6 +68,8 @@ export function AppsHubPage() {
           ))}
         </div>
       )}
+
+      {cfg.outro_sections.length > 0 ? <PageSectionsView sections={cfg.outro_sections} /> : null}
     </SiteChrome>
   );
 }

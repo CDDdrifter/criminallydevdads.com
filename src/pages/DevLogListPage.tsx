@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import { fetchDevLogs } from '../lib/cmsData';
 import type { DevLogPost } from '../types';
 
 export function DevLogListPage() {
+  const { settings } = useSiteSettings();
+  const cfg = settings.prebuilt_pages.devlog;
   const [posts, setPosts] = useState<DevLogPost[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,11 +28,14 @@ export function DevLogListPage() {
   return (
     <SiteChrome navExtra={<Link to="/">← Hub</Link>}>
       <header>
+        {cfg.eyebrow ? <div className="services-hero__eyebrow">{cfg.eyebrow}</div> : null}
         <div className="header-title" style={{ fontSize: '2.2rem' }}>
-          Dev log
+          {cfg.heading}
         </div>
-        <div className="header-subtitle">Build notes · design · chaos</div>
+        {cfg.subtitle ? <div className="header-subtitle">{cfg.subtitle}</div> : null}
       </header>
+
+      {cfg.intro_sections.length > 0 ? <PageSectionsView sections={cfg.intro_sections} /> : null}
 
       {loading && <div className="empty-state">Loading…</div>}
 
@@ -55,6 +62,8 @@ export function DevLogListPage() {
           </Link>
         ))}
       </div>
+
+      {cfg.outro_sections.length > 0 ? <PageSectionsView sections={cfg.outro_sections} /> : null}
     </SiteChrome>
   );
 }

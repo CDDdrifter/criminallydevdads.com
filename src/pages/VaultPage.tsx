@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { GameCardMetaChips } from '../components/GameCardMetaChips';
 import { GameCardThumbnail } from '../components/GameCardThumbnail';
+import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import { fetchVaultGames } from '../lib/cmsData';
 import { supabaseConfigured } from '../lib/supabase';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
@@ -13,6 +15,8 @@ import type { GameView } from '../types';
  * Can include titles not on the main hub (<code>published</code> false).
  */
 export function VaultPage() {
+  const { settings } = useSiteSettings();
+  const cfg = settings.prebuilt_pages.vault;
   const [games, setGames] = useState<GameView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,12 +48,12 @@ export function VaultPage() {
   return (
     <SiteChrome>
       <header>
-        <div className="header-title">Vault library</div>
-        <div className="header-subtitle">
-          Alternate catalog at <code>/#/vault</code> — not the main hub. Add games in Admin → Games with{' '}
-          <strong>List in Vault library</strong>. Share <code>/#/game/&lt;slug&gt;</code> links directly.
-        </div>
+        {cfg.eyebrow ? <div className="services-hero__eyebrow">{cfg.eyebrow}</div> : null}
+        <div className="header-title">{cfg.heading}</div>
+        {cfg.subtitle ? <div className="header-subtitle">{cfg.subtitle}</div> : null}
       </header>
+
+      {cfg.intro_sections.length > 0 ? <PageSectionsView sections={cfg.intro_sections} /> : null}
 
       {!supabaseConfigured ? (
         <div className="empty-state">Vault requires Supabase (CMS mode).</div>
@@ -87,6 +91,8 @@ export function VaultPage() {
           ))}
         </div>
       ) : null}
+
+      {cfg.outro_sections.length > 0 ? <PageSectionsView sections={cfg.outro_sections} /> : null}
 
       <p style={{ textAlign: 'center', marginTop: 32 }} className="admin-muted">
         <Link to="/">← Main hub</Link>
