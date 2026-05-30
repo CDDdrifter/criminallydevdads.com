@@ -13,7 +13,7 @@
  *     `uploadStudioAsset` in `_studio/…` so blocks in homepage sections
  *     (which don't have a slug) can still upload.
  */
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { PAGE_BLOCK_LABELS } from '../../lib/adminLabels';
 import type { PageItem, PageSection } from '../../types';
 import { createEmptySection, newSectionId } from '../../lib/pageSections';
@@ -253,6 +253,14 @@ export function PageSectionsForm({
     onChange([...sections, createEmptySection(kind)]);
   };
 
+  // Insert a fresh block at an arbitrary index so blocks can land anywhere,
+  // not just at the end. `index` is the position the new block will occupy.
+  const insertKindAt = (index: number, kind: PageSection['kind']) => {
+    const next = [...sections];
+    next.splice(index, 0, createEmptySection(kind));
+    onChange(next);
+  };
+
   async function handleImageFile(i: number, file: File | undefined) {
     if (!file) return;
     const sec = sections[i];
@@ -305,7 +313,8 @@ export function PageSectionsForm({
           + Add block
         </summary>
         <p className="admin-muted" style={{ fontSize: '0.8rem', marginTop: 8 }}>
-          Pick any block — they appear at the end of the list. Drag with the ↑↓ buttons to reorder.
+          Pick any block — it appears at the end of the list. Use the <strong>+ Insert here</strong> strip between
+          blocks to drop one anywhere, or the Up / Down buttons to reorder.
         </p>
         <div className="admin-row" style={{ flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
           {(Object.keys(PAGE_BLOCK_LABELS) as PageSection['kind'][]).map((k) => (
@@ -318,7 +327,9 @@ export function PageSectionsForm({
 
       {/* ===== Block list ============================================== */}
       {sections.map((sec, i) => (
-        <div key={sec.id} className="admin-panel" style={{ borderColor: 'rgba(166, 115, 255, 0.35)' }}>
+        <Fragment key={sec.id}>
+        <InsertBlockHere onInsert={(kind) => insertKindAt(i, kind)} />
+        <div className="admin-panel" style={{ borderColor: 'rgba(166, 115, 255, 0.35)' }}>
           <div className="admin-row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
             <span className="admin-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
               {sec.kind} · block {i + 1}
@@ -1531,6 +1542,10 @@ export function PageSectionsForm({
             </div>
           )}
         </div>
+        {i === sections.length - 1 ? (
+          <InsertBlockHere onInsert={(kind) => insertKindAt(i + 1, kind)} atEnd />
+        ) : null}
+        </Fragment>
       ))}
 
       {sections.length === 0 ? (
@@ -1545,6 +1560,71 @@ export function PageSectionsForm({
 /** Ensure every section has a stable id (migration safety). */
 export function ensureSectionIds(sections: PageSection[]): PageSection[] {
   return sections.map((s) => (s.id ? s : { ...s, id: newSectionId() }));
+}
+
+// ===========================================================================
+// InsertBlockHere — compact picker that drops a new block at this position.
+// Collapsed to a thin "+ Insert here" strip until clicked.
+// ===========================================================================
+
+function InsertBlockHere({
+  onInsert,
+  atEnd = false,
+}: {
+  onInsert: (kind: PageSection['kind']) => void;
+  atEnd?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="admin-muted"
+        style={{
+          alignSelf: 'stretch',
+          background: 'transparent',
+          border: '1px dashed var(--border)',
+          borderRadius: 6,
+          padding: '4px 8px',
+          fontSize: '0.74rem',
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          cursor: 'pointer',
+          opacity: 0.65,
+        }}
+      >
+        + Insert {atEnd ? 'block at end' : 'here'}
+      </button>
+    );
+  }
+  return (
+    <div
+      className="admin-panel"
+      style={{ borderStyle: 'dashed', padding: 10, display: 'grid', gap: 8 }}
+    >
+      <div className="admin-row" style={{ justifyContent: 'space-between' }}>
+        <span className="admin-muted" style={{ fontSize: '0.74rem', textTransform: 'uppercase' }}>
+          Insert block
+        </span>
+        <button type="button" onClick={() => setOpen(false)}>Cancel</button>
+      </div>
+      <div className="admin-row" style={{ flexWrap: 'wrap', gap: 6 }}>
+        {(Object.keys(PAGE_BLOCK_LABELS) as PageSection['kind'][]).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => {
+              onInsert(k);
+              setOpen(false);
+            }}
+          >
+            {PAGE_BLOCK_LABELS[k]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ===========================================================================
