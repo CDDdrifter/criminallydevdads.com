@@ -85,14 +85,6 @@ export function GamePlayerEmbed({ title, src }: Props) {
     });
   }, []);
 
-  const exitFullscreen = useCallback(() => {
-    if (pseudoFs) {
-      setPseudoFs(false);
-      return;
-    }
-    tryNativeExit();
-  }, [pseudoFs]);
-
   useEffect(() => {
     setEngaged(false);
     setPseudoFs(false);
@@ -270,18 +262,9 @@ export function GamePlayerEmbed({ title, src }: Props) {
 
       <div className="game-embed-toolbar" role="toolbar" aria-label="Game player">
         <span className="game-embed-toolbar__hint">
-          {isFullscreen ? 'Press Esc or Exit to leave fullscreen' : engaged ? 'Playing — scroll down for game info' : 'Click the game area to start'}
+          {isFullscreen ? 'Use your device back button to leave fullscreen' : engaged ? 'Playing — scroll down for game info' : 'Click the game area to start'}
         </span>
-        {isFullscreen ? (
-          <button
-            type="button"
-            className="game-embed-fs-btn game-embed-fs-btn--exit"
-            onClick={exitFullscreen}
-            aria-label="Exit fullscreen"
-          >
-            ✕ Exit fullscreen
-          </button>
-        ) : (
+        {!isFullscreen ? (
           <button
             type="button"
             className="game-embed-fs-btn"
@@ -290,7 +273,7 @@ export function GamePlayerEmbed({ title, src }: Props) {
           >
             ⛶ Fullscreen
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -394,7 +394,10 @@ async function uploadStorageObjectWithRetries(objectPath: string, blob: Blob, co
     const { error } = await supabase.storage.from(GAME_BUILDS_BUCKET).upload(objectPath, blob, {
       upsert: true,
       contentType,
-      cacheControl: '3600',
+      // Build files reuse the same paths (index.html / index.wasm / index.pck …) on every
+      // re-upload. A long max-age makes browsers + the Storage CDN serve the OLD build after an
+      // update. max-age=0 forces revalidation so a fresh upload is picked up immediately.
+      cacheControl: '0',
     });
     if (!error) {
       return;

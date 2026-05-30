@@ -3079,6 +3079,25 @@ export function AdminPage() {
               />
               Published (show on main game hub — turn off for vault-only or unlisted games)
             </label>
+            {gameZipFile ? (
+              <p
+                className="admin-warning"
+                role="alert"
+                style={{
+                  marginTop: 4,
+                  marginBottom: 4,
+                  padding: '10px 12px',
+                  border: '1px solid rgba(255, 180, 90, 0.6)',
+                  borderRadius: 8,
+                  color: '#ffd9a8',
+                  lineHeight: 1.5,
+                }}
+              >
+                You picked a new ZIP but haven&apos;t uploaded it yet. Click{' '}
+                <strong>Upload ZIP &amp; save game</strong> above to replace the build —{' '}
+                <strong>Save game</strong> only saves text fields and will NOT change the playable game.
+              </p>
+            ) : null}
             <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button type="button" disabled={busy || !gameDraft.title.trim()} onClick={onSaveGame}>
                 Save game

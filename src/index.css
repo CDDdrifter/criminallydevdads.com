@@ -1392,16 +1392,6 @@ html[data-game-embed-fs='on'] body {
   background: rgba(18, 24, 40, 0.96);
 }
 
-.game-embed-fs-btn--exit {
-  border-color: rgba(255, 120, 120, 0.55);
-  color: #ffe8e8;
-}
-
-.game-embed-fs-btn--exit:hover {
-  border-color: rgba(255, 150, 150, 0.75);
-  background: rgba(40, 12, 18, 0.92);
-}
-
 @media (max-width: 560px) {
   .game-embed-toolbar {
     flex-wrap: wrap;
