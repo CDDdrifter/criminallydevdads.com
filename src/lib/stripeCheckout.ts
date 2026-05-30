@@ -42,13 +42,26 @@ export async function startGameCheckout(args: { slug: string; amountCents?: numb
   window.location.href = url;
 }
 
-export async function startServiceCheckout(args: { slug: string; amountCents?: number }): Promise<void> {
+export async function startServiceCheckout(args: {
+  slug: string;
+  amountCents?: number;
+  quantity?: number;
+  /** Map of variant group id -> chosen option id. Server recomputes the price. */
+  variantSelection?: Record<string, string>;
+}): Promise<void> {
   if (!supabaseConfigured || !supabase) {
     throw new Error('Supabase is not configured (needed for checkout).');
   }
   const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
     'create-checkout-session',
-    { body: { service_slug: args.slug, amount_cents: args.amountCents } },
+    {
+      body: {
+        service_slug: args.slug,
+        amount_cents: args.amountCents,
+        quantity: args.quantity,
+        variant_selection: args.variantSelection,
+      },
+    },
   );
   if (data && typeof data.error === 'string' && data.error) {
     throw new Error(data.error);

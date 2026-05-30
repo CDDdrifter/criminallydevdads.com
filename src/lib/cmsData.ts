@@ -19,6 +19,8 @@ import type {
   PerformanceConfig,
   SeoConfig,
   SharingConfig,
+  ShippingConfig,
+  ShippingRate,
   SitePage,
   SiteSettings,
   SocialConfig,
@@ -27,7 +29,7 @@ import type {
   ThemePreset,
   TypographyConfig,
 } from '../types';
-import { defaultSiteSettings } from '../types';
+import { defaultShippingConfig, defaultSiteSettings } from '../types';
 import {
   defaultAccessibilityConfig,
   defaultAnimationsConfig,
@@ -207,6 +209,37 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
       raw.homepage_layout_mode === 'prepend' || raw.homepage_layout_mode === 'replace'
         ? raw.homepage_layout_mode
         : 'append',
+    shipping: normalizeShippingConfig(raw.shipping),
+  };
+}
+
+function normalizeShippingConfig(raw: unknown): ShippingConfig {
+  const base = defaultShippingConfig();
+  if (!raw || typeof raw !== 'object') return base;
+  const rec = raw as Record<string, unknown>;
+  const allowed = Array.isArray(rec.allowed_countries)
+    ? rec.allowed_countries.map((c) => String(c).trim().toUpperCase()).filter((c) => /^[A-Z]{2}$/.test(c))
+    : base.allowed_countries;
+  const rates: ShippingRate[] = Array.isArray(rec.rates)
+    ? rec.rates
+        .map((r, i): ShippingRate | null => {
+          if (!r || typeof r !== 'object') return null;
+          const rr = r as Record<string, unknown>;
+          const label = String(rr.label ?? '').trim();
+          if (!label) return null;
+          return {
+            id: String(rr.id ?? '').trim() || `rate-${i + 1}`,
+            label,
+            amount_cents: Math.max(0, Math.round(Number(rr.amount_cents ?? 0)) || 0),
+            delivery_estimate: rr.delivery_estimate != null ? String(rr.delivery_estimate) : undefined,
+          };
+        })
+        .filter((x): x is ShippingRate => x !== null)
+    : base.rates;
+  return {
+    enabled: typeof rec.enabled === 'boolean' ? rec.enabled : base.enabled,
+    allowed_countries: allowed.length ? allowed : base.allowed_countries,
+    rates,
   };
 }
 
@@ -614,6 +647,7 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
     sharing: merged.sharing,
     homepage_sections: merged.homepage_sections,
     homepage_layout_mode: merged.homepage_layout_mode,
+    shipping: merged.shipping,
   };
   for (let attempt = 0; attempt < 16; attempt++) {
     const { error } = await supabase.from('site_settings').upsert(payload);

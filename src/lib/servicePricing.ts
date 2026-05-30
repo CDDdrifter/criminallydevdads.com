@@ -1,10 +1,83 @@
 /**
  * Service / gig commerce helpers (mirrors gamePricing.ts).
  */
-import type { ServicePricingModel, ServiceView } from '../types';
+import type { ProductType, ServicePricingModel, ServiceView, VariantGroup, VariantOption } from '../types';
 import { donationPresetsFromUnknown, stripeMinimumUsdCents } from './gamePricing';
 
 export { donationPresetsFromUnknown, stripeMinimumUsdCents };
+
+/** Map of variant group id -> chosen option id. */
+export type VariantSelection = Record<string, string>;
+
+/** Parse untrusted JSONB into a typed VariantGroup[] (drops malformed rows). */
+export function normalizeVariantGroups(raw: unknown): VariantGroup[] {
+  if (!Array.isArray(raw)) return [];
+  const groups: VariantGroup[] = [];
+  for (const g of raw) {
+    if (!g || typeof g !== 'object') continue;
+    const rec = g as Record<string, unknown>;
+    const id = String(rec.id ?? '').trim() || `grp-${groups.length + 1}`;
+    const name = String(rec.name ?? '').trim();
+    const optionsRaw = Array.isArray(rec.options) ? rec.options : [];
+    const options: VariantOption[] = [];
+    for (const o of optionsRaw) {
+      if (!o || typeof o !== 'object') continue;
+      const orec = o as Record<string, unknown>;
+      const oid = String(orec.id ?? '').trim() || `opt-${options.length + 1}`;
+      const label = String(orec.label ?? '').trim();
+      if (!label) continue;
+      options.push({
+        id: oid,
+        label,
+        price_delta_cents: Math.round(Number(orec.price_delta_cents ?? 0)) || 0,
+        sku: orec.sku != null ? String(orec.sku) : undefined,
+      });
+    }
+    if (!name && options.length === 0) continue;
+    groups.push({ id, name: name || 'Option', options });
+  }
+  return groups;
+}
+
+export function normalizeProductType(raw: unknown): ProductType {
+  const v = String(raw ?? 'service').toLowerCase();
+  return v === 'physical' || v === 'digital' ? v : 'service';
+}
+
+/** Resolve the default selection (first option of each group). */
+export function defaultVariantSelection(groups: VariantGroup[]): VariantSelection {
+  const sel: VariantSelection = {};
+  for (const g of groups) {
+    if (g.options[0]) sel[g.id] = g.options[0].id;
+  }
+  return sel;
+}
+
+/** Sum the price deltas for a given selection. */
+export function variantPriceDeltaCents(groups: VariantGroup[], selection: VariantSelection): number {
+  let delta = 0;
+  for (const g of groups) {
+    const chosen = selection[g.id];
+    const opt = g.options.find((o) => o.id === chosen);
+    if (opt) delta += opt.price_delta_cents;
+  }
+  return delta;
+}
+
+/** Human-readable variant suffix, e.g. "Size: L · Color: Red". */
+export function variantSelectionLabel(groups: VariantGroup[], selection: VariantSelection): string {
+  const parts: string[] = [];
+  for (const g of groups) {
+    const opt = g.options.find((o) => o.id === selection[g.id]);
+    if (opt) parts.push(`${g.name}: ${opt.label}`);
+  }
+  return parts.join(' · ');
+}
+
+/** Effective unit price for a fixed-price product given a variant selection. */
+export function effectiveUnitPriceCents(service: ServiceView, selection: VariantSelection): number {
+  return Math.max(0, service.price_cents + variantPriceDeltaCents(service.variant_groups, selection));
+}
 
 export function servicePricingModelFromRecord(raw: unknown, priceCents: number): ServicePricingModel {
   const m = String(raw ?? 'quote').toLowerCase();

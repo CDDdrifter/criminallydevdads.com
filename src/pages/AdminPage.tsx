@@ -1684,7 +1684,7 @@ export function AdminPage() {
         />
       )}
 
-      {tab === 'services' && <ServicesAdminTab />}
+      {tab === 'services' && <ServicesAdminTab settings={settings} setSettings={setSettings} />}
 
       {tab === 'settings' && (
         <div className="admin-panel admin-grid">

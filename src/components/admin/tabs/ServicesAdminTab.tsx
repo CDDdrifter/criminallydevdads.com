@@ -9,8 +9,18 @@ import {
 } from '../../../lib/servicesData';
 import { adminListServiceRequests, type ServiceRequestRow } from '../../../lib/communityData';
 import { donationPresetsFromUnknown } from '../../../lib/gamePricing';
+import { newSectionId } from '../../../lib/pageSections';
 import { ADMIN_AI_SERVICE_DRAFT_KEY } from '../../../lib/adminAi/types';
-import type { ServicePricingModel, SiteService } from '../../../types';
+import type {
+  ProductType,
+  ServicePricingModel,
+  ShippingConfig,
+  ShippingRate,
+  SiteService,
+  SiteSettings,
+  VariantGroup,
+} from '../../../types';
+import { defaultShippingConfig } from '../../../types';
 
 function emptyService(): SiteService {
   return {
@@ -39,10 +49,26 @@ function emptyService(): SiteService {
     published: true,
     show_on_services_hub: true,
     sort_order: 100,
+    product_type: 'service',
+    variant_groups: [],
+    requires_shipping: false,
+    allow_quantity: false,
+    max_quantity: 1,
   };
 }
 
-export function ServicesAdminTab() {
+const PRODUCT_TYPE_OPTIONS: { value: 'service' | 'digital' | 'physical'; label: string }[] = [
+  { value: 'service', label: 'Service / gig (no fulfillment)' },
+  { value: 'digital', label: 'Digital product (download / key)' },
+  { value: 'physical', label: 'Physical product (ships)' },
+];
+
+type ServicesAdminTabProps = {
+  settings: SiteSettings;
+  setSettings: (next: SiteSettings) => void;
+};
+
+export function ServicesAdminTab({ settings, setSettings }: ServicesAdminTabProps) {
   const [list, setList] = useState<SiteService[]>([]);
   const [draft, setDraft] = useState<SiteService>(emptyService());
   const [busy, setBusy] = useState(false);
@@ -80,9 +106,15 @@ export function ServicesAdminTab() {
         <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55, fontSize: '0.88rem' }}>
           Public page: <code>/#/services</code>. Tips, demos, builds, merch — each row can use Stripe (same Edge
           Function as games), external Payment Link / Gumroad, or quote-only with email request. Run migration{' '}
-          <code>025_site_services_commerce.sql</code> once.
+          <code>025_site_services_commerce.sql</code> once. Variants, physical products, and shipping require{' '}
+          <code>029_products_variants_shipping.sql</code>.
         </p>
       </div>
+
+      <ShippingSettingsPanel
+        shipping={settings.shipping ?? defaultShippingConfig()}
+        onChange={(shipping) => setSettings({ ...settings, shipping })}
+      />
 
       <div className="admin-panel admin-grid">
         <h3 style={{ gridColumn: '1 / -1', margin: 0, fontSize: '0.9rem' }}>Edit offering</h3>
@@ -246,6 +278,21 @@ export function ServicesAdminTab() {
                 }
               />
             </div>
+            {draft.pricing_model === 'pwyw' ? (
+              <div className="admin-field">
+                <label htmlFor="svc_pwyw_sug">Suggested amount (USD, hint only)</label>
+                <input
+                  id="svc_pwyw_sug"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={Number(draft.pwyw_suggested_cents ?? 0) / 100}
+                  onChange={(e) =>
+                    setDraft({ ...draft, pwyw_suggested_cents: Math.round(Number(e.target.value || 0) * 100) })
+                  }
+                />
+              </div>
+            ) : null}
             {draft.pricing_model === 'donation' ? (
               <div className="admin-field">
                 <label htmlFor="svc_presets">Donation presets (USD, comma-separated)</label>
@@ -322,6 +369,75 @@ export function ServicesAdminTab() {
           />
           Show on /services page
         </label>
+
+        {/* ===== Product type, fulfillment, quantity ===================== */}
+        <div className="admin-field">
+          <label htmlFor="svc_ptype">Product type</label>
+          <select
+            id="svc_ptype"
+            value={draft.product_type}
+            onChange={(e) => {
+              const product_type = e.target.value as ProductType;
+              setDraft({
+                ...draft,
+                product_type,
+                // Auto-enable shipping for physical, off otherwise.
+                requires_shipping: product_type === 'physical' ? true : false,
+              });
+            }}
+          >
+            {PRODUCT_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {draft.product_type === 'physical' ? (
+          <label className="admin-row" style={{ gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={draft.requires_shipping}
+              onChange={(e) => setDraft({ ...draft, requires_shipping: e.target.checked })}
+            />
+            Collect shipping address at checkout
+          </label>
+        ) : null}
+        <label className="admin-row" style={{ gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={draft.allow_quantity}
+            onChange={(e) => setDraft({ ...draft, allow_quantity: e.target.checked })}
+          />
+          Allow quantity selection
+        </label>
+        {draft.allow_quantity ? (
+          <div className="admin-field">
+            <label htmlFor="svc_maxqty">Max quantity</label>
+            <input
+              id="svc_maxqty"
+              type="number"
+              min={1}
+              step={1}
+              value={draft.max_quantity}
+              onChange={(e) => setDraft({ ...draft, max_quantity: Math.max(1, Number(e.target.value) || 1) })}
+            />
+          </div>
+        ) : null}
+
+        {/* ===== Variant groups (any size / colour) ===================== */}
+        <div className="admin-field" style={{ gridColumn: '1 / -1' }}>
+          <label>Variants (sizes, colours, editions…)</label>
+          <p className="admin-muted" style={{ fontSize: '0.8rem', margin: '0 0 8px' }}>
+            Add an option axis (e.g. <strong>Size</strong>) with options (S, M, L, XL). Each option can adjust the
+            base price. Shown as dropdowns on the storefront; the choice is sent to Stripe.
+          </p>
+          <VariantGroupsEditor
+            groups={draft.variant_groups}
+            onChange={(variant_groups) => setDraft({ ...draft, variant_groups })}
+          />
+        </div>
+
         <div className="admin-row" style={{ gridColumn: '1 / -1', gap: 10, flexWrap: 'wrap' }}>
           <button
             type="button"
@@ -414,6 +530,205 @@ export function ServicesAdminTab() {
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+// ===========================================================================
+// VariantGroupsEditor — edit option axes (Size, Colour) + per-option price.
+// ===========================================================================
+
+function VariantGroupsEditor({
+  groups,
+  onChange,
+}: {
+  groups: VariantGroup[];
+  onChange: (groups: VariantGroup[]) => void;
+}) {
+  const addGroup = () =>
+    onChange([...groups, { id: newSectionId(), name: 'Size', options: [] }]);
+  const removeGroup = (gid: string) => onChange(groups.filter((g) => g.id !== gid));
+  const patchGroup = (gid: string, patch: Partial<VariantGroup>) =>
+    onChange(groups.map((g) => (g.id === gid ? { ...g, ...patch } : g)));
+  const addOption = (gid: string) =>
+    onChange(
+      groups.map((g) =>
+        g.id === gid
+          ? { ...g, options: [...g.options, { id: newSectionId(), label: '', price_delta_cents: 0, sku: '' }] }
+          : g,
+      ),
+    );
+
+  return (
+    <div className="admin-grid" style={{ gap: 10 }}>
+      {groups.length === 0 ? (
+        <p className="admin-muted" style={{ fontSize: '0.82rem' }}>
+          No variants. This product sells as a single option.
+        </p>
+      ) : null}
+      {groups.map((g) => (
+        <div key={g.id} className="admin-panel" style={{ padding: 10, borderStyle: 'dashed' }}>
+          <div className="admin-row" style={{ justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+            <input
+              value={g.name}
+              onChange={(e) => patchGroup(g.id, { name: e.target.value })}
+              placeholder="Axis name (e.g. Size)"
+              style={{ flex: 1 }}
+            />
+            <button type="button" onClick={() => removeGroup(g.id)}>
+              Remove axis
+            </button>
+          </div>
+          {g.options.map((o) => (
+            <div key={o.id} className="admin-row" style={{ gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+              <input
+                value={o.label}
+                onChange={(e) =>
+                  patchGroup(g.id, {
+                    options: g.options.map((x) => (x.id === o.id ? { ...x, label: e.target.value } : x)),
+                  })
+                }
+                placeholder="Option (e.g. L)"
+                style={{ flex: '1 1 120px' }}
+              />
+              <label className="admin-muted" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                +$
+                <input
+                  type="number"
+                  step={0.01}
+                  value={o.price_delta_cents / 100}
+                  onChange={(e) =>
+                    patchGroup(g.id, {
+                      options: g.options.map((x) =>
+                        x.id === o.id ? { ...x, price_delta_cents: Math.round(Number(e.target.value || 0) * 100) } : x,
+                      ),
+                    })
+                  }
+                  style={{ width: 80 }}
+                  title="Price added when this option is chosen"
+                />
+              </label>
+              <input
+                value={o.sku ?? ''}
+                onChange={(e) =>
+                  patchGroup(g.id, {
+                    options: g.options.map((x) => (x.id === o.id ? { ...x, sku: e.target.value } : x)),
+                  })
+                }
+                placeholder="SKU (optional)"
+                style={{ flex: '1 1 100px' }}
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  patchGroup(g.id, { options: g.options.filter((x) => x.id !== o.id) })
+                }
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={() => addOption(g.id)}>
+            + Add option
+          </button>
+        </div>
+      ))}
+      <button type="button" onClick={addGroup}>
+        + Add variant axis
+      </button>
+    </div>
+  );
+}
+
+// ===========================================================================
+// ShippingSettingsPanel — site-wide flat-rate shipping for physical products.
+// Writes into site_settings.shipping; the floating save bar persists it.
+// ===========================================================================
+
+function ShippingSettingsPanel({
+  shipping,
+  onChange,
+}: {
+  shipping: ShippingConfig;
+  onChange: (next: ShippingConfig) => void;
+}) {
+  const patch = (p: Partial<ShippingConfig>) => onChange({ ...shipping, ...p });
+  const addRate = () =>
+    patch({
+      rates: [
+        ...shipping.rates,
+        { id: newSectionId(), label: 'New rate', amount_cents: 0, delivery_estimate: '' },
+      ],
+    });
+  const patchRate = (id: string, p: Partial<ShippingRate>) =>
+    patch({ rates: shipping.rates.map((r) => (r.id === id ? { ...r, ...p } : r)) });
+
+  return (
+    <div className="admin-panel">
+      <h3 style={{ margin: '0 0 8px', fontSize: '0.9rem', color: 'var(--accent)' }}>📦 Shipping (physical products)</h3>
+      <p className="admin-muted" style={{ marginTop: 0, fontSize: '0.84rem', lineHeight: 1.5 }}>
+        Applies to any product marked <strong>Physical</strong> with shipping enabled. Stripe collects the buyer's
+        address and offers these flat rates. Save with the floating bar at the bottom.
+      </p>
+      <label className="admin-row" style={{ gap: 8, marginBottom: 10 }}>
+        <input
+          type="checkbox"
+          checked={shipping.enabled}
+          onChange={(e) => patch({ enabled: e.target.checked })}
+        />
+        Enable shipping address collection + rates at checkout
+      </label>
+      <div className="admin-field" style={{ marginBottom: 12 }}>
+        <label htmlFor="ship_countries">Allowed countries (ISO codes, comma-separated)</label>
+        <input
+          id="ship_countries"
+          value={shipping.allowed_countries.join(', ')}
+          onChange={(e) =>
+            patch({
+              allowed_countries: e.target.value
+                .split(/[,\s]+/)
+                .map((c) => c.trim().toUpperCase())
+                .filter((c) => /^[A-Z]{2}$/.test(c)),
+            })
+          }
+          placeholder="US, CA, GB"
+        />
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {shipping.rates.map((r) => (
+          <div key={r.id} className="admin-row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <input
+              value={r.label}
+              onChange={(e) => patchRate(r.id, { label: e.target.value })}
+              placeholder="Rate label"
+              style={{ flex: '1 1 160px' }}
+            />
+            <label className="admin-muted" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+              $
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={r.amount_cents / 100}
+                onChange={(e) => patchRate(r.id, { amount_cents: Math.max(0, Math.round(Number(e.target.value || 0) * 100)) })}
+                style={{ width: 90 }}
+              />
+            </label>
+            <input
+              value={r.delivery_estimate ?? ''}
+              onChange={(e) => patchRate(r.id, { delivery_estimate: e.target.value })}
+              placeholder="3-7 business days"
+              style={{ flex: '1 1 140px' }}
+            />
+            <button type="button" onClick={() => patch({ rates: shipping.rates.filter((x) => x.id !== r.id) })}>
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+      <button type="button" style={{ marginTop: 10 }} onClick={addRate}>
+        + Add shipping rate
+      </button>
     </div>
   );
 }

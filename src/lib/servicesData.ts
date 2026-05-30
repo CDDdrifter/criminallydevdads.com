@@ -3,7 +3,11 @@
  */
 import type { ServicePricingModel, ServiceView, SiteService } from '../types';
 import { donationPresetsFromUnknown } from './gamePricing';
-import { servicePricingModelFromRecord } from './servicePricing';
+import {
+  normalizeProductType,
+  normalizeVariantGroups,
+  servicePricingModelFromRecord,
+} from './servicePricing';
 import { supabase, supabaseConfigured } from './supabase';
 import { unknownColumnFromPostgrestMessage } from './postgrestUnknownColumn';
 
@@ -37,6 +41,11 @@ function normalizeService(row: Record<string, unknown>): SiteService {
     published: row.published !== false,
     show_on_services_hub: row.show_on_services_hub !== false,
     sort_order: Number(row.sort_order ?? 0),
+    product_type: normalizeProductType(row.product_type),
+    variant_groups: normalizeVariantGroups(row.variant_groups),
+    requires_shipping: Boolean(row.requires_shipping),
+    allow_quantity: Boolean(row.allow_quantity),
+    max_quantity: Math.max(1, Math.round(Number(row.max_quantity ?? 1)) || 1),
   };
 }
 
@@ -65,6 +74,11 @@ export function serviceToView(s: SiteService): ServiceView {
     cta_label: s.cta_label,
     request_only: s.request_only,
     request_form_enabled: s.request_form_enabled,
+    product_type: normalizeProductType(s.product_type),
+    variant_groups: normalizeVariantGroups(s.variant_groups),
+    requires_shipping: Boolean(s.requires_shipping),
+    allow_quantity: Boolean(s.allow_quantity),
+    max_quantity: Math.max(1, Math.round(Number(s.max_quantity ?? 1)) || 1),
   };
 }
 

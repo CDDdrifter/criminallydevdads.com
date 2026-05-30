@@ -166,6 +166,27 @@ export type ServiceCategory =
 
 export type ServiceKind = 'service' | 'product' | 'tip' | 'deposit';
 
+/** Fulfillment type — drives shipping address collection at checkout. */
+export type ProductType = 'digital' | 'physical' | 'service';
+
+/** One selectable option within a variant group (e.g. "Large", "Red"). */
+export type VariantOption = {
+  id: string;
+  label: string;
+  /** Added to (or subtracted from) the base price when this option is chosen. */
+  price_delta_cents: number;
+  /** Optional stock-keeping unit, surfaced to Stripe metadata. */
+  sku?: string;
+};
+
+/** A choice axis for a product (e.g. "Size" with options S/M/L/XL). */
+export type VariantGroup = {
+  id: string;
+  /** Axis name shown as the dropdown label. */
+  name: string;
+  options: VariantOption[];
+};
+
 export type SiteService = {
   slug: string;
   title: string;
@@ -192,6 +213,17 @@ export type SiteService = {
   published: boolean;
   show_on_services_hub: boolean;
   sort_order: number;
+  // ---- Store: variants + physical products (migration 029) ----------------
+  /** digital | physical | service. Physical collects a shipping address at checkout. */
+  product_type: ProductType | string;
+  /** Option axes (Size, Color, …). Each selected option can adjust the price. */
+  variant_groups: VariantGroup[];
+  /** Collect a shipping address + shipping options at checkout. */
+  requires_shipping: boolean;
+  /** Show a quantity stepper on the storefront. */
+  allow_quantity: boolean;
+  /** Upper bound for the quantity stepper (1 = single). */
+  max_quantity: number;
 };
 
 export type ServiceView = {
@@ -217,6 +249,12 @@ export type ServiceView = {
   cta_label: string;
   request_only: boolean;
   request_form_enabled: boolean;
+  // ---- Store: variants + physical products --------------------------------
+  product_type: ProductType;
+  variant_groups: VariantGroup[];
+  requires_shipping: boolean;
+  allow_quantity: boolean;
+  max_quantity: number;
 };
 
 export type GameRecord = {
@@ -1098,7 +1136,35 @@ export type SiteSettings = {
    * support + footer entirely — admin owns the page top to bottom.
    */
   homepage_layout_mode: 'append' | 'prepend' | 'replace';
+  /** Physical-product shipping options offered at Stripe Checkout. */
+  shipping: ShippingConfig;
 };
+
+/** One flat-rate shipping option offered at checkout for physical products. */
+export type ShippingRate = {
+  id: string;
+  /** Shown to the buyer, e.g. "Standard (3–5 days)". */
+  label: string;
+  /** Flat rate in USD cents (0 = free shipping). */
+  amount_cents: number;
+  /** Optional plain-text delivery estimate, e.g. "3-5 business days". */
+  delivery_estimate?: string;
+};
+
+export type ShippingConfig = {
+  /** Master switch — when off, physical checkouts skip address collection. */
+  enabled: boolean;
+  /** ISO 3166-1 alpha-2 country codes Stripe will accept (empty = US only). */
+  allowed_countries: string[];
+  /** Flat-rate options buyers pick from. */
+  rates: ShippingRate[];
+};
+
+export const defaultShippingConfig = (): ShippingConfig => ({
+  enabled: false,
+  allowed_countries: ['US'],
+  rates: [{ id: 'standard', label: 'Standard shipping', amount_cents: 599, delivery_estimate: '3-7 business days' }],
+});
 
 // ---------------------------------------------------------------------------
 // Defaults live in `lib/themeDefaults.ts` for tree-shake friendliness — but
@@ -1173,4 +1239,5 @@ export const defaultSiteSettings: SiteSettings = {
   sharing: defaultSharingConfig(),
   homepage_sections: [],
   homepage_layout_mode: 'append',
+  shipping: defaultShippingConfig(),
 };
