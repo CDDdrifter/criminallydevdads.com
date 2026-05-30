@@ -154,6 +154,7 @@ function emptyPageDraft(): Partial<SitePage> & {
     raw_html: '',
     unlisted: false,
     published: true,
+    comments_enabled: true,
     show_on_apps_hub: true,
     html_app_summary: '',
     html_iframe_compat: false,
@@ -3544,6 +3545,14 @@ export function AdminPage() {
                 onChange={(e) => setPageDraft({ ...pageDraft, unlisted: e.target.checked })}
               />
               Unlisted — add noindex,nofollow (URL still public; not a password)
+            </label>
+            <label className="admin-row" style={{ gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={pageDraft.comments_enabled !== false}
+                onChange={(e) => setPageDraft({ ...pageDraft, comments_enabled: e.target.checked })}
+              />
+              Allow comments (off = hide the comment thread — good for policy / legal pages)
             </label>
             <div className="admin-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button type="button" disabled={busy} onClick={onSavePage}>

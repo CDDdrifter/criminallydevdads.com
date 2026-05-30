@@ -387,6 +387,8 @@ export type SitePage = {
   show_in_nav: boolean;
   /** When false, public visitors see “unavailable”; site admins can preview. */
   published: boolean;
+  /** When false, the auto comment thread is hidden on this page (e.g. policy pages). */
+  comments_enabled: boolean;
   sort_order: number;
   /** Page-only mood; same keys as hub / game presets (Admin + index.css). */
   visual_preset?: string | null;

@@ -183,7 +183,7 @@ export function StaticPage() {
           </>
         )}
 
-        {!isHtmlApp && slug ? (
+        {!isHtmlApp && slug && page.comments_enabled !== false ? (
           <CommentSection targetType="page" targetKey={slug} />
         ) : null}
       </article>
