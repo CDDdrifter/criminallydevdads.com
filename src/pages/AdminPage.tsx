@@ -1033,6 +1033,7 @@ export function AdminPage() {
     const rawHtmlSaved = String(pageDraft.raw_html ?? '');
     const unlistedPage = Boolean(pageDraft.unlisted);
     const publishedPage = pageDraft.published !== false;
+    const commentsEnabled = pageDraft.comments_enabled !== false;
     const showOnAppsHub = pageDraft.show_on_apps_hub !== false;
     const htmlSummary = String(pageDraft.html_app_summary ?? '');
     const iframeCompat = Boolean(pageDraft.html_iframe_compat);
@@ -1052,6 +1053,7 @@ export function AdminPage() {
         raw_html: pageMode === 'html_app' ? rawHtmlSaved : '',
         unlisted: unlistedPage,
         published: publishedPage,
+        comments_enabled: commentsEnabled,
         show_on_apps_hub: showOnAppsHub,
         html_app_summary: htmlSummary,
         html_iframe_compat: iframeCompat,
@@ -3631,6 +3633,7 @@ export function AdminPage() {
                           page_mode: p.page_mode === 'html_app' ? 'html_app' : 'blocks',
                           raw_html: String(p.raw_html ?? ''),
                           unlisted: Boolean(p.unlisted),
+                          comments_enabled: p.comments_enabled !== false,
                           show_on_apps_hub: p.show_on_apps_hub !== false,
                           html_app_summary: String(p.html_app_summary ?? ''),
                           html_iframe_compat: Boolean(p.html_iframe_compat),

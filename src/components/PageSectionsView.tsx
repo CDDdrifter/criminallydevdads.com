@@ -313,9 +313,12 @@ export type CommentRenderContext = {
 export function PageSectionsView({
   sections,
   commentContext = null,
+  commentsEnabled = true,
 }: {
   sections: PageSection[];
   commentContext?: CommentRenderContext | null;
+  /** When false, comment blocks are hidden (e.g. policy pages). */
+  commentsEnabled?: boolean;
 }) {
   if (sections.length === 0) {
     return null;
@@ -835,6 +838,7 @@ export function PageSectionsView({
               </div>
             );
           case 'comments': {
+            if (!commentsEnabled) return null;
             const tt = s.target_type ?? commentContext?.target_type;
             const tk = (s.target_key ?? commentContext?.target_key ?? '').trim();
             if (!tt || !tk) return null;

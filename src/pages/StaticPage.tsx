@@ -173,6 +173,7 @@ export function StaticPage() {
                 <PageSectionsView
                   sections={page.sections}
                   commentContext={{ target_type: 'page', target_key: page.slug }}
+                  commentsEnabled={page.comments_enabled !== false}
                 />
               </div>
             ) : (
