@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameView } from '../types';
 import { probeGamePlayUrl } from '../lib/playUrlProbe';
 import { resolveGameUrl } from '../lib/paths';
+import { isSecureBrowsingContext, secureContextGameMessage } from '../lib/secureContext';
 
 export function useGameEmbed(game: GameView | undefined) {
   const [probeState, setProbeState] = useState<'idle' | 'checking' | 'ready' | 'failed'>('idle');
@@ -14,6 +15,12 @@ export function useGameEmbed(game: GameView | undefined) {
       setProbeState('idle');
       setIframeSrc(null);
       setProbeError(null);
+      return;
+    }
+    if (!isSecureBrowsingContext()) {
+      setProbeState('failed');
+      setIframeSrc(null);
+      setProbeError(secureContextGameMessage());
       return;
     }
     const url = resolveGameUrl(game.launchPath);

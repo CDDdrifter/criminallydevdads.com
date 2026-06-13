@@ -2,6 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- HTTPS first: iPhone Safari and other browsers require a secure context for embedded games. -->
+    <script>
+      (function () {
+        var loc = window.location;
+        var host = loc.hostname;
+        if (
+          loc.protocol === 'http:' &&
+          host !== 'localhost' &&
+          host !== '127.0.0.1' &&
+          host !== '[::1]'
+        ) {
+          loc.replace('https:' + loc.href.slice(loc.protocol.length));
+        }
+      })();
+    </script>
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
     <link rel="manifest" href="/site.webmanifest" />

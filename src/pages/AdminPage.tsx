@@ -162,6 +162,34 @@ function emptyPageDraft(): Partial<SitePage> & {
   };
 }
 
+function sitePageToDraft(p: SitePage): Partial<SitePage> & {
+  slug: string;
+  title: string;
+  sections: PageSection[];
+} {
+  return {
+    ...emptyPageDraft(),
+    slug: p.slug,
+    title: p.title,
+    body: p.body ?? '',
+    sections: ensureSectionIds(p.sections ?? []),
+    show_in_nav: p.show_in_nav ?? true,
+    sort_order: Number(p.sort_order ?? 0),
+    visual_preset: p.visual_preset ?? '',
+    immersive_layout: Boolean(p.immersive_layout),
+    custom_mood_css: String(p.custom_mood_css ?? ''),
+    page_mode: p.page_mode === 'html_app' ? 'html_app' : 'blocks',
+    raw_html: String(p.raw_html ?? ''),
+    unlisted: Boolean(p.unlisted),
+    published: p.published !== false,
+    comments_enabled: p.comments_enabled === false ? false : true,
+    show_on_apps_hub: p.show_on_apps_hub !== false,
+    html_app_summary: String(p.html_app_summary ?? ''),
+    html_iframe_compat: Boolean(p.html_iframe_compat),
+    route_fx: normalizeRouteFxOverride(p.route_fx),
+  };
+}
+
 const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => ({
   slug: '',
   title: '',
@@ -1033,7 +1061,7 @@ export function AdminPage() {
     const rawHtmlSaved = String(pageDraft.raw_html ?? '');
     const unlistedPage = Boolean(pageDraft.unlisted);
     const publishedPage = pageDraft.published !== false;
-    const commentsEnabled = pageDraft.comments_enabled !== false;
+    const commentsEnabled = pageDraft.comments_enabled === true;
     const showOnAppsHub = pageDraft.show_on_apps_hub !== false;
     const htmlSummary = String(pageDraft.html_app_summary ?? '');
     const iframeCompat = Boolean(pageDraft.html_iframe_compat);
@@ -1065,7 +1093,12 @@ export function AdminPage() {
           'Upsert returned OK but the page could not be read back (check RLS: site_pages row read for anon, or wrong slug).',
         );
       }
-      setPageDraft(emptyPageDraft());
+      setPageDraft(
+        sitePageToDraft({
+          ...verify,
+          comments_enabled: commentsEnabled,
+        }),
+      );
       await reload();
       setPageSaveStatus('success');
       setPageSaveSummary(
@@ -3551,7 +3584,7 @@ export function AdminPage() {
             <label className="admin-row" style={{ gap: 8 }}>
               <input
                 type="checkbox"
-                checked={pageDraft.comments_enabled !== false}
+                checked={pageDraft.comments_enabled === true}
                 onChange={(e) => setPageDraft({ ...pageDraft, comments_enabled: e.target.checked })}
               />
               Allow comments (off = hide the comment thread — good for policy / legal pages)
@@ -3623,23 +3656,7 @@ export function AdminPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        setPageDraft({
-                          ...p,
-                          sections: p.sections ?? [],
-                          visual_preset: p.visual_preset ?? '',
-                          immersive_layout: Boolean(p.immersive_layout),
-                          custom_mood_css: String(p.custom_mood_css ?? ''),
-                          page_mode: p.page_mode === 'html_app' ? 'html_app' : 'blocks',
-                          raw_html: String(p.raw_html ?? ''),
-                          unlisted: Boolean(p.unlisted),
-                          comments_enabled: p.comments_enabled !== false,
-                          show_on_apps_hub: p.show_on_apps_hub !== false,
-                          html_app_summary: String(p.html_app_summary ?? ''),
-                          html_iframe_compat: Boolean(p.html_iframe_compat),
-                          route_fx: normalizeRouteFxOverride(p.route_fx),
-                        })
-                      }
+                      onClick={() => setPageDraft(sitePageToDraft(p))}
                     >
                       Edit
                     </button>
