@@ -9,6 +9,15 @@
     "filename": "terracraft.zip"
   },
   {
+  "id": "ironviel",
+  "title": "Ironviel",
+  "type": "game",
+  "description": "[Add a short 1-line description of your game]",
+  "details": "[Optional: longer description with gameplay details]",
+  "thumbnail": "[Optional: image URL for the card thumbnail]",
+  "filename": "ironviel.zip"
+  },
+  {
     "id": "fortfury",
     "title": "Fort Fury",
     "type": "game",
