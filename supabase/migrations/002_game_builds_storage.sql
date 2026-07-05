@@ -3,8 +3,8 @@
 alter table site_games add column if not exists storage_slug text;
 
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('game-builds', 'game-builds', true, 524288000)
-on conflict (id) do update set public = excluded.public;
+values ('game-builds', 'game-builds', true, 10737418240)
+on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit;
 
 drop policy if exists "game_builds_public_read" on storage.objects;
 drop policy if exists "game_builds_admin_insert" on storage.objects;

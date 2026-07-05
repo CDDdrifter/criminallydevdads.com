@@ -813,13 +813,18 @@ export function AdminPage() {
           if (p.phase === 'parse') {
             setZipUploadHint('Reading ZIP…');
           } else if (p.phase === 'packaged') {
+            const sizeLabel =
+              p.totalBytes >= 1024 * 1024 * 1024
+                ? `${(p.totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+                : `${Math.max(1, Math.round(p.totalBytes / (1024 * 1024)))} MB`;
             setZipUploadHint(
-              `${p.fileCount} files from "${p.exportRootLabel}" — uploading (large files first)…`,
+              `${p.fileCount} files (${sizeLabel}) from "${p.exportRootLabel}" — uploading (${p.uploadConcurrency} at a time, large files first)…`,
             );
           } else if (p.phase === 'clearing') {
             setZipUploadHint('Removing previous build from server…');
           } else {
-            setZipUploadHint(`Uploading ${p.done}/${p.total} files…`);
+            const tail = p.currentPath ? ` — ${p.currentPath.split('/').pop()}` : '';
+            setZipUploadHint(`Uploading ${p.done}/${p.total} files…${tail}`);
           }
         },
       );
@@ -2970,6 +2975,11 @@ export function AdminPage() {
                 Storage does not send the special isolation headers some threaded Web builds need. Fix: export with{' '}
                 <strong>threads disabled</strong> for HTML5, <em>or</em> host the build on itch.io / Netlify /
                 Cloudflare Pages and paste that URL in <strong>External play URL</strong> instead of ZIP upload.
+              </p>
+              <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
+                Multi-GB builds are supported — keep this tab open until upload finishes. Files upload a few
+                at a time so your browser does not run out of memory on large <code>.pck</code> /{' '}
+                <code>.wasm</code> files.
               </p>
               {gameDraft.storage_slug ? (
                 <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>

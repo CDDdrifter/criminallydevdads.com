@@ -19,6 +19,9 @@ export const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
 
 export const MAX_PREVIEW_VIDEO_BYTES = 100 * 1024 * 1024;
 
+/** Per-object limit on `game-builds` (must match supabase migration 033). */
+export const MAX_GAME_BUILD_FILE_BYTES = 10 * 1024 * 1024 * 1024;
+
 const THUMB_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']);
 
 const VIDEO_EXT = new Set(['mp4', 'webm', 'mov']);
@@ -263,52 +266,61 @@ function normalizeIndexHtmlLeaf(relPath: string): string {
 }
 
 /**
- * Zip entries → relative paths under storage slug (no leading slash).
+ * Inventory a Web export ZIP without extracting every file into memory.
+ * Returns the loaded JSZip handle plus upload metadata.
  */
-async function zipToRelativeFiles(zipFile: File): Promise<{
-  files: { path: string; blob: Blob }[];
+async function loadZipUploadPlan(zipFile: File): Promise<{
+  zip: JSZip;
+  entries: ZipUploadEntry[];
   exportRootLabel: string;
   indexCandidates: string[];
-  /** Storage path (under slug) for the auto-detected playable HTML — set on every ZIP upload. */
   detectedEntry: string;
+  totalBytes: number;
 }> {
   const buf = await zipFile.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
-  /** Normalized path + raw zip key so `zip.file(raw)` always resolves (Windows paths, etc.). */
-  const items: { normPath: string; rawPath: string }[] = [];
+  const items: ZipUploadEntry[] = [];
   zip.forEach((relPath, entry) => {
-    if (!entry.dir) {
-      const n = norm(relPath);
-      if (!isJunkZipPath(n)) {
-        items.push({ normPath: n, rawPath: relPath });
-      }
+    if (entry.dir) {
+      return;
     }
+    const n = norm(relPath);
+    if (!n || isJunkZipPath(n)) {
+      return;
+    }
+    items.push({ normPath: n, rawPath: relPath, size: zipEntryByteSize(entry) });
   });
   const paths = items.map((i) => i.normPath);
   const entryZipPath = pickPlayableIndexPath(paths);
   const exportRootLabel = dirPrefixOf(entryZipPath).replace(/\/$/, '') || 'zip root';
-
   const entryRel = normalizeIndexHtmlLeaf(entryZipPath) || 'index.html';
 
-  const out: { path: string; blob: Blob }[] = [];
-  for (const { normPath, rawPath } of items) {
-    let rel = normPath;
+  const normalized: ZipUploadEntry[] = [];
+  for (const item of items) {
+    let rel = normalizeIndexHtmlLeaf(item.normPath);
     if (!rel || rel.endsWith('/')) {
       continue;
     }
-    rel = normalizeIndexHtmlLeaf(rel);
-    const zf = zip.file(rawPath) ?? zip.file(normPath);
-    if (!zf) {
-      continue;
-    }
-    const blob = await zf.async('blob');
-    out.push({ path: rel, blob });
+    normalized.push({ ...item, normPath: rel });
   }
-  if (out.length === 0) {
+  if (normalized.length === 0) {
     throw new Error('No files found under HTML export root.');
   }
-  const indexCandidates = out
-    .map((f) => f.path)
+
+  const oversize = normalized.filter((e) => e.size > MAX_GAME_BUILD_FILE_BYTES);
+  if (oversize.length > 0) {
+    const sample = oversize
+      .slice(0, 3)
+      .map((e) => `${e.normPath} (${formatBytes(e.size)})`)
+      .join(', ');
+    throw new Error(
+      `${oversize.length} file(s) exceed the ${formatBytes(MAX_GAME_BUILD_FILE_BYTES)} Storage limit (e.g. ${sample}). ` +
+        'Run migration 033 in Supabase SQL, or split/host the build elsewhere.',
+    );
+  }
+
+  const indexCandidates = normalized
+    .map((f) => f.normPath)
     .filter((rel) => /(^|\/)index\.html$/i.test(rel))
     .sort((a, b) => {
       const da = a.split('/').filter(Boolean).length;
@@ -322,13 +334,60 @@ async function zipToRelativeFiles(zipFile: File): Promise<{
     throw new Error('Missing index.html next to export assets.');
   }
   const detectedEntry = indexCandidates.includes(entryRel) ? entryRel : (indexCandidates[0] ?? 'index.html');
-  return { files: out, exportRootLabel, indexCandidates, detectedEntry };
+  const totalBytes = normalized.reduce((sum, e) => sum + e.size, 0);
+  return { zip, entries: normalized, exportRootLabel, indexCandidates, detectedEntry, totalBytes };
+}
+
+async function extractZipEntryBlob(zip: JSZip, item: ZipUploadEntry): Promise<Blob> {
+  const zf = zip.file(item.rawPath) ?? zip.file(item.normPath);
+  if (!zf) {
+    throw new Error(`Missing ZIP entry: ${item.normPath}`);
+  }
+  return zf.async('blob');
 }
 
 const STORAGE_LIST_PAGE = 1000;
-/** Parallel uploads — large blobs (.wasm/.pck) are queued first so they don’t stall at the end. */
-const UPLOAD_CONCURRENCY = 12;
-const UPLOAD_RETRIES = 6;
+/** Default parallel uploads — lowered automatically for multi-GB builds. */
+const UPLOAD_CONCURRENCY = 8;
+const UPLOAD_RETRIES = 8;
+
+type ZipUploadEntry = {
+  normPath: string;
+  rawPath: string;
+  size: number;
+};
+
+/** Uncompressed size from the ZIP central directory (no extract). */
+function zipEntryByteSize(entry: JSZip.JSZipObject): number {
+  const internal = entry as JSZip.JSZipObject & { _data?: { uncompressedSize?: number } };
+  const size = internal._data?.uncompressedSize;
+  return typeof size === 'number' && size >= 0 ? size : 0;
+}
+
+function pickUploadConcurrency(entries: ZipUploadEntry[]): number {
+  const totalBytes = entries.reduce((sum, e) => sum + e.size, 0);
+  const maxBytes = entries.reduce((max, e) => Math.max(max, e.size), 0);
+  if (maxBytes > 300 * 1024 * 1024 || totalBytes > 2 * 1024 * 1024 * 1024) {
+    return 2;
+  }
+  if (maxBytes > 80 * 1024 * 1024 || totalBytes > 800 * 1024 * 1024) {
+    return 4;
+  }
+  return UPLOAD_CONCURRENCY;
+}
+
+function formatBytes(n: number): string {
+  if (n >= 1024 * 1024 * 1024) {
+    return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+  if (n >= 1024 * 1024) {
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  if (n >= 1024) {
+    return `${Math.round(n / 1024)} KB`;
+  }
+  return `${n} B`;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -403,19 +462,26 @@ async function uploadStorageObjectWithRetries(objectPath: string, blob: Blob, co
       return;
     }
     lastMsg = error.message;
-    await sleep(350 * 2 ** attempt);
+    const backoff = blob.size > 64 * 1024 * 1024 ? 800 : 350;
+    await sleep(backoff * 2 ** attempt);
   }
   throw new Error(`${objectPath}: ${lastMsg}`);
 }
 
-async function uploadExtractedFilesParallel(
+/**
+ * Extract each ZIP entry on demand, upload, then drop the blob so multi-GB builds do not OOM the tab.
+ */
+async function uploadZipEntriesStreaming(
+  zip: JSZip,
   slug: string,
-  files: { path: string; blob: Blob }[],
-  onChunk?: (done: number, total: number) => void,
+  entries: ZipUploadEntry[],
+  onChunk?: (done: number, total: number, currentPath?: string) => void,
 ): Promise<number> {
-  const total = files.length;
+  const total = entries.length;
   let done = 0;
-  const queue = [...files];
+  /** Large binaries first so slow uploads start early; only a few blobs live in memory at once. */
+  const queue = [...entries].sort((a, b) => b.size - a.size);
+  const concurrency = pickUploadConcurrency(entries);
 
   async function worker(): Promise<void> {
     while (queue.length > 0) {
@@ -423,24 +489,24 @@ async function uploadExtractedFilesParallel(
       if (!item) {
         break;
       }
-      const objectPath = `${slug}/${item.path}`;
-      await uploadStorageObjectWithRetries(objectPath, item.blob, guessContentType(item.path));
+      const blob = await extractZipEntryBlob(zip, item);
+      const objectPath = `${slug}/${item.normPath}`;
+      await uploadStorageObjectWithRetries(objectPath, blob, guessContentType(item.normPath));
       done += 1;
-      onChunk?.(done, total);
+      onChunk?.(done, total, item.normPath);
     }
   }
 
-  const n = Math.min(UPLOAD_CONCURRENCY, Math.max(1, total));
-  await Promise.all(Array.from({ length: n }, () => worker()));
+  await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(1, total)) }, () => worker()));
   return total;
 }
 
 /** Progress callbacks while processing a Web export ZIP (optional UI wiring). */
 export type ZipUploadProgress =
   | { phase: 'parse' }
-  | { phase: 'packaged'; exportRootLabel: string; fileCount: number }
+  | { phase: 'packaged'; exportRootLabel: string; fileCount: number; totalBytes: number; uploadConcurrency: number }
   | { phase: 'clearing' }
-  | { phase: 'upload'; done: number; total: number };
+  | { phase: 'upload'; done: number; total: number; currentPath?: string };
 
 function mimeRepairOrder(path: string): number {
   const ext = path.split('.').pop()?.toLowerCase() ?? '';
@@ -551,19 +617,25 @@ export async function uploadGameZip(
     throw new Error('Invalid game slug for upload.');
   }
   onProgress?.({ phase: 'parse' });
-  const { files, exportRootLabel, indexCandidates, detectedEntry } = await zipToRelativeFiles(zipFile);
-  /** Start big binaries first so parallel workers aren’t idle while the last .wasm/.pck trickles in. */
-  files.sort((a, b) => b.blob.size - a.blob.size);
-  onProgress?.({ phase: 'packaged', exportRootLabel, fileCount: files.length });
+  const { zip, entries, exportRootLabel, indexCandidates, detectedEntry, totalBytes } =
+    await loadZipUploadPlan(zipFile);
+  const uploadConcurrency = pickUploadConcurrency(entries);
+  onProgress?.({
+    phase: 'packaged',
+    exportRootLabel,
+    fileCount: entries.length,
+    totalBytes,
+    uploadConcurrency,
+  });
   if (wipeFirst) {
     onProgress?.({ phase: 'clearing' });
     await deleteGameBuild(slug);
   }
-  onProgress?.({ phase: 'upload', done: 0, total: files.length });
-  await uploadExtractedFilesParallel(slug, files, (done, total) => {
-    onProgress?.({ phase: 'upload', done, total });
+  onProgress?.({ phase: 'upload', done: 0, total: entries.length });
+  await uploadZipEntriesStreaming(zip, slug, entries, (done, total, currentPath) => {
+    onProgress?.({ phase: 'upload', done, total, currentPath });
   });
-  return { fileCount: files.length, exportRootLabel, indexCandidates, detectedEntry };
+  return { fileCount: entries.length, exportRootLabel, indexCandidates, detectedEntry };
 }
 
 export async function uploadGameTabIcon(gameSlug: string, file: File): Promise<string> {
