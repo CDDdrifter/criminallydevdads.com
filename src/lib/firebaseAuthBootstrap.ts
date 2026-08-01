@@ -1,10 +1,15 @@
-/**
- * Complete Firebase redirect sign-in exactly once per full page load.
- * Must run before React StrictMode remounts or any URL rewrite (see authBootstrap.ts).
- */
+/** Complete Firebase redirect sign-in exactly once per full page load. */
 import { getRedirectResult, type Auth, type UserCredential } from 'firebase/auth';
 
 let redirectResultOnce: Promise<UserCredential | null> | null = null;
+
+export function isFirebaseRedirectReturn(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  const params = new URLSearchParams(window.location.search);
+  return params.get('authType') === 'signInViaRedirect' || params.has('code');
+}
 
 export async function completeRedirectSignIn(auth: Auth): Promise<UserCredential | null> {
   if (!redirectResultOnce) {

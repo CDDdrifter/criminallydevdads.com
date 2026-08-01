@@ -14,6 +14,7 @@ import { stashAuthReturn } from '../lib/authBootstrap';
 import { ensureProfile, fetchProfile } from '../lib/communityData';
 import { installGameCloudBridge } from '../lib/gameCloudBridge';
 import { auth, initFirebase } from '../lib/firebase';
+import { cleanFirebaseAuthParamsFromUrl, completeRedirectSignIn } from '../lib/firebaseAuthBootstrap';
 import { trackSignIn } from '../lib/analytics';
 
 export type AuthProfile = {
@@ -71,17 +72,46 @@ function preferRedirectSignIn(): boolean {
     return false;
   }
   const host = window.location.hostname;
-  return host !== 'localhost' && host !== '127.0.0.1';
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return false;
+  }
+  // Popups are more reliable on custom domains; use redirect only on mobile-sized viewports.
+  const mobile =
+    window.matchMedia('(max-width: 768px)').matches ||
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  return mobile;
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
 }
 
 async function applyUserSession(user: User): Promise<{ profile: AuthProfile; isAdmin: boolean }> {
   let profile = profileFromUser(user);
+  const isAdmin = await isAdminEmail(user.email);
+
   try {
-    const prof = await ensureProfile(user.uid, {
-      name: user.displayName ?? undefined,
-      avatar: user.photoURL ?? undefined,
-      email: user.email ?? undefined,
-    });
+    const prof = await withTimeout(
+      ensureProfile(user.uid, {
+        name: user.displayName ?? undefined,
+        avatar: user.photoURL ?? undefined,
+        email: user.email ?? undefined,
+      }),
+      4000,
+      null,
+    );
     if (prof) {
       profile = {
         display_name: prof.display_name,
@@ -95,7 +125,7 @@ async function applyUserSession(user: User): Promise<{ profile: AuthProfile; isA
   } catch (err) {
     console.warn('[auth] profile bootstrap failed', err);
   }
-  const isAdmin = await isAdminEmail(user.email);
+
   return { profile, isAdmin };
 }
 
@@ -111,6 +141,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     let unsub: (() => void) | undefined;
+    const loadingCap = window.setTimeout(() => {
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }, 10000);
 
     void (async () => {
       const ready = await initFirebase();
@@ -129,6 +164,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setAuthConfigured(true);
       setAuthInitError(null);
+
+      // Fallback if redirect completed before React mounted but state was missed.
+      if (!auth.currentUser) {
+        try {
+          const redirectResult = await completeRedirectSignIn(auth);
+          if (redirectResult?.user) {
+            cleanFirebaseAuthParamsFromUrl();
+          }
+        } catch (err) {
+          console.warn('[auth] redirect result fallback failed', err);
+        }
+      }
 
       unsub = onAuthStateChanged(auth, async (next) => {
         if (cancelled) {
@@ -168,6 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
       unsub?.();
+      window.clearTimeout(loadingCap);
     };
   }, []);
 
