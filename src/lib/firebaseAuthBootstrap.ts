@@ -1,5 +1,10 @@
 /** Complete Firebase redirect sign-in exactly once per full page load. */
-import { getRedirectResult, type Auth, type UserCredential } from 'firebase/auth';
+import {
+  browserPopupRedirectResolver,
+  getRedirectResult,
+  type Auth,
+  type UserCredential,
+} from 'firebase/auth';
 
 let redirectResultOnce: Promise<UserCredential | null> | null = null;
 
@@ -13,7 +18,7 @@ export function isFirebaseRedirectReturn(): boolean {
 
 export async function completeRedirectSignIn(auth: Auth): Promise<UserCredential | null> {
   if (!redirectResultOnce) {
-    redirectResultOnce = getRedirectResult(auth);
+    redirectResultOnce = getRedirectResult(auth, browserPopupRedirectResolver);
   }
   try {
     return await redirectResultOnce;

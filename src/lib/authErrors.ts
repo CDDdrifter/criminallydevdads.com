@@ -17,6 +17,12 @@ export function humanizeOAuthError(raw: string): string {
   const lower = t.toLowerCase();
   const base = getAuthRedirectBaseUrl();
 
+  if (lower.includes('popup-blocked') || lower.includes('auth/popup-blocked')) {
+    return `${t}
+
+Allow popups for criminallydevdads.com in your browser (address bar → site settings → popups), then click Sign in again.`;
+  }
+
   if (lower.includes('unauthorized-domain') || lower.includes('auth/unauthorized-domain')) {
     return `${t}
 

@@ -5,7 +5,6 @@ import {
   onAuthStateChanged,
   setPersistence,
   signInWithPopup,
-  signInWithRedirect,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -14,7 +13,6 @@ import { stashAuthReturn } from '../lib/authBootstrap';
 import { ensureProfile, fetchProfile } from '../lib/communityData';
 import { installGameCloudBridge } from '../lib/gameCloudBridge';
 import { auth, initFirebase } from '../lib/firebase';
-import { cleanFirebaseAuthParamsFromUrl, completeRedirectSignIn } from '../lib/firebaseAuthBootstrap';
 import { trackSignIn } from '../lib/analytics';
 
 export type AuthProfile = {
@@ -65,21 +63,6 @@ function profileFromUser(user: User): AuthProfile {
     mailing_list_opt_in: false,
     created_at: user.metadata.creationTime ?? undefined,
   };
-}
-
-function preferRedirectSignIn(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1') {
-    return false;
-  }
-  // Popups are more reliable on custom domains; use redirect only on mobile-sized viewports.
-  const mobile =
-    window.matchMedia('(max-width: 768px)').matches ||
-    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-  return mobile;
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -165,18 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthConfigured(true);
       setAuthInitError(null);
 
-      // Fallback if redirect completed before React mounted but state was missed.
-      if (!auth.currentUser) {
-        try {
-          const redirectResult = await completeRedirectSignIn(auth);
-          if (redirectResult?.user) {
-            cleanFirebaseAuthParamsFromUrl();
-          }
-        } catch (err) {
-          console.warn('[auth] redirect result fallback failed', err);
-        }
-      }
-
       unsub = onAuthStateChanged(auth, async (next) => {
         if (cancelled) {
           return;
@@ -249,22 +220,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    if (preferRedirectSignIn()) {
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-
     try {
       await signInWithPopup(auth, provider);
     } catch (err) {
       const code = err && typeof err === 'object' && 'code' in err ? String((err as { code: string }).code) : '';
-      if (
-        code === 'auth/popup-blocked' ||
-        code === 'auth/popup-closed-by-user' ||
-        code === 'auth/cancelled-popup-request'
-      ) {
-        await signInWithRedirect(auth, provider);
-        return;
+      if (code === 'auth/popup-blocked') {
+        throw new Error(
+          'Your browser blocked the Google sign-in popup. Allow popups for criminallydevdads.com, then try again.',
+        );
+      }
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        throw new Error('Sign-in was cancelled.');
       }
       throw err;
     }

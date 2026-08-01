@@ -6,7 +6,14 @@
  * VITE_FIREBASE_* env vars are an optional build-time fallback.
  */
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import {
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  getAuth,
+  indexedDBLocalPersistence,
+  initializeAuth,
+  type Auth,
+} from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import bundledConfig from '../../cms/firebase-config.json';
@@ -49,6 +56,17 @@ function defaultStorageBucket(projectId: string): string {
   return `${projectId}.appspot.com`;
 }
 
+function createAuth(firebaseApp: FirebaseApp): Auth {
+  try {
+    return initializeAuth(firebaseApp, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver,
+    });
+  } catch {
+    return getAuth(firebaseApp);
+  }
+}
+
 function applyConfig(cfg: FirebasePublicConfig): boolean {
   if (!isComplete(cfg)) {
     configured = false;
@@ -63,7 +81,7 @@ function applyConfig(cfg: FirebasePublicConfig): boolean {
       appId: cfg.appId || undefined,
       storageBucket: cfg.storageBucket || defaultStorageBucket(projectId),
     });
-    auth = getAuth(app);
+    auth = createAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
   }
@@ -111,12 +129,17 @@ function bootstrapFirebaseSync(): boolean {
 // Sync init so getRedirectResult can run immediately on OAuth return (no fetch wait).
 bootstrapFirebaseSync();
 
-/** Sync check — only true after initFirebase() succeeds. */
+/** Sync check — Auth (+ Firestore) initialized. */
 export function isFirebaseReady(): boolean {
   return configured && auth !== null && db !== null;
+}
+
+/** Sync check — Auth only (sign-in works without Firestore data). */
+export function isAuthReady(): boolean {
+  return configured && auth !== null;
 }
 
 /** @deprecated Use initFirebase() + isFirebaseReady() or useAuth().authConfigured */
 export const firebaseConfigured = isComplete(configFromEnv());
 
-export { app, auth, db, storage };
+export { app, auth, db, storage, browserPopupRedirectResolver };

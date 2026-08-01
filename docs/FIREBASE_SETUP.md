@@ -124,9 +124,30 @@ That is it. Anyone with a Google account can sign in once this file is filled in
 ### Still using GitHub Actions secrets?
 → Optional backup only. The site reads **`cms/firebase-config.json` first**. If that file has values, secrets are ignored. Prefer the JSON file — it is simpler and matches how Firebase docs expect web apps to work.
 
+### Sign-in goes to Google then returns unsigned in
+→ You were using **redirect** sign-in, which breaks on GitHub Pages + custom domain. The site now uses a **popup**. Allow popups for criminallydevdads.com and try again. You do **not** need Firestore for sign-in.
+
+### Popups blocked
+→ Browser blocked the Google window. Allow popups for this site, then retry.
+
 ---
 
-# What you are NOT setting up
+# What you need for Google sign-in (minimum)
+
+You do **not** need Firestore or Storage just to sign in. Minimum setup:
+
+| Required | Firebase Console step |
+|----------|----------------------|
+| Yes | Create project + web app (Steps 1, 4) |
+| Yes | Enable **Google** sign-in (Step 2) |
+| Yes | Add **Authorized domains** — `criminallydevdads.com` and `www.criminallydevdads.com` (Step 3) |
+| Yes | Fill in `cms/firebase-config.json` and deploy (Step 5) |
+| No (later) | Firestore — comments, cloud saves, live CMS |
+| No (later) | Storage — thumbnails / uploads |
+
+**Important:** This site uses a **Google popup** to sign in (not a full-page redirect). Redirect sign-in does not work reliably on GitHub Pages + a custom domain. If sign-in fails, **allow popups** for criminallydevdads.com in your browser.
+
+# What you are NOT setting up (for basic sign-in)
 
 - Firebase Hosting (you use GitHub Pages)
 - Cloud game ZIP hosting (games live in `games/` folder)
