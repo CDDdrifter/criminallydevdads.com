@@ -9,6 +9,7 @@ import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import bundledConfig from '../../cms/firebase-config.json';
 import { fetchStaticJson } from './staticCms';
 
 export type FirebasePublicConfig = {
@@ -94,6 +95,21 @@ export async function initFirebase(): Promise<boolean> {
 
   return initPromise;
 }
+
+function bootstrapFirebaseSync(): boolean {
+  const fromFile = bundledConfig as FirebasePublicConfig;
+  if (isComplete(fromFile)) {
+    return applyConfig(fromFile);
+  }
+  const fromEnv = configFromEnv();
+  if (isComplete(fromEnv)) {
+    return applyConfig(fromEnv);
+  }
+  return false;
+}
+
+// Sync init so getRedirectResult can run immediately on OAuth return (no fetch wait).
+bootstrapFirebaseSync();
 
 /** Sync check — only true after initFirebase() succeeds. */
 export function isFirebaseReady(): boolean {

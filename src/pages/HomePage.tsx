@@ -8,7 +8,7 @@ import { SiteSocialFollow } from '../components/SiteSocialFollow';
 import { useGames } from '../hooks/useGames';
 import { gameCatalogMode } from '../lib/gameCatalog';
 import { activePromoEvents } from '../lib/promoEvents';
-import { supabaseConfigured } from '../lib/supabase';
+import { backendConfigured } from '../lib/backend';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 export function HomePage() {
@@ -205,7 +205,7 @@ export function HomePage() {
           <p>No games found in this category.</p>
           {games.length === 0 && filter === 'all' ? (
             <p style={{ marginTop: 16 }} className="admin-muted">
-              {supabaseConfigured && gameCatalogMode() === 'cms' ? (
+              {backendConfigured() && gameCatalogMode() === 'cms' ? (
                 <>
                   <Link to="/admin">Open Admin</Link> to add games, or set{' '}
                   <code>VITE_GAME_CATALOG=auto</code> in the build to use <code>games.json</code> again.
@@ -213,7 +213,7 @@ export function HomePage() {
               ) : (
                 <>
                   Edit <code>games.json</code> and put builds in <code>games/&lt;slug&gt;/</code>, then push.
-                  {supabaseConfigured ? (
+                  {backendConfigured() ? (
                     <>
                       {' '}
                       Or <Link to="/admin">Admin</Link> once your team login works.

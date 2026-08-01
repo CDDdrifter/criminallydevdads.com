@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { setFirstPartyAnalyticsEnabled, trackPageView } from '../lib/analytics';
-import { supabaseConfigured } from '../lib/supabase';
+import { backendConfigured } from '../lib/backend';
 import { useAuth } from '../context/AuthContext';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
@@ -13,12 +13,12 @@ export function SiteAnalytics() {
 
   useEffect(() => {
     const on =
-      supabaseConfigured && settings.behavior?.first_party_analytics_enabled !== false;
+      backendConfigured() && settings.behavior?.first_party_analytics_enabled !== false;
     setFirstPartyAnalyticsEnabled(on);
   }, [settings.behavior?.first_party_analytics_enabled]);
 
   useEffect(() => {
-    if (!supabaseConfigured || settings.behavior?.first_party_analytics_enabled === false) {
+    if (!backendConfigured() || settings.behavior?.first_party_analytics_enabled === false) {
       return;
     }
     const path = `${location.pathname}${location.search}`;

@@ -8,7 +8,7 @@ import {
   type CommentTargetType,
   type SiteComment,
 } from '../lib/communityData';
-import { supabaseConfigured } from '../lib/supabase';
+import { backendConfigured } from '../lib/backend';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 type Props = {
@@ -29,7 +29,7 @@ export function CommentSection({ targetType, targetKey, title = 'Comments' }: Pr
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    if (!supabaseConfigured || !enabled) {
+    if (!backendConfigured() || !enabled) {
       setComments([]);
       setLoading(false);
       return;
@@ -44,7 +44,7 @@ export function CommentSection({ targetType, targetKey, title = 'Comments' }: Pr
     void reload();
   }, [reload]);
 
-  if (!supabaseConfigured || !enabled) {
+  if (!backendConfigured() || !enabled) {
     return null;
   }
 

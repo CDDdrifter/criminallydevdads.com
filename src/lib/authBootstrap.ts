@@ -1,8 +1,6 @@
 /**
  * Path-based SPA helpers for Firebase Auth redirect flow.
  */
-import { getAuthRedirectBaseUrl } from './authRedirect';
-
 const AUTH_RETURN_KEY = 'cdd_auth_return';
 
 /** Where to send the user after Google sign-in completes. */
@@ -18,18 +16,8 @@ export function popAuthReturn(): string {
   return p;
 }
 
-/** Minimal bootstrap — no hash routing needed with BrowserRouter. */
+/** No-op — kept for main.tsx import stability. Do NOT rewrite OAuth URLs (breaks Firebase redirect). */
 export function bootstrapSpaAuthPaths(): void {
-  // Redirect OAuth code params to /auth/callback if they land on root
-  const { pathname, search, origin } = window.location;
-  const params = new URLSearchParams(search);
-  if (params.get('code') && pathname !== '/auth/callback') {
-    window.history.replaceState(window.history.state, '', `${origin}/auth/callback${search}`);
-  }
-}
-
-/** Strip OAuth query params after sign-in completes. */
-export function cleanOAuthQueryFromUrl() {
-  const base = getAuthRedirectBaseUrl().replace(/\/$/, '');
-  window.history.replaceState({}, '', `${base}/auth/callback`);
+  // Firebase signInWithRedirect must return to the same URL getRedirectResult expects.
+  // Old Supabase code rewrote ?code= to /auth/callback — that prevented sign-in from sticking.
 }

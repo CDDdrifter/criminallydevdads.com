@@ -1,5 +1,5 @@
 /**
- * CMS: sellable services / gigs (migration 025).
+ * CMS: sellable services / gigs — stored in Firestore.
  */
 import type { ServicePricingModel, ServiceView, SiteService } from '../types';
 import { donationPresetsFromUnknown } from './gamePricing';
@@ -8,8 +8,14 @@ import {
   normalizeVariantGroups,
   servicePricingModelFromRecord,
 } from './servicePricing';
-import { supabase, supabaseConfigured } from './supabase';
-import { unknownColumnFromPostgrestMessage } from './postgrestUnknownColumn';
+import {
+  ensureFirestore,
+  firestoreDeleteService,
+  firestoreGetServiceBySlug,
+  firestoreListServices,
+  firestoreUpsertService,
+} from './firestoreData';
+import { isFirebaseReady } from './firebase';
 
 function normalizeService(row: Record<string, unknown>): SiteService {
   const features = row.features;
@@ -83,64 +89,46 @@ export function serviceToView(s: SiteService): ServiceView {
 }
 
 export async function fetchPublishedServices(): Promise<ServiceView[]> {
-  if (!supabaseConfigured || !supabase) return [];
-  const { data, error } = await supabase
-    .from('site_services')
-    .select('*')
-    .eq('published', true)
-    .eq('show_on_services_hub', true)
-    .order('sort_order', { ascending: true });
-  if (error) {
-    console.warn('[services] fetch', error.message);
-    return [];
-  }
-  return (data ?? []).map((row) => serviceToView(normalizeService(row as Record<string, unknown>)));
+  if (!(await ensureFirestore())) return [];
+  const rows = await firestoreListServices(true);
+  return rows
+    .filter((r) => r.show_on_services_hub !== false)
+    .map((row) => serviceToView(normalizeService(row)));
 }
 
 export async function fetchServiceBySlug(slug: string): Promise<ServiceView | null> {
-  if (!supabaseConfigured || !supabase) return null;
-  const { data, error } = await supabase
-    .from('site_services')
-    .select('*')
-    .eq('slug', slug)
-    .eq('published', true)
-    .maybeSingle();
-  if (error || !data) return null;
-  return serviceToView(normalizeService(data as Record<string, unknown>));
+  if (!(await ensureFirestore())) return null;
+  const data = await firestoreGetServiceBySlug(slug);
+  if (!data || data.published === false) return null;
+  return serviceToView(normalizeService(data));
 }
 
 export async function fetchAllServicesAdmin(): Promise<SiteService[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase.from('site_services').select('*').order('sort_order');
-  if (error) {
-    console.error('[services] admin', error);
-    return [];
-  }
-  return (data ?? []).map((row) => normalizeService(row as Record<string, unknown>));
+  if (!(await ensureFirestore())) return [];
+  const rows = await firestoreListServices(false);
+  return rows.map((row) => normalizeService(row));
 }
 
 export async function upsertService(row: Partial<SiteService> & { slug: string; title: string }) {
-  if (!supabase) throw new Error('Supabase not configured');
-  const payload: Record<string, unknown> = {
+  if (!(await ensureFirestore())) throw new Error('Firebase not configured');
+  const slug = row.slug.trim();
+  await firestoreUpsertService(slug, {
     ...row,
+    slug,
+    title: row.title.trim(),
     updated_at: new Date().toISOString(),
     donation_presets_cents: row.donation_presets_cents ?? [],
     features: row.features ?? [],
-  };
-  for (let attempt = 0; attempt < 16; attempt++) {
-    const { error } = await supabase.from('site_services').upsert(payload, { onConflict: 'slug' });
-    if (!error) return;
-    const unknown = unknownColumnFromPostgrestMessage(error.message ?? '');
-    if (!unknown || !(unknown in payload)) throw error;
-    delete payload[unknown];
-  }
-  throw new Error('Could not save service (run migration 025).');
+  });
 }
 
 export async function deleteServiceSlug(slug: string) {
-  if (!supabase) throw new Error('Supabase not configured');
-  const { error } = await supabase.from('site_services').delete().eq('slug', slug);
-  if (error) throw error;
+  if (!(await ensureFirestore())) throw new Error('Firebase not configured');
+  await firestoreDeleteService(slug);
+}
+
+export function servicesBackendReady(): boolean {
+  return isFirebaseReady();
 }
 
 export const SERVICE_CATEGORY_OPTIONS = [

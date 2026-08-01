@@ -129,7 +129,14 @@ That is it. Anyone with a Google account can sign in once this file is filled in
 # What you are NOT setting up
 
 - Firebase Hosting (you use GitHub Pages)
-- Firestore / Storage (games are in `games/` folder)
-- Google Cloud Console OAuth manually (Firebase handles it when you enable Google)
+- Cloud game ZIP hosting (games live in `games/` folder)
 
-Firebase = **Sign in with Google** only.
+# What you ARE setting up
+
+- **Firebase Auth** — Google sign-in
+- **Firestore** — CMS edits, comments, saves, analytics, services
+- **Storage** — thumbnails, preview videos, studio branding assets
+
+See [`FIREBASE_MIGRATION.md`](FIREBASE_MIGRATION.md) for Firestore + Storage enable steps and deploying security rules.
+
+Firebase = **website backend**. Games = **GitHub repo files**.

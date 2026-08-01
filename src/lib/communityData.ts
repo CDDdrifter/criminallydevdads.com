@@ -1,7 +1,28 @@
 /**
  * Public community layer: profiles, comments, cloud game saves, analytics summary.
+ * Backed by Firebase Firestore (replaces Supabase).
  */
-import { supabase } from './supabase';
+import { auth, isFirebaseReady } from './firebase';
+import {
+  bootstrapUsername,
+  ensureFirestore,
+  firestoreAddComment,
+  firestoreAdminListComments,
+  firestoreAdminListServiceRequests,
+  firestoreAnalyticsSummary,
+  firestoreDeleteComment,
+  firestoreGetProfile,
+  firestoreIsUsernameAvailable,
+  firestoreListComments,
+  firestoreListProfiles,
+  firestoreListUserGameSaves,
+  firestoreLoadGameSave,
+  firestoreMailingListCount,
+  firestoreMailingListPreview,
+  firestoreSaveGameSave,
+  firestoreSubmitServiceRequest,
+  firestoreUpsertProfile,
+} from './firestoreData';
 
 export type CommentTargetType = 'game' | 'page' | 'devlog';
 
@@ -9,7 +30,6 @@ export type SiteProfile = {
   id: string;
   display_name: string;
   avatar_url: string;
-  /** Unique public handle (lowercase, 3–32 chars). */
   username: string;
   mailing_list_opt_in: boolean;
   mailing_list_opted_in_at: string | null;
@@ -84,70 +104,53 @@ export type AnalyticsSummary = {
   signed_in_users: number;
   comments_posted: number;
   registered_profiles: number;
-  /** Raw counts per `event_type` in the window (page_view, game_play, …). */
   events_by_type: Record<string, number>;
   top_paths: { path: string; views: number }[];
   top_games: { game_slug: string; plays: number }[];
-  /** HTML mini-apps / sandbox pages tracked as `app_open`. */
   top_app_opens: { app_key: string; opens: number }[];
-  /** Per published game (migration 024). */
   game_analytics: GameAnalyticsRow[];
 };
 
-export async function ensureProfile(userId: string, meta?: { name?: string; avatar?: string }) {
-  if (!supabase) return null;
+function asProfile(row: Record<string, unknown>): SiteProfile {
+  return {
+    id: String(row.id ?? ''),
+    display_name: String(row.display_name ?? 'Player'),
+    avatar_url: String(row.avatar_url ?? ''),
+    username: String(row.username ?? ''),
+    mailing_list_opt_in: Boolean(row.mailing_list_opt_in ?? false),
+    mailing_list_opted_in_at: row.mailing_list_opted_in_at ? String(row.mailing_list_opted_in_at) : null,
+    created_at: String(row.created_at ?? new Date().toISOString()),
+    updated_at: String(row.updated_at ?? new Date().toISOString()),
+  };
+}
+
+export async function ensureProfile(userId: string, meta?: { name?: string; avatar?: string; email?: string }) {
+  if (!(await ensureFirestore())) return null;
   const display_name = meta?.name?.trim() || 'Player';
   const avatar_url = meta?.avatar?.trim() || '';
+  const email = meta?.email?.trim() || auth?.currentUser?.email || '';
   const existing = await fetchProfile(userId);
   if (existing) {
-    const { data, error } = await supabase
-      .from('site_profiles')
-      .update({ display_name, avatar_url, updated_at: new Date().toISOString() })
-      .eq('id', userId)
-      .select()
-      .single();
-    if (error) {
-      console.warn('[profile] update failed', error.message);
-      return existing;
-    }
-    return data as SiteProfile;
+    return asProfile(
+      await firestoreUpsertProfile(userId, { display_name, avatar_url, email: email || existing.id }),
+    );
   }
 
-  const { data: bootUname, error: rpcErr } = await supabase.rpc('bootstrap_my_username');
-  if (rpcErr) {
-    console.warn('[profile] bootstrap_my_username', rpcErr.message);
+  let username = bootstrapUsername(userId);
+  const available = await firestoreIsUsernameAvailable(username, userId);
+  if (!available) {
+    username = `${bootstrapUsername(userId)}_${Math.random().toString(36).slice(2, 6)}`;
   }
-  let username =
-    typeof bootUname === 'string' && bootUname.length >= 3 ? bootUname : `u_${userId.replace(/-/g, '').slice(0, 12)}`;
-  username = username.slice(0, 32);
 
-  const { data, error } = await supabase
-    .from('site_profiles')
-    .insert({
-      id: userId,
+  return asProfile(
+    await firestoreUpsertProfile(userId, {
       display_name,
       avatar_url,
       username,
+      email,
       mailing_list_opt_in: false,
-      updated_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (error) {
-    if (error.code === '23505') {
-      const { data: merged } = await supabase
-        .from('site_profiles')
-        .update({ display_name, avatar_url, updated_at: new Date().toISOString() })
-        .eq('id', userId)
-        .select()
-        .single();
-      return (merged as SiteProfile) ?? null;
-    }
-    console.warn('[profile] insert failed', error.message);
-    return null;
-  }
-  return data as SiteProfile;
+    }),
+  );
 }
 
 const USERNAME_RE = /^[a-z][a-z0-9_]{2,31}$/;
@@ -156,18 +159,10 @@ export async function isUsernameAvailable(
   candidate: string,
   forUserId: string | null,
 ): Promise<boolean | null> {
-  if (!supabase) return null;
+  if (!(await ensureFirestore())) return null;
   const u = candidate.trim().toLowerCase();
   if (!USERNAME_RE.test(u)) return false;
-  const { data, error } = await supabase.rpc('is_username_available', {
-    p_username: u,
-    p_for_user_id: forUserId,
-  });
-  if (error) {
-    console.warn('[profile] is_username_available', error.message);
-    return null;
-  }
-  return data === true;
+  return firestoreIsUsernameAvailable(u, forUserId);
 }
 
 export async function updateMyProfile(
@@ -178,11 +173,9 @@ export async function updateMyProfile(
     mailing_list_opt_in?: boolean;
   },
 ): Promise<{ ok: true; profile: SiteProfile } | { ok: false; error: string }> {
-  if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  if (!(await ensureFirestore())) return { ok: false, error: 'Firebase not configured' };
 
-  const updates: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
+  const updates: Record<string, unknown> = {};
 
   if (patch.display_name !== undefined) {
     const n = patch.display_name.trim();
@@ -198,12 +191,8 @@ export async function updateMyProfile(
         error: 'Username must be 3–32 characters, start with a letter, then letters, numbers, or underscores only.',
       };
     }
-    const { data: avail, error: aErr } = await supabase.rpc('is_username_available', {
-      p_username: u,
-      p_for_user_id: userId,
-    });
-    if (aErr) return { ok: false, error: aErr.message };
-    if (avail !== true) return { ok: false, error: 'That username is already taken.' };
+    const avail = await firestoreIsUsernameAvailable(u, userId);
+    if (!avail) return { ok: false, error: 'That username is already taken.' };
     updates.username = u;
   }
 
@@ -212,79 +201,60 @@ export async function updateMyProfile(
     updates.mailing_list_opted_in_at = patch.mailing_list_opt_in ? new Date().toISOString() : null;
   }
 
-  if (Object.keys(updates).length <= 1) {
+  if (Object.keys(updates).length === 0) {
     const cur = await fetchProfile(userId);
     if (!cur) return { ok: false, error: 'No profile.' };
     return { ok: true, profile: cur };
   }
 
-  const { data, error } = await supabase
-    .from('site_profiles')
-    .update(updates)
-    .eq('id', userId)
-    .select()
-    .single();
-
-  if (error || !data) {
-    return { ok: false, error: error?.message ?? 'Update failed' };
-  }
-  return { ok: true, profile: data as SiteProfile };
+  const data = await firestoreUpsertProfile(userId, updates);
+  return { ok: true, profile: asProfile(data) };
 }
 
 export async function adminMailingListCount(): Promise<number | null> {
-  if (!supabase) return null;
-  const { data, error } = await supabase.rpc('admin_mailing_list_count');
-  if (error || typeof data !== 'number') {
-    console.warn('[mailing] count', error?.message);
-    return null;
-  }
-  return data;
+  if (!(await ensureFirestore())) return null;
+  return firestoreMailingListCount();
 }
 
 export async function adminMailingListPreview(limit = 80): Promise<MailingListPreviewRow[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase.rpc('admin_mailing_list_preview', { p_limit: limit });
-  if (error || !Array.isArray(data)) {
-    console.warn('[mailing] preview', error?.message);
-    return [];
-  }
-  return data as MailingListPreviewRow[];
+  if (!(await ensureFirestore())) return [];
+  const rows = await firestoreMailingListPreview(limit);
+  return rows as MailingListPreviewRow[];
 }
 
 export async function fetchProfile(userId: string): Promise<SiteProfile | null> {
-  if (!supabase) return null;
-  const { data, error } = await supabase.from('site_profiles').select('*').eq('id', userId).maybeSingle();
-  if (error || !data) return null;
-  return data as SiteProfile;
+  if (!(await ensureFirestore())) return null;
+  const row = await firestoreGetProfile(userId);
+  if (!row) return null;
+  return asProfile(row);
 }
 
 export async function fetchComments(
   targetType: CommentTargetType,
   targetKey: string,
 ): Promise<SiteComment[]> {
-  if (!supabase) return [];
-  const { data: rows, error } = await supabase
-    .from('site_comments')
-    .select('*')
-    .eq('target_type', targetType)
-    .eq('target_key', targetKey)
-    .order('created_at', { ascending: true });
-  if (error || !rows?.length) return [];
+  if (!(await ensureFirestore())) return [];
+  const rows = await firestoreListComments(targetType, targetKey);
+  if (!rows.length) return [];
 
-  const userIds = [...new Set(rows.map((r) => r.user_id as string))];
-  const { data: profiles } = await supabase
-    .from('site_profiles')
-    .select('id, display_name, avatar_url')
-    .in('id', userIds);
+  const userIds = [...new Set(rows.map((r) => String(r.user_id)))];
+  const profiles = await Promise.all(userIds.map((id) => firestoreGetProfile(id)));
+  const byId = new Map(
+    profiles.filter(Boolean).map((p) => [String(p!.id), p!]),
+  );
 
-  const byId = new Map((profiles ?? []).map((p) => [p.id as string, p]));
-
-  return (rows as SiteComment[]).map((c) => ({
-    ...c,
-    profile: byId.get(c.user_id)
+  return rows.map((c) => ({
+    id: String(c.id),
+    user_id: String(c.user_id),
+    target_type: c.target_type as CommentTargetType,
+    target_key: String(c.target_key),
+    body: String(c.body),
+    created_at: String(c.created_at),
+    updated_at: String(c.updated_at ?? c.created_at),
+    profile: byId.get(String(c.user_id))
       ? {
-          display_name: String(byId.get(c.user_id)!.display_name),
-          avatar_url: String(byId.get(c.user_id)!.avatar_url ?? ''),
+          display_name: String(byId.get(String(c.user_id))!.display_name),
+          avatar_url: String(byId.get(String(c.user_id))!.avatar_url ?? ''),
         }
       : { display_name: 'Player', avatar_url: '' },
   }));
@@ -296,43 +266,45 @@ export async function postComment(
   targetKey: string,
   body: string,
 ): Promise<{ ok: true; comment: SiteComment } | { ok: false; error: string }> {
-  if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  if (!(await ensureFirestore())) return { ok: false, error: 'Firebase not configured' };
   const trimmed = body.trim();
   if (!trimmed) return { ok: false, error: 'Comment cannot be empty.' };
   if (trimmed.length > 4000) return { ok: false, error: 'Comment is too long (max 4000 characters).' };
 
-  const { data, error } = await supabase
-    .from('site_comments')
-    .insert({
+  const data = await firestoreAddComment({
+    user_id: userId,
+    target_type: targetType,
+    target_key: targetKey,
+    body: trimmed,
+  });
+  return {
+    ok: true,
+    comment: {
+      id: String(data.id),
       user_id: userId,
       target_type: targetType,
       target_key: targetKey,
       body: trimmed,
-    })
-    .select()
-    .single();
-
-  if (error) return { ok: false, error: error.message };
-  return { ok: true, comment: data as SiteComment };
+      created_at: String(data.created_at),
+      updated_at: String(data.updated_at),
+    },
+  };
 }
 
 export async function deleteComment(commentId: string): Promise<boolean> {
-  if (!supabase) return false;
-  const { error } = await supabase.from('site_comments').delete().eq('id', commentId);
-  return !error;
+  if (!(await ensureFirestore())) return false;
+  try {
+    await firestoreDeleteComment(commentId);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function loadGameSave(userId: string, gameSlug: string): Promise<Record<string, unknown> | null> {
-  if (supabase) {
-    const { data, error } = await supabase
-      .from('site_game_saves')
-      .select('save_data')
-      .eq('user_id', userId)
-      .eq('game_slug', gameSlug)
-      .maybeSingle();
-    if (!error && data) {
-      return (data.save_data as Record<string, unknown>) ?? {};
-    }
+  if (await ensureFirestore()) {
+    const data = await firestoreLoadGameSave(userId, gameSlug);
+    if (data) return data;
   }
   try {
     const raw = localStorage.getItem(`cdd_save_${userId}_${gameSlug}`);
@@ -347,18 +319,12 @@ export async function saveGameSave(
   gameSlug: string,
   saveData: Record<string, unknown>,
 ): Promise<boolean> {
-  if (supabase) {
-    const { error } = await supabase.from('site_game_saves').upsert(
-      {
-        user_id: userId,
-        game_slug: gameSlug,
-        save_data: saveData,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,game_slug' },
-    );
-    if (!error) {
+  if (await ensureFirestore()) {
+    try {
+      await firestoreSaveGameSave(userId, gameSlug, saveData);
       return true;
+    } catch {
+      // fall through to localStorage
     }
   }
   try {
@@ -370,32 +336,28 @@ export async function saveGameSave(
 }
 
 export async function listUserGameSaves(userId: string): Promise<SiteGameSave[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase
-    .from('site_game_saves')
-    .select('*')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
-  if (error || !data) return [];
-  return data as SiteGameSave[];
+  if (!(await ensureFirestore())) return [];
+  const rows = await firestoreListUserGameSaves(userId);
+  return rows.map((r) => ({
+    user_id: String(r.user_id),
+    game_slug: String(r.game_slug),
+    save_data: (r.save_data as Record<string, unknown>) ?? {},
+    updated_at: String(r.updated_at ?? ''),
+  }));
 }
 
 export async function fetchAnalyticsSummary(daysBack = 30): Promise<AnalyticsSummary | null> {
-  if (!supabase) return null;
-  const { data, error } = await supabase.rpc('get_site_analytics_summary', { days_back: daysBack });
-  if (error) {
-    console.error('[analytics] summary RPC failed', error);
-    return null;
-  }
-  const raw = data as Record<string, unknown>;
-  const byType = raw.events_by_type;
-  const opens = raw.top_app_opens;
-  const gameAnalytics = raw.game_analytics;
+  if (!(await ensureFirestore())) return null;
+  const raw = await firestoreAnalyticsSummary(daysBack);
+  if (!raw) return null;
   return {
-    ...(data as AnalyticsSummary),
-    events_by_type: byType && typeof byType === 'object' && !Array.isArray(byType) ? (byType as Record<string, number>) : {},
-    top_app_opens: Array.isArray(opens) ? (opens as AnalyticsSummary['top_app_opens']) : [],
-    game_analytics: Array.isArray(gameAnalytics) ? (gameAnalytics as GameAnalyticsRow[]) : [],
+    ...(raw as AnalyticsSummary),
+    events_by_type:
+      raw.events_by_type && typeof raw.events_by_type === 'object' && !Array.isArray(raw.events_by_type)
+        ? (raw.events_by_type as Record<string, number>)
+        : {},
+    top_app_opens: Array.isArray(raw.top_app_opens) ? (raw.top_app_opens as AnalyticsSummary['top_app_opens']) : [],
+    game_analytics: Array.isArray(raw.game_analytics) ? (raw.game_analytics as GameAnalyticsRow[]) : [],
   };
 }
 
@@ -403,16 +365,24 @@ export async function adminListComments(
   limit = 200,
   daysBack = 365,
 ): Promise<AdminCommentRow[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase.rpc('admin_list_comments', {
-    p_limit: limit,
-    days_back: daysBack,
-  });
-  if (error) {
-    console.warn('[admin] comments', error.message);
-    return [];
+  if (!(await ensureFirestore())) return [];
+  const rows = await firestoreAdminListComments(limit, daysBack);
+  const enriched: AdminCommentRow[] = [];
+  for (const c of rows) {
+    const profile = await firestoreGetProfile(String(c.user_id));
+    enriched.push({
+      id: String(c.id),
+      user_id: String(c.user_id),
+      target_type: String(c.target_type),
+      target_key: String(c.target_key),
+      body: String(c.body),
+      created_at: String(c.created_at),
+      display_name: String(profile?.display_name ?? 'Player'),
+      username: String(profile?.username ?? ''),
+      author_email: String(profile?.email ?? ''),
+    });
   }
-  return (data ?? []) as AdminCommentRow[];
+  return enriched;
 }
 
 export type ServiceRequestRow = {
@@ -435,41 +405,58 @@ export async function submitServiceRequest(args: {
   budgetNote?: string;
   userId?: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  if (!(await ensureFirestore())) return { ok: false, error: 'Firebase not configured' };
   const email = args.contactEmail.trim();
   const message = args.message.trim();
   if (!email.includes('@')) return { ok: false, error: 'Enter a valid email.' };
   if (message.length < 10) return { ok: false, error: 'Tell us a bit more (at least 10 characters).' };
 
-  const { error } = await supabase.from('site_service_requests').insert({
-    service_slug: args.serviceSlug?.trim() || null,
-    contact_name: args.contactName.trim(),
-    contact_email: email,
-    message,
-    budget_note: (args.budgetNote ?? '').trim(),
-    user_id: args.userId ?? null,
-    status: 'new',
-  });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  try {
+    await firestoreSubmitServiceRequest({
+      service_slug: args.serviceSlug?.trim() || null,
+      contact_name: args.contactName.trim(),
+      contact_email: email,
+      message,
+      budget_note: (args.budgetNote ?? '').trim(),
+      user_id: args.userId ?? null,
+    });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Submit failed' };
+  }
 }
 
 export async function adminListServiceRequests(limit = 100): Promise<ServiceRequestRow[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase.rpc('admin_list_service_requests', { p_limit: limit });
-  if (error) {
-    console.warn('[services] requests', error.message);
-    return [];
-  }
-  return (data ?? []) as ServiceRequestRow[];
+  if (!(await ensureFirestore())) return [];
+  const rows = await firestoreAdminListServiceRequests(limit);
+  return rows.map((r) => ({
+    id: String(r.id),
+    service_slug: r.service_slug ? String(r.service_slug) : null,
+    service_title: String(r.service_title ?? r.service_slug ?? ''),
+    contact_name: String(r.contact_name ?? ''),
+    contact_email: String(r.contact_email ?? ''),
+    message: String(r.message ?? ''),
+    budget_note: String(r.budget_note ?? ''),
+    status: String(r.status ?? 'new'),
+    created_at: String(r.created_at ?? ''),
+  }));
 }
 
 export async function adminListRecentProfiles(limit = 200): Promise<AdminProfileRow[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase.rpc('admin_list_recent_profiles', { p_limit: limit });
-  if (error) {
-    console.warn('[admin] profiles', error.message);
-    return [];
-  }
-  return (data ?? []) as AdminProfileRow[];
+  if (!(await ensureFirestore())) return [];
+  const rows = await firestoreListProfiles(limit);
+  return rows.map((r) => ({
+    id: String(r.id),
+    email: String(r.email ?? ''),
+    display_name: String(r.display_name ?? ''),
+    username: String(r.username ?? ''),
+    mailing_list_opt_in: Boolean(r.mailing_list_opt_in ?? false),
+    mailing_list_opted_in_at: r.mailing_list_opted_in_at ? String(r.mailing_list_opted_in_at) : null,
+    created_at: String(r.created_at ?? ''),
+  }));
+}
+
+/** Whether community/backend features are available. */
+export function communityBackendReady(): boolean {
+  return isFirebaseReady();
 }

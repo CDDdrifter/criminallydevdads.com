@@ -7,7 +7,7 @@ import { SiteChrome } from '../components/SiteChrome';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { fetchPublishedServices } from '../lib/servicesData';
 import { serviceCategoryLabel } from '../lib/servicePricing';
-import { supabaseConfigured } from '../lib/supabase';
+import { backendConfigured } from '../lib/backend';
 import type { ServiceView } from '../types';
 
 export function ServicesPage() {
@@ -51,8 +51,8 @@ export function ServicesPage() {
 
         {cfg.intro_sections.length > 0 ? <PageSectionsView sections={cfg.intro_sections} /> : null}
 
-        {!supabaseConfigured ? (
-          <p className="empty-state">Connect Supabase to load the services catalog (migration 025).</p>
+        {!backendConfigured() ? (
+          <p className="empty-state">Connect Firebase to load the services catalog — see docs/FIREBASE_MIGRATION.md.</p>
         ) : loading ? (
           <p className="empty-state">Loading services…</p>
         ) : services.length === 0 ? (

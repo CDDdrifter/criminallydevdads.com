@@ -61,7 +61,22 @@ import {
   defaultTypographyConfig,
 } from './themeDefaults';
 import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePricing';
-import { supabase, supabaseConfigured } from './supabase';
+import {
+  ensureFirestore,
+  firestoreDeleteDevLog,
+  firestoreDeleteNav,
+  firestoreDeletePage,
+  firestoreGetDevLogBySlug,
+  firestoreGetPageBySlug,
+  firestoreGetSiteSettings,
+  firestoreListDevLogs,
+  firestoreListNav,
+  firestoreListPages,
+  firestoreSaveSiteSettings,
+  firestoreUpsertDevLog,
+  firestoreUpsertNav,
+  firestoreUpsertPage,
+} from './firestoreData';
 import { normalizePageSections } from './pageSections';
 import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
 import { loadLegacyGames } from './legacyGames';
@@ -70,7 +85,6 @@ import { fetchStaticJson } from './staticCms';
 import { normalizePromoEvents } from './promoEvents';
 import { normalizeRouteFxOverride } from './routeFx';
 import { normalizeVisualPresetInput } from './visualPresets';
-import { unknownColumnFromPostgrestMessage } from './postgrestUnknownColumn';
 
 // ---------------------------------------------------------------------------
 // Studio config normalization helpers.
@@ -343,7 +357,7 @@ function normalizeSupportButtons(raw: unknown): SupportButton[] {
 }
 
 /** Maps DB row → hub `GameView` (play URL resolution + commerce fields for GamePurchaseBlock). */
-function recordToView(g: GameRecord): GameView {
+export function recordToView(g: GameRecord): GameView {
   const folder = g.local_folder ?? g.slug;
   const localPath = `games/${folder}/index.html`;
   const ext = g.external_url?.trim();
@@ -450,38 +464,14 @@ function normalizeGameExtras(
 }
 
 export async function fetchPublishedGames(): Promise<GameView[]> {
-  if (!supabaseConfigured || !supabase) {
-    return [];
-  }
-  const { data, error } = await supabase
-    .from('site_games')
-    .select('*')
-    .eq('published', true)
-    .order('sort_order', { ascending: true });
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  const rows = data ?? [];
-  return rows.map(recordToView);
+  // Games catalog lives in games.json — not Firestore.
+  return [];
 }
 
 /** Games flagged for the vault library (<code>/#/vault</code>). */
 export async function fetchVaultGames(): Promise<GameView[]> {
-  if (!supabaseConfigured || !supabase) {
-    return [];
-  }
-  const { data, error } = await supabase
-    .from('site_games')
-    .select('*')
-    .eq('in_vault', true)
-    .order('sort_order', { ascending: true });
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  const rows = data ?? [];
-  return rows.map(recordToView);
+  const legacy = await loadLegacyGames();
+  return legacy.filter((g) => g.in_vault);
 }
 
 /** Single game for detail/play routes — reads games.json + games/ folder (no Supabase required). */
@@ -497,15 +487,6 @@ export async function fetchGameViewBySlug(slug: string): Promise<GameView | null
     return hit;
   }
 
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('site_games').select('*').eq('slug', trimmed).maybeSingle();
-    if (!error && data) {
-      return recordToView(data as GameRecord);
-    }
-    if (error) {
-      console.error(error);
-    }
-  }
   return null;
 }
 
@@ -586,42 +567,10 @@ async function persistGamesJson(games: GameRecord[]): Promise<void> {
 }
 
 export async function fetchAllGamesAdmin(): Promise<GameRecord[]> {
-  if (supabase) {
-    const { data, error } = await supabase.from('site_games').select('*').order('sort_order');
-    if (!error && data && data.length > 0) {
-      return (data ?? []).map((row) => {
-        const r = row as Record<string, unknown>;
-        return {
-          ...(row as GameRecord),
-          route_fx: normalizeRouteFxOverride(r.route_fx),
-        };
-      });
-    }
-    if (error) {
-      console.error(error);
-    }
-  }
   return loadAllGamesForAdmin();
 }
 
 export async function upsertGame(row: Partial<GameRecord> & { slug: string; title: string }) {
-  if (supabase) {
-    const payload: Record<string, unknown> = { ...row };
-    for (let attempt = 0; attempt < 16; attempt++) {
-      const { error } = await supabase.from('site_games').upsert(payload, { onConflict: 'slug' });
-      if (!error) {
-        return;
-      }
-      const msg = error.message ?? '';
-      const unknown = unknownColumnFromPostgrestMessage(msg);
-      if (!unknown || !(unknown in payload)) {
-        throw error;
-      }
-      delete payload[unknown];
-    }
-    throw new Error('Could not save game row after column retries.');
-  }
-
   const games = await loadAllGamesForAdmin();
   const idx = games.findIndex((g) => g.slug === row.slug.trim());
   const base: GameRecord =
@@ -650,30 +599,16 @@ export async function upsertGame(row: Partial<GameRecord> & { slug: string; titl
 }
 
 export async function deleteGameBySlug(slug: string) {
-  if (supabase) {
-    const { error } = await supabase.from('site_games').delete().eq('slug', slug);
-    if (error) {
-      throw error;
-    }
-    return;
-  }
   const games = await loadAllGamesForAdmin();
   const filtered = games.filter((g) => g.slug !== slug);
   await persistGamesJson(filtered);
 }
 
 export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('site_pages')
-      .select('*')
-      .eq('slug', slug)
-      .maybeSingle();
-    if (!error && data) {
-      return normalizeSitePage(data as Record<string, unknown>);
-    }
-    if (error) {
-      console.error(error);
+  if (await ensureFirestore()) {
+    const data = await firestoreGetPageBySlug(slug);
+    if (data) {
+      return normalizeSitePage(data);
     }
   }
   const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
@@ -687,16 +622,11 @@ export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
 }
 
 export async function fetchSitePages(): Promise<SitePage[]> {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('site_pages')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    if (!error) {
-      const rows = data ?? [];
+  if (await ensureFirestore()) {
+    const rows = await firestoreListPages();
+    if (rows.length > 0) {
       return rows.map(normalizeSitePage);
     }
-    console.error(error);
   }
   const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
   if (Array.isArray(staticPages) && staticPages.length > 0) {
@@ -708,15 +638,11 @@ export async function fetchSitePages(): Promise<SitePage[]> {
 }
 
 export async function fetchNavItems(): Promise<NavItem[]> {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('site_nav_items')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    if (!error) {
-      return data ?? [];
+  if (await ensureFirestore()) {
+    const rows = await firestoreListNav();
+    if (rows.length > 0) {
+      return rows as NavItem[];
     }
-    console.error(error);
   }
   const staticNav = await fetchStaticJson<NavItem[]>('cms/site-nav.json');
   if (Array.isArray(staticNav) && staticNav.length > 0) {
@@ -733,19 +659,13 @@ export async function fetchDevLogBySlug(slug: string): Promise<DevLogPost | null
       return hit;
     }
   }
-  if (!supabaseConfigured || !supabase) {
-    return null;
+  if (await ensureFirestore()) {
+    const data = await firestoreGetDevLogBySlug(slug);
+    if (data) {
+      return data as DevLogPost;
+    }
   }
-  const { data, error } = await supabase
-    .from('site_dev_logs')
-    .select('*')
-    .eq('slug', slug)
-    .maybeSingle();
-  if (error) {
-    console.error(error);
-    return null;
-  }
-  return data as DevLogPost | null;
+  return null;
 }
 
 export async function fetchDevLogs(): Promise<DevLogPost[]> {
@@ -753,28 +673,20 @@ export async function fetchDevLogs(): Promise<DevLogPost[]> {
   if (Array.isArray(staticLogs) && staticLogs.length > 0) {
     return staticLogs;
   }
-  if (!supabaseConfigured || !supabase) {
-    return [];
+  if (await ensureFirestore()) {
+    const rows = await firestoreListDevLogs();
+    if (rows.length > 0) {
+      return rows as DevLogPost[];
+    }
   }
-  const { data, error } = await supabase
-    .from('site_dev_logs')
-    .select('*')
-    .order('published_at', { ascending: false });
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return data ?? [];
+  return [];
 }
 
 export async function fetchSiteSettings(): Promise<SiteSettings> {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('site_settings').select('*').eq('id', 1).maybeSingle();
-    if (!error && data) {
-      return siteSettingsFromRow(data as Record<string, unknown>) ?? defaultSiteSettings;
-    }
-    if (error) {
-      console.error(error);
+  if (await ensureFirestore()) {
+    const data = await firestoreGetSiteSettings();
+    if (data) {
+      return siteSettingsFromRow(data) ?? defaultSiteSettings;
     }
   }
   const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
@@ -789,65 +701,9 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
   const current = await fetchSiteSettings();
   const merged = { ...current, ...patch };
 
-  if (supabase) {
-    const payload: Record<string, unknown> = {
-      id: 1,
-      hero_title: merged.hero_title,
-      hero_subtitle: merged.hero_subtitle,
-      support_title: merged.support_title,
-      support_body: merged.support_body,
-      support_page_href: merged.support_page_href,
-      stripe_donation_url: merged.stripe_donation_url,
-      support_buttons: merged.support_buttons,
-      footer_text: merged.footer_text,
-      site_visual_preset: normalizeVisualPresetInput(merged.site_visual_preset) || null,
-      fx_scanlines: merged.fx_scanlines,
-      fx_noise: merged.fx_noise,
-      fx_vignette: merged.fx_vignette,
-      fx_hue_shift: merged.fx_hue_shift,
-      fx_cursor_spotlight: merged.fx_cursor_spotlight,
-      fx_intensity: normalizeFxIntensity(merged.fx_intensity),
-      promo_events: merged.promo_events,
-      custom_css: merged.custom_css,
-      theme: merged.theme,
-      effects: merged.effects,
-      typography: merged.typography,
-      layout: merged.layout,
-      components: merged.components,
-      behavior: merged.behavior,
-      seo: merged.seo,
-      custom_head_html: merged.custom_head_html,
-      theme_presets: merged.theme_presets,
-      animations: merged.animations,
-      audio: merged.audio,
-      cursor: merged.cursor,
-      particles: merged.particles,
-      social: merged.social,
-      hero: merged.hero,
-      game_cards: merged.game_cards,
-      branding: merged.branding,
-      performance: merged.performance,
-      accessibility: merged.accessibility,
-      sharing: merged.sharing,
-      homepage_sections: merged.homepage_sections,
-      homepage_layout_mode: merged.homepage_layout_mode,
-      shipping: merged.shipping,
-      prebuilt_pages: merged.prebuilt_pages,
-      legal: merged.legal,
-    };
-    for (let attempt = 0; attempt < 16; attempt++) {
-      const { error } = await supabase.from('site_settings').upsert(payload);
-      if (!error) {
-        return;
-      }
-      const msg = error.message ?? '';
-      const unknown = unknownColumnFromPostgrestMessage(msg);
-      if (!unknown || !(unknown in payload)) {
-        throw error;
-      }
-      delete payload[unknown];
-    }
-    throw new Error('Could not save site_settings.');
+  if (await ensureFirestore()) {
+    await firestoreSaveSiteSettings({ id: 1, ...merged });
+    return;
   }
 
   const result = await syncSiteContentToGitHub([
@@ -859,15 +715,6 @@ export async function saveSiteSettings(patch: Partial<SiteSettings>) {
 }
 
 export async function fetchAllPagesAdmin(): Promise<SitePage[]> {
-  if (supabase) {
-    const { data, error } = await supabase.from('site_pages').select('*').order('sort_order');
-    if (!error && data && data.length > 0) {
-      return (data as Record<string, unknown>[]).map(normalizeSitePage);
-    }
-    if (error) {
-      console.error(error);
-    }
-  }
   return fetchSitePages();
 }
 
@@ -893,20 +740,9 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
     route_fx: row.route_fx ?? normalizeRouteFxOverride(null),
   };
 
-  if (supabase) {
-    for (let attempt = 0; attempt < 48; attempt++) {
-      const { error } = await supabase.from('site_pages').upsert(payload, { onConflict: 'slug' });
-      if (!error) {
-        return;
-      }
-      const msg = error.message ?? '';
-      const unknown = unknownColumnFromPostgrestMessage(msg);
-      if (!unknown || !(unknown in payload)) {
-        throw error;
-      }
-      delete payload[unknown];
-    }
-    throw new Error('Could not save site_pages row.');
+  if (await ensureFirestore()) {
+    await firestoreUpsertPage(row.slug.trim(), payload);
+    return;
   }
 
   const pages = await fetchSitePages();
@@ -924,11 +760,8 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
 }
 
 export async function deletePageSlug(slug: string) {
-  if (supabase) {
-    const { error } = await supabase.from('site_pages').delete().eq('slug', slug);
-    if (error) {
-      throw error;
-    }
+  if (await ensureFirestore()) {
+    await firestoreDeletePage(slug);
     return;
   }
   const pages = (await fetchSitePages()).filter((p) => p.slug !== slug);
@@ -939,15 +772,6 @@ export async function deletePageSlug(slug: string) {
 }
 
 export async function fetchAllNavAdmin(): Promise<NavItem[]> {
-  if (supabase) {
-    const { data, error } = await supabase.from('site_nav_items').select('*').order('sort_order');
-    if (!error && data && data.length > 0) {
-      return data ?? [];
-    }
-    if (error) {
-      console.error(error);
-    }
-  }
   return fetchNavItems();
 }
 
@@ -959,11 +783,8 @@ export async function upsertNav(row: Partial<NavItem> & { label: string; href: s
     external: row.external ?? false,
     sort_order: row.sort_order ?? 0,
   };
-  if (supabase) {
-    const { error } = await supabase.from('site_nav_items').upsert(payload, { onConflict: 'id' });
-    if (error) {
-      throw error;
-    }
+  if (await ensureFirestore()) {
+    await firestoreUpsertNav(payload.id, payload);
     return;
   }
   const nav = await fetchNavItems();
@@ -980,11 +801,8 @@ export async function upsertNav(row: Partial<NavItem> & { label: string; href: s
 }
 
 export async function deleteNavId(id: string) {
-  if (supabase) {
-    const { error } = await supabase.from('site_nav_items').delete().eq('id', id);
-    if (error) {
-      throw error;
-    }
+  if (await ensureFirestore()) {
+    await firestoreDeleteNav(id);
     return;
   }
   const nav = (await fetchNavItems()).filter((n) => n.id !== id);
@@ -995,15 +813,10 @@ export async function deleteNavId(id: string) {
 }
 
 export async function fetchAllDevLogsAdmin(): Promise<DevLogPost[]> {
-  if (supabase) {
-    const { data, error } = await supabase.from('site_dev_logs').select('*').order('published_at', {
-      ascending: false,
-    });
-    if (!error && data && data.length > 0) {
-      return data ?? [];
-    }
-    if (error) {
-      console.error(error);
+  if (await ensureFirestore()) {
+    const rows = await firestoreListDevLogs();
+    if (rows.length > 0) {
+      return rows as DevLogPost[];
     }
   }
   const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
@@ -1025,15 +838,9 @@ export async function upsertDevLog(
     sections: row.sections ?? [],
   };
 
-  if (supabase) {
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const { error } = await supabase.from('site_dev_logs').upsert(payload, { onConflict: 'slug' });
-      if (!error) return;
-      const unknown = unknownColumnFromPostgrestMessage(error.message ?? '');
-      if (!unknown || !(unknown in payload)) throw error;
-      delete payload[unknown];
-    }
-    throw new Error('Could not save dev log.');
+  if (await ensureFirestore()) {
+    await firestoreUpsertDevLog(row.slug.trim(), payload);
+    return;
   }
 
   const logs = await fetchAllDevLogsAdmin();
@@ -1051,11 +858,8 @@ export async function upsertDevLog(
 }
 
 export async function deleteDevLogSlug(slug: string) {
-  if (supabase) {
-    const { error } = await supabase.from('site_dev_logs').delete().eq('slug', slug);
-    if (error) {
-      throw error;
-    }
+  if (await ensureFirestore()) {
+    await firestoreDeleteDevLog(slug);
     return;
   }
   const logs = (await fetchAllDevLogsAdmin()).filter((l) => l.slug !== slug);

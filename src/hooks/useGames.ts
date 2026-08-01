@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import type { GameView } from '../types';
 import { fetchPublishedGames } from '../lib/cmsData';
 import { gameCatalogMode } from '../lib/gameCatalog';
-import { supabaseConfigured } from '../lib/supabase';
+import { backendConfigured } from '../lib/backend';
 import { loadLegacyGames } from '../lib/legacyGames';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
 
@@ -21,7 +21,7 @@ export function useGames() {
       try {
         const mode = gameCatalogMode();
 
-        if (mode === 'legacy' || !supabaseConfigured) {
+        if (mode === 'legacy' || !backendConfigured()) {
           const legacy = await loadLegacyGames();
           if (!cancelled) {
             setGames(legacy);
@@ -40,7 +40,7 @@ export function useGames() {
 
         // auto: prefer CMS when it returns games; otherwise games.json + games/ (never brick the hub).
         let cms: GameView[] = [];
-        if (supabaseConfigured) {
+        if (backendConfigured()) {
           try {
             cms = await fetchPublishedGames();
           } catch (cmsErr) {

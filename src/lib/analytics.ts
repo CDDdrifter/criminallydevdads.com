@@ -1,8 +1,9 @@
 /**
- * First-party analytics — inserts into `site_analytics_events` (migration 020).
+ * First-party analytics — inserts into Firestore `analytics_events`.
  * Respects `behavior.first_party_analytics_enabled` from site settings.
  */
-import { supabase, supabaseConfigured } from './supabase';
+import { auth, isFirebaseReady } from './firebase';
+import { ensureFirestore, firestoreTrackEvent } from './firestoreData';
 
 const SESSION_KEY = 'cdd_analytics_session';
 
@@ -37,27 +38,26 @@ export async function trackEvent(
     userId?: string | null;
   } = {},
 ): Promise<void> {
-  if (!supabaseConfigured || !supabase || !analyticsEnabled) {
+  if (!isFirebaseReady() || !analyticsEnabled) {
+    return;
+  }
+  if (!(await ensureFirestore())) {
     return;
   }
   const path = (opts.path ?? '').slice(0, 500);
   const targetKey = (opts.targetKey ?? '').slice(0, 200);
-  let userId = opts.userId ?? null;
-  if (!userId) {
-    const { data } = await supabase.auth.getSession();
-    userId = data.session?.user?.id ?? null;
-  }
-  const payload = {
-    event_type: eventType,
-    path,
-    target_key: targetKey,
-    session_id: getSessionId(),
-    user_id: userId,
-    metadata: opts.metadata ?? {},
-  };
-  const { error } = await supabase.from('site_analytics_events').insert(payload);
-  if (error) {
-    console.warn('[analytics] insert failed', error.message);
+  const userId = opts.userId ?? auth?.currentUser?.uid ?? null;
+  try {
+    await firestoreTrackEvent({
+      event_type: eventType,
+      path,
+      target_key: targetKey,
+      session_id: getSessionId(),
+      user_id: userId,
+      metadata: opts.metadata ?? {},
+    });
+  } catch (err) {
+    console.warn('[analytics] insert failed', err instanceof Error ? err.message : err);
   }
 }
 

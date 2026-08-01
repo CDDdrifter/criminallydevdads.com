@@ -6,7 +6,7 @@ import { PageSectionsView } from '../components/PageSectionsView';
 import { SiteChrome } from '../components/SiteChrome';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { fetchVaultGames } from '../lib/cmsData';
-import { supabaseConfigured } from '../lib/supabase';
+import { backendConfigured } from '../lib/backend';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
 import type { GameView } from '../types';
 
@@ -55,8 +55,8 @@ export function VaultPage() {
 
       {cfg.intro_sections.length > 0 ? <PageSectionsView sections={cfg.intro_sections} /> : null}
 
-      {!supabaseConfigured ? (
-        <div className="empty-state">Vault requires Supabase (CMS mode).</div>
+      {!backendConfigured() ? (
+        <div className="empty-state">Vault requires Firebase (sign in and configure cms/firebase-config.json).</div>
       ) : null}
       {loading && <div className="empty-state">Loading vault…</div>}
       {error && <div className="empty-state">Error: {error}</div>}

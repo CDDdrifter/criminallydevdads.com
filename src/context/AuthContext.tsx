@@ -1,18 +1,20 @@
 import type { User } from 'firebase/auth';
 import {
   GoogleAuthProvider,
-  getRedirectResult,
+  browserLocalPersistence,
   onAuthStateChanged,
+  setPersistence,
   signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { isAdminEmail } from '../lib/adminConfig';
-import { popAuthReturn, stashAuthReturn } from '../lib/authBootstrap';
-import { humanizeOAuthError } from '../lib/authErrors';
+import { stashAuthReturn } from '../lib/authBootstrap';
+import { ensureProfile, fetchProfile } from '../lib/communityData';
 import { installGameCloudBridge } from '../lib/gameCloudBridge';
 import { auth, initFirebase } from '../lib/firebase';
+import { trackSignIn } from '../lib/analytics';
 
 export type AuthProfile = {
   display_name: string;
@@ -72,6 +74,31 @@ function preferRedirectSignIn(): boolean {
   return host !== 'localhost' && host !== '127.0.0.1';
 }
 
+async function applyUserSession(user: User): Promise<{ profile: AuthProfile; isAdmin: boolean }> {
+  let profile = profileFromUser(user);
+  try {
+    const prof = await ensureProfile(user.uid, {
+      name: user.displayName ?? undefined,
+      avatar: user.photoURL ?? undefined,
+      email: user.email ?? undefined,
+    });
+    if (prof) {
+      profile = {
+        display_name: prof.display_name,
+        avatar_url: prof.avatar_url,
+        username: prof.username,
+        mailing_list_opt_in: prof.mailing_list_opt_in,
+        created_at: prof.created_at,
+      };
+    }
+    void trackSignIn(user.uid);
+  } catch (err) {
+    console.warn('[auth] profile bootstrap failed', err);
+  }
+  const isAdmin = await isAdminEmail(user.email);
+  return { profile, isAdmin };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [profile, setProfile] = useState<AuthProfile | null>(null);
@@ -94,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!ready || !auth) {
         setAuthConfigured(false);
         setAuthInitError(
-          'Firebase is not configured. Paste your 4 Firebase values into cms/firebase-config.json in the repo, commit, and redeploy — see docs/FIREBASE_SETUP.md',
+          'Firebase is not configured. Paste your 4 Firebase values into cms/firebase-config.json, commit, and redeploy.',
         );
         setLoading(false);
         return;
@@ -103,46 +130,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthConfigured(true);
       setAuthInitError(null);
 
-      try {
-        const redirectResult = await getRedirectResult(auth);
-        if (redirectResult?.user && !cancelled) {
-          setUser(mapUser(redirectResult.user));
-          setProfile(profileFromUser(redirectResult.user));
-          const admin = await isAdminEmail(redirectResult.user.email);
+      // Redirect result is consumed in main-app.tsx before React mounts.
+      if (auth.currentUser) {
+        const mapped = mapUser(auth.currentUser);
+        setUser(mapped);
+        try {
+          const session = await applyUserSession(auth.currentUser);
           if (!cancelled) {
-            setIsAdmin(admin);
+            setProfile(session.profile);
+            setIsAdmin(session.isAdmin);
           }
-          const returnPath = popAuthReturn();
-          if (returnPath && returnPath !== window.location.pathname) {
-            window.history.replaceState({}, '', returnPath);
+        } catch (err) {
+          if (!cancelled) {
+            setAdminCheckError(err instanceof Error ? err.message : 'Could not verify admin access');
           }
         }
-      } catch (err) {
-        console.warn('[auth] getRedirectResult failed', err);
-        if (!cancelled) {
-          setAuthInitError(humanizeOAuthError(err instanceof Error ? err.message : String(err)));
-        }
+      }
+
+      if (cancelled) {
+        return;
       }
 
       unsub = onAuthStateChanged(auth, async (next) => {
         if (cancelled) {
           return;
         }
-        setUser(next ? mapUser(next) : null);
         setAdminCheckError(null);
 
         if (!next) {
+          setUser(null);
           setProfile(null);
           setIsAdmin(false);
           setLoading(false);
           return;
         }
 
+        setUser(mapUser(next));
         setProfile(profileFromUser(next));
+        setLoading(true);
         try {
-          const admin = await isAdminEmail(next.email);
+          const session = await applyUserSession(next);
           if (!cancelled) {
-            setIsAdmin(admin);
+            setProfile(session.profile);
+            setIsAdmin(session.isAdmin);
           }
         } catch (err) {
           if (!cancelled) {
@@ -167,8 +197,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const refreshProfile = useCallback(async () => {
-    // Profile is derived from Firebase user — no separate backend to refresh.
-  }, []);
+    if (!user?.id) return;
+    const prof = await fetchProfile(user.id);
+    if (prof) {
+      setProfile({
+        display_name: prof.display_name,
+        avatar_url: prof.avatar_url,
+        username: prof.username,
+        mailing_list_opt_in: prof.mailing_list_opt_in,
+        created_at: prof.created_at,
+      });
+    }
+  }, [user?.id]);
 
   const signInWithGoogle = useCallback(async (returnPath?: string) => {
     const ready = await initFirebase();
@@ -178,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     }
     stashAuthReturn(returnPath);
+    await setPersistence(auth, browserLocalPersistence);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 

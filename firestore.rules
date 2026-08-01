@@ -1,0 +1,88 @@
+rules_version = '2';
+
+// Prototype security rules for Criminally Dev Dads hub.
+// Review before production — admin check uses @criminallydevdads.com email domain.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email.matches('.*@criminallydevdads\\.com$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // CMS — public read, admin write
+    match /site_settings/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /site_pages/{slug} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /site_nav_items/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /site_dev_logs/{slug} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /site_services/{slug} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User profiles
+    match /profiles/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Comments
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() <= 4000;
+      allow update, delete: if isSignedIn()
+        && (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // Cloud game saves
+    match /game_saves/{saveId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow create, update: if isSignedIn()
+        && request.resource.data.user_id == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
+    }
+
+    // Analytics — anyone can append events
+    match /analytics_events/{eventId} {
+      allow read: if isAdmin();
+      allow create: if true;
+    }
+
+    // Service inquiry forms
+    match /service_requests/{reqId} {
+      allow read: if isAdmin();
+      allow create: if true;
+    }
+  }
+}

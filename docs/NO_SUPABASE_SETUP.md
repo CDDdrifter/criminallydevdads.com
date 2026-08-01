@@ -161,17 +161,20 @@ See `docs/STRIPE_SETUP.md` for Payment Link setup.
 
 ---
 
-## Part 7 — What changed from Supabase
+## Part 7 — Architecture (Firebase + GitHub)
 
-| Feature | Before (Supabase) | Now |
-|---------|-------------------|-----|
-| Game hosting | Supabase Storage | `games/` folder or external `url` |
-| Game catalog | `site_games` table | `games.json` |
-| Google sign-in | Supabase Auth | Firebase Auth |
-| Admin saves | Supabase DB | GitHub API → JSON files |
-| Cloud saves | Postgres | Browser localStorage |
-| Comments | Postgres | Disabled (no backend) |
-| URLs | `/#/game/...` | `/game/...` |
+| Feature | Backend |
+|---------|---------|
+| Game hosting | `games/` folder or external `url` |
+| Game catalog | `games.json` |
+| Google sign-in | Firebase Auth |
+| Admin CMS (settings, pages, nav, devlogs, services) | Firebase Firestore |
+| Branding uploads (thumbnails, videos) | Firebase Storage |
+| Cloud saves, comments, profiles, analytics | Firebase Firestore |
+| Stripe checkout (built-in) | Payment Links until Cloud Functions |
+| URLs | `/game/...` (real paths, not hash) |
+
+Full Firebase setup: [`FIREBASE_MIGRATION.md`](FIREBASE_MIGRATION.md)
 
 ---
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { submitServiceRequest } from '../lib/communityData';
-import { supabaseConfigured } from '../lib/supabase';
+import { backendConfigured } from '../lib/backend';
 import type { ServiceView } from '../types';
 import { FormPrivacyNote } from './FormPrivacyNote';
 
@@ -20,8 +20,8 @@ export function ServiceRequestForm({ service, heading }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!supabaseConfigured) {
-    return <p className="admin-muted">Project requests require Supabase.</p>;
+  if (!backendConfigured()) {
+    return <p className="admin-muted">Project requests require Firebase (Firestore).</p>;
   }
 
   return (

@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Branding assets only — game builds live in games/ folder in GitHub.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email.matches('.*@criminallydevdads\\.com$');
+    }
+
+    match /game-thumbnails/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /game-videos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.size < 100 * 1024 * 1024;
+    }
+
+    match /game-builds/{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

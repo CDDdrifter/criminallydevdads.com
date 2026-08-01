@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchNavItems, fetchSitePages } from '../lib/cmsData';
 import { showAdminNavLink } from '../lib/envPublic';
-import { supabaseConfigured } from '../lib/supabase';
+import { backendConfigured } from '../lib/backend';
 import { useAsyncMemo } from '../hooks/useAsyncMemo';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import type { BehaviorConfig } from '../types';
@@ -57,7 +57,7 @@ export function useSiteNavLinks(): SiteNavLink[] {
       external: n.external,
     }));
     const filteredCore = buildCoreNavLinks(settings.behavior);
-    if (!supabaseConfigured || (nav.length === 0 && fromPages.length === 0)) {
+    if (!backendConfigured() || (nav.length === 0 && fromPages.length === 0)) {
       return filteredCore;
     }
     const seen = new Set<string>();
