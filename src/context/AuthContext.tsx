@@ -130,27 +130,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthConfigured(true);
       setAuthInitError(null);
 
-      // Redirect result is consumed in main-app.tsx before React mounts.
-      if (auth.currentUser) {
-        const mapped = mapUser(auth.currentUser);
-        setUser(mapped);
-        try {
-          const session = await applyUserSession(auth.currentUser);
-          if (!cancelled) {
-            setProfile(session.profile);
-            setIsAdmin(session.isAdmin);
-          }
-        } catch (err) {
-          if (!cancelled) {
-            setAdminCheckError(err instanceof Error ? err.message : 'Could not verify admin access');
-          }
-        }
-      }
-
-      if (cancelled) {
-        return;
-      }
-
       unsub = onAuthStateChanged(auth, async (next) => {
         if (cancelled) {
           return;

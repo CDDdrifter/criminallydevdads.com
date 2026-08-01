@@ -683,17 +683,28 @@ export async function fetchDevLogs(): Promise<DevLogPost[]> {
 }
 
 export async function fetchSiteSettings(): Promise<SiteSettings> {
-  if (await ensureFirestore()) {
-    const data = await firestoreGetSiteSettings();
-    if (data) {
-      return siteSettingsFromRow(data) ?? defaultSiteSettings;
-    }
-  }
   const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
   const fromStatic = siteSettingsFromRow(staticRow);
   if (fromStatic) {
     return fromStatic;
   }
+
+  try {
+    if (await ensureFirestore()) {
+      const data = await Promise.race([
+        firestoreGetSiteSettings(),
+        new Promise<null>((resolve) => {
+          window.setTimeout(() => resolve(null), 5000);
+        }),
+      ]);
+      if (data) {
+        return siteSettingsFromRow(data) ?? defaultSiteSettings;
+      }
+    }
+  } catch (err) {
+    console.warn('[cms] Firestore site settings unavailable, using defaults', err);
+  }
+
   return defaultSiteSettings;
 }
 

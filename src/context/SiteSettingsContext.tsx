@@ -54,14 +54,34 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    loadSiteSettingsOnce().then((s) => {
+    const timeout = window.setTimeout(() => {
       if (!cancelled) {
-        setSettings(s);
+        console.warn('[cms] site settings load timed out, using defaults');
         setReady(true);
       }
-    });
+    }, 8000);
+
+    loadSiteSettingsOnce()
+      .then((s) => {
+        if (!cancelled) {
+          setSettings(s);
+          setReady(true);
+        }
+      })
+      .catch((err) => {
+        console.warn('[cms] site settings load failed, using defaults', err);
+        if (!cancelled) {
+          setSettings(defaultSiteSettings);
+          setReady(true);
+        }
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
+      });
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
     };
   }, []);
 
