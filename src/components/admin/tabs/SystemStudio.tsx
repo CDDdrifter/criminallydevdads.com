@@ -7,6 +7,13 @@
  */
 import type { AccessibilityConfig, SiteSettings } from '../../../types';
 import {
+  getGitHubBranch,
+  getGitHubToken,
+  githubCmsConfigured,
+  setGitHubBranch,
+  setGitHubToken,
+} from '../../../lib/githubCms';
+import {
   ColorField,
   FieldGroup,
   NumberSliderField,
@@ -128,6 +135,40 @@ export function SystemStudio({ settings, setSettings }: Props) {
           checked={a.skip_link_enabled}
           onChange={(skip_link_enabled) => setA({ skip_link_enabled })}
         />
+      </FieldGroup>
+
+      <FieldGroup
+        title="GitHub sync (save admin changes to repo)"
+        tone="accent"
+        description="Admin saves write JSON files directly to GitHub. Paste a Personal Access Token (classic) with repo scope — stored in this browser session only."
+      >
+        <div className="admin-field">
+          <label htmlFor="gh_pat">GitHub Personal Access Token</label>
+          <input
+            id="gh_pat"
+            type="password"
+            autoComplete="off"
+            placeholder="ghp_…"
+            defaultValue={getGitHubToken()}
+            onChange={(e) => setGitHubToken(e.target.value)}
+          />
+          <p className="admin-muted" style={{ marginTop: 6, fontSize: '0.82rem' }}>
+            Status: {githubCmsConfigured() ? '✓ Token saved for this session' : '✗ No token — saves will fail'}
+          </p>
+        </div>
+        <div className="admin-field">
+          <label htmlFor="gh_branch">Target branch</label>
+          <input
+            id="gh_branch"
+            type="text"
+            defaultValue={getGitHubBranch()}
+            onChange={(e) => setGitHubBranch(e.target.value)}
+          />
+        </div>
+        <p className="admin-muted" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
+          Create token: GitHub → Settings → Developer settings → Personal access tokens → Generate (classic) → check{' '}
+          <strong>repo</strong> scope. After saving in admin, GitHub Actions redeploys the site automatically.
+        </p>
       </FieldGroup>
     </div>
   );

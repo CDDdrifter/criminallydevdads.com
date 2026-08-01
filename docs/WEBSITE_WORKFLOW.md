@@ -1,85 +1,49 @@
 # How to actually run and change this website
 
-**Full step-by-step (games, pages, nav, GitHub size limits):** **[`SITE_MANUAL.md`](SITE_MANUAL.md)**
+**Full step-by-step guide:** **[`NO_SUPABASE_SETUP.md`](NO_SUPABASE_SETUP.md)** — games, Firebase auth, admin, pages, URLs.
 
-There are **two valid ways** to work. You do **not** need Supabase to ship games or edit the site. Supabase is **optional** for a browser-based admin later.
+Supabase is **no longer required**. Everything runs from files in GitHub.
 
 ---
 
-## Path A — Edit in the repo (works today, no cloud setup)
-
-Use this if you are tired of dashboards, secrets, and SQL. Everything is files in Git.
+## Path A — Edit in the repo (recommended)
 
 ### Games on the hub
 
-1. Open **`games.json`**. Each entry needs at least an **`id`** (slug), **`title`**, **`type`** (`game` or `asset`), **`description`**, and usually **`filename`** (zip name) or a playable folder.
-2. Put the **web build** for each game under **`games/<id>/`** (e.g. `games/fortfury/index.html` plus Godot export files).
-3. Commit and push. Your **GitHub Pages** deploy (or local `npm run build`) copies `games/` and `games.json` into **`dist/`**.
+1. Open **`games.json`**. Each entry needs **`id`**, **`title`**, **`type`**, **`description`**.
+2. Put the web build under **`games/<id>/`** (e.g. `games/fortfury/index.html`).
+3. Commit and push. GitHub Actions deploys to Pages.
 
-**Default catalog behavior:** The site uses **`VITE_GAME_CATALOG=auto`** (default). If Supabase is configured but **`site_games` is empty** or unreachable, the hub **falls back to `games.json`**. So unfinished Supabase setup does **not** wipe your games list anymore.
+For large games, set **`url`** in JSON to an external host (itch.io, etc.) — see **`NO_SUPABASE_SETUP.md`**.
 
-To **never** read the database for games (100% files):
+### Site settings, pages, nav
 
-```env
-VITE_GAME_CATALOG=legacy
-```
+Edit JSON files in **`cms/`** directly, or use **`/admin`** (Google sign-in + GitHub token).
 
-### Look, layout, and React “components”
+### Deploy
 
-- **Global styles:** `src/index.css`
-- **Pages / screens:** `src/pages/*.tsx`
-- **Shared UI:** `src/components/*.tsx`
-- **Routing:** `src/App.tsx`
-
-Edit like any React project; run **`npm run dev`** locally, then push.
-
-### Deploy without Supabase
-
-- In GitHub: **Settings → Pages → Source: GitHub Actions** (use the repo workflow).
-- You **do not** have to add `VITE_SUPABASE_*` secrets. If those secrets are missing, the build still works: **legacy catalog + file-based games**.
+- GitHub: **Settings → Pages → Source: GitHub Actions**
+- Add **Firebase** secrets — see **`NO_SUPABASE_SETUP.md` Part 2**
 
 ---
 
-## Path B — Browser admin (optional, later)
+## Path B — Browser admin
 
-Use this when you want non-programmers to add games or ZIPs **without** touching Git.
-
-1. Create a Supabase project and run **`supabase/schema.sql`** once.
-2. Configure auth and redirect URLs (see **`docs/SUPABASE_FIRST_TIME_SETUP.md`**).
-3. Add GitHub Actions secrets **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`**.
-4. Allowlist emails in **`site_admin_domains`** / **`site_admin_emails`**.
-5. Open **`/#/admin`** → **Team login**.
-
-When the database has **published** rows in **`site_games`**, **`auto`** mode will **prefer that catalog** over `games.json`. If you have fully moved to the cloud and want **only** the database (no file fallback):
-
-```env
-VITE_GAME_CATALOG=cms
-```
+1. Set up Firebase (Google sign-in)
+2. Add your email to **`cms/admin-config.json`**
+3. Open **`/admin`** → sign in → enter GitHub PAT in **System** tab
+4. Edits save to JSON files in the repo via GitHub API
 
 ---
 
 ## Quick reference
 
-| Goal | Path A (repo) | Path B (admin) |
-|------|----------------|----------------|
-| Add / change games on the hub | Edit **`games.json`**, add files under **`games/<slug>/`** | Supabase + **`/#/admin`** |
-| Change hero, footer, support text | Defaults in code / types; or DB **`site_settings`** if Supabase on | **`/#/admin`** → Settings |
-| Change layout / components | Edit **`src/**/*.tsx`**, **`src/index.css`** | Same — admin does not replace React layout |
-| Deploy | Push branch; Actions build | Same, with secrets set |
+| Goal | How |
+|------|-----|
+| Add / change games | Edit **`games.json`** + **`games/<slug>/`** |
+| Change hero, theme, footer | **`cms/site-settings.json`** or **`/admin`** |
+| Add a CMS page | **`cms/site-pages.json`** or **`/admin`** → Pages |
+| Google sign-in | Firebase — **`NO_SUPABASE_SETUP.md` Part 2** |
+| Real URLs (not `#/`) | Already enabled — use `/game/slug`, `/admin`, etc. |
 
----
-
-## What went wrong before (plain language)
-
-- The site was built so that **as soon as** Supabase env vars were present, the **only** game list was the **database**. If the DB was empty or login was not finished, you saw **no games** and **could not edit** anything useful.
-- **Fix:** **`auto`** mode (default) uses the database **only when it actually has games**; otherwise it keeps using **`games.json`**.
-
----
-
-## One-line “make it work” checklist (Path A only)
-
-1. Clone repo → `npm ci` → `npm run dev` → confirm games appear.
-2. Edit **`games.json`** and **`games/<slug>/`** as needed.
-3. Push to the branch that deploys Pages; **omit** Supabase secrets if you do not want cloud admin yet.
-
-That is enough to **manipulate the website and add games** from code and files, with no Supabase required.
+See **`docs/SITE_MANUAL.md`** for additional detail on game exports and GitHub size limits.

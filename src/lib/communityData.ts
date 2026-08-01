@@ -323,15 +323,23 @@ export async function deleteComment(commentId: string): Promise<boolean> {
 }
 
 export async function loadGameSave(userId: string, gameSlug: string): Promise<Record<string, unknown> | null> {
-  if (!supabase) return null;
-  const { data, error } = await supabase
-    .from('site_game_saves')
-    .select('save_data')
-    .eq('user_id', userId)
-    .eq('game_slug', gameSlug)
-    .maybeSingle();
-  if (error || !data) return null;
-  return (data.save_data as Record<string, unknown>) ?? {};
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('site_game_saves')
+      .select('save_data')
+      .eq('user_id', userId)
+      .eq('game_slug', gameSlug)
+      .maybeSingle();
+    if (!error && data) {
+      return (data.save_data as Record<string, unknown>) ?? {};
+    }
+  }
+  try {
+    const raw = localStorage.getItem(`cdd_save_${userId}_${gameSlug}`);
+    return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function saveGameSave(
@@ -339,17 +347,26 @@ export async function saveGameSave(
   gameSlug: string,
   saveData: Record<string, unknown>,
 ): Promise<boolean> {
-  if (!supabase) return false;
-  const { error } = await supabase.from('site_game_saves').upsert(
-    {
-      user_id: userId,
-      game_slug: gameSlug,
-      save_data: saveData,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id,game_slug' },
-  );
-  return !error;
+  if (supabase) {
+    const { error } = await supabase.from('site_game_saves').upsert(
+      {
+        user_id: userId,
+        game_slug: gameSlug,
+        save_data: saveData,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,game_slug' },
+    );
+    if (!error) {
+      return true;
+    }
+  }
+  try {
+    localStorage.setItem(`cdd_save_${userId}_${gameSlug}`, JSON.stringify(saveData));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function listUserGameSaves(userId: string): Promise<SiteGameSave[]> {

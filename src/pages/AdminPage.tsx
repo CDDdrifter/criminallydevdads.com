@@ -19,16 +19,7 @@ import {
   upsertNav,
   upsertPage,
 } from '../lib/cmsData';
-import { getAuthRedirectBaseUrl } from '../lib/authRedirect';
-import { supabaseConfigured } from '../lib/supabase';
-import {
-  anonKeyLooksValid,
-  describeAnonKeyShape,
-  getBuildTimeAnonKey,
-  getBuildTimeSupabaseUrl,
-  getRawBuildTimeSupabaseUrl,
-  supabaseUrlLooksValid,
-} from '../lib/supabaseHealth';
+import { firebaseConfigured } from '../lib/firebase';
 import { HrefQuickPick } from '../components/admin/HrefQuickPick';
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
 import {
@@ -452,8 +443,6 @@ export function AdminPage() {
 
   const [gameDraft, setGameDraft] = useState(emptyGame());
   const [pageDraft, setPageDraft] = useState(emptyPageDraft());
-  const [emailForOtp, setEmailForOtp] = useState('');
-  const [otpMessage, setOtpMessage] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [syncRepoMessage, setSyncRepoMessage] = useState<string | null>(null);
   const [gameZipFile, setGameZipFile] = useState<File | null>(null);
@@ -550,7 +539,7 @@ export function AdminPage() {
   }, []);
 
   const reload = useCallback(async () => {
-    if (!supabaseConfigured || !auth.isAdmin) {
+    if (!firebaseConfigured || !auth.isAdmin) {
       return;
     }
     const [s, g, svc, p, n, l] = await Promise.all([
@@ -1242,78 +1231,20 @@ export function AdminPage() {
     }
   };
 
-  if (!supabaseConfigured) {
-    const diagUrlRaw = getRawBuildTimeSupabaseUrl();
-    const diagUrl = getBuildTimeSupabaseUrl();
-    const diagKey = getBuildTimeAnonKey();
-    const diagUrlCheck = supabaseUrlLooksValid(diagUrlRaw);
-    const diagKeyCheck = anonKeyLooksValid(diagKey);
+  if (!firebaseConfigured) {
     return (
       <div className="admin-shell">
         <div className="admin-panel">
           <h1 className="header-title" style={{ fontSize: '1.8rem' }}>
             Admin
           </h1>
-          <p className="admin-muted" style={{ marginTop: 12 }}>
-            This exact JavaScript bundle was built <strong>without</strong> usable Supabase env vars, so admin is
-            off. Your secrets can be correct in GitHub and you can still see this until a <strong>new</strong> deploy
-            finishes that picked them up — or the values failed validation (wrong paste).
-          </p>
-          <div
-            className="admin-panel"
-            style={{ marginTop: 16, borderColor: 'rgba(255, 180, 100, 0.45)', background: 'rgba(255, 180, 100, 0.06)' }}
-          >
-            <p className="admin-muted" style={{ margin: 0, fontWeight: 700 }}>
-              What this build actually contains (no secret text shown)
-            </p>
-            <ul className="admin-muted" style={{ marginTop: 10, marginBottom: 0, paddingLeft: 20, lineHeight: 1.6 }}>
-              <li>
-                <code>VITE_SUPABASE_URL</code> length in build: <strong>{diagUrlRaw.length}</strong>
-                {diagUrlRaw !== diagUrl ? (
-                  <>
-                    {' '}
-                    (client uses <strong>{diagUrl.length}</strong> chars — extra path after{' '}
-                    <code>.supabase.co</code> is ignored)
-                  </>
-                ) : null}{' '}
-                — if 0, Actions did not inject it (wrong repo, <strong>Variables</strong> instead of{' '}
-                <strong>Secrets</strong>, typo in name <code>VITE_SUPABASE_URL</code>, or deploy never re-ran).
-              </li>
-              <li>
-                <code>VITE_SUPABASE_ANON_KEY</code> length: <strong>{diagKey.length}</strong> — if 0, same as above.
-                If &gt; 0 but still here, key may be truncated or wrong type (must be the long <strong>anon public</strong>{' '}
-                JWT, usually 200+ characters).
-              </li>
-              {!diagUrlCheck.ok ? (
-                <li style={{ color: 'var(--accent)' }}>URL check: {diagUrlCheck.message}</li>
-              ) : null}
-              {!diagKeyCheck.ok ? (
-                <li style={{ color: 'var(--accent)' }}>Key check: {diagKeyCheck.message}</li>
-              ) : null}
-            </ul>
-            <p className="admin-muted" style={{ marginTop: 12, marginBottom: 0, fontSize: '0.85rem' }}>
-              <strong>If you already fixed GitHub secrets but lengths here never change:</strong> this page is still an{' '}
-              <strong>old build</strong>. Open <strong>Actions</strong> → <strong>Deploy to GitHub Pages</strong> → pick a
-              run <em>after</em> you saved secrets → expand <strong>Check Supabase secrets</strong> and compare{' '}
-              <code>CI … length</code> lines to the numbers above. They must match. If CI shows a long anon key (~180+) but
-              this page still shows ~41, you are on the wrong site, wrong repo, or a cached bundle — try incognito / another
-              network. Use <strong>Run workflow</strong> (manual dispatch) on the branch you use for deploy, then wait for
-              the green checkmark and hard-refresh.
-            </p>
-            <p className="admin-muted" style={{ marginTop: 10, marginBottom: 0, fontSize: '0.85rem' }}>
-              Also confirm <strong>Settings → Pages</strong> shows a deployment from <strong>Actions</strong> that matches
-              that run (not an old “Deploy from branch” upload).
-            </p>
-          </div>
-          <p className="admin-muted" style={{ marginTop: 16 }}>
-            <strong>Fix:</strong> Settings → <strong>Secrets and variables</strong> → <strong>Actions</strong> → tab{' '}
-            <strong>Secrets</strong> → names exactly <code>VITE_SUPABASE_URL</code> and{' '}
-            <code>VITE_SUPABASE_ANON_KEY</code> → <strong>Actions</strong> → re-run deploy. See{' '}
-            <code>docs/GITHUB_ACTIONS_SUPABASE_SECRETS.md</code> and <code>docs/SUPABASE_COPY_THESE_TWO_VALUES.md</code>.
+          <p className="admin-muted" style={{ marginTop: 12, lineHeight: 1.6 }}>
+            Firebase is not configured in this build. Add <code>VITE_FIREBASE_*</code> env vars to enable Google
+            sign-in and admin. See <code>docs/NO_SUPABASE_SETUP.md</code> for step-by-step setup.
           </p>
           <p className="admin-muted" style={{ marginTop: 12 }}>
-            <strong>Local only:</strong> <code>.env.local</code> next to <code>package.json</code>, same two variable
-            names, <code>npm run dev</code>, <code>http://localhost:5173/#/admin</code>.
+            <strong>Local dev:</strong> create <code>.env.local</code> with your Firebase config, then{' '}
+            <code>npm run dev</code> and open <code>http://localhost:5173/admin</code>.
           </p>
           <p style={{ marginTop: 16 }}>
             <Link to="/">← Back to site</Link>
@@ -1332,11 +1263,6 @@ export function AdminPage() {
   }
 
   if (!auth.user) {
-    const builtUrl = getBuildTimeSupabaseUrl();
-    const builtKey = getBuildTimeAnonKey();
-    const urlCheck = supabaseUrlLooksValid(builtUrl);
-    const keyCheck = anonKeyLooksValid(builtKey);
-    const redirectExact = getAuthRedirectBaseUrl();
     return (
       <div className="admin-shell">
         <div className="admin-panel">
@@ -1344,97 +1270,13 @@ export function AdminPage() {
             Log in to edit the site
           </h1>
           <p className="admin-muted" style={{ marginBottom: 16, lineHeight: 1.5 }}>
-            <strong>Easiest:</strong> use <strong>Send login link</strong> below with an email that ends in{' '}
-            <code>@criminallydevdads.com</code> (already allowed), or a personal address you added in Supabase SQL.
-            You need <strong>Email</strong> turned on under Authentication → Providers. Full checklist:{' '}
-            <code>docs/ADMIN_LOGIN_ONE_PAGE.md</code>.
+            Sign in with Google using an email on the admin allow list. Edit{' '}
+            <code>cms/admin-config.json</code> to add your email or domain. Full guide:{' '}
+            <code>docs/NO_SUPABASE_SETUP.md</code>.
           </p>
           <p className="admin-muted" style={{ marginBottom: 12, fontSize: '0.85rem' }}>
-            Bookmark <strong>/#/admin</strong>. Optional: show “Team login” in the header with{' '}
-            <code>VITE_SHOW_ADMIN_NAV=true</code> (<code>docs/SITE_MANUAL.md</code>).
-          </p>
-          {(!urlCheck.ok || !keyCheck.ok) && (
-            <div className="admin-panel danger-zone" style={{ marginBottom: 16 }}>
-              <p className="admin-muted" style={{ margin: 0, fontWeight: 700 }}>
-                Supabase keys in this build look wrong (Google will 404 or auth will fail):
-              </p>
-              {!urlCheck.ok ? (
-                <p className="admin-muted" style={{ marginTop: 8 }}>
-                  <strong>Project URL:</strong> {urlCheck.message}
-                </p>
-              ) : (
-                <p className="admin-muted" style={{ marginTop: 8 }}>
-                  <strong>Project URL shape:</strong> OK — <code>{builtUrl}</code>
-                </p>
-              )}
-              {!keyCheck.ok ? (
-                <p className="admin-muted" style={{ marginTop: 8 }}>
-                  <strong>Anon key:</strong> {keyCheck.message}
-                </p>
-              ) : (
-                <p className="admin-muted" style={{ marginTop: 8 }}>
-                  <strong>Anon key shape:</strong> OK — <code>{describeAnonKeyShape(builtKey)}</code>
-                </p>
-              )}
-              <p className="admin-muted" style={{ marginTop: 12, marginBottom: 0 }}>
-                Exact copy steps: <code>docs/SUPABASE_COPY_THESE_TWO_VALUES.md</code>
-              </p>
-            </div>
-          )}
-          {urlCheck.ok && keyCheck.ok ? (
-            <div className="admin-panel" style={{ marginBottom: 16, borderColor: 'rgba(115, 248, 255, 0.35)' }}>
-              <p className="admin-muted" style={{ margin: 0, fontWeight: 700 }}>
-                If Google login shows 404, add this exact URL in Supabase:
-              </p>
-              <p style={{ marginTop: 8, marginBottom: 0 }}>
-                <code style={{ wordBreak: 'break-all' }}>{redirectExact}</code>
-              </p>
-              <p className="admin-muted" style={{ marginTop: 10, marginBottom: 0, fontSize: '0.85rem' }}>
-                Supabase dashboard → <strong>Authentication</strong> → <strong>URL Configuration</strong> →{' '}
-                <strong>Redirect URLs</strong> → paste the line above. Set <strong>Site URL</strong> to the same.
-                Google Cloud → OAuth client → Authorized redirect URI must be{' '}
-                <code>{`${builtUrl.replace(/\/$/, '')}/auth/v1/callback`}</code>
-              </p>
-            </div>
-          ) : null}
-          <div className="admin-field" style={{ marginTop: 8 }}>
-            <label htmlFor="otp_email">Your team email (magic link — try this first)</label>
-            <input
-              id="otp_email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@criminallydevdads.com"
-              value={emailForOtp}
-              onChange={(e) => setEmailForOtp(e.target.value)}
-            />
-          </div>
-          <button
-            type="button"
-            disabled={busy || !emailForOtp.trim()}
-            onClick={() => {
-              setBusy(true);
-              setOtpMessage(null);
-              auth
-                .signInWithEmail(emailForOtp)
-                .then(() => setOtpMessage('Check your inbox — click the link, then open /#/admin again if needed.'))
-                .catch((e) => setOtpMessage(e instanceof Error ? e.message : 'Could not send link'))
-                .finally(() => setBusy(false));
-            }}
-          >
-            Send login link
-          </button>
-          {otpMessage ? <p className="admin-muted" style={{ marginTop: 12 }}>{otpMessage}</p> : null}
-          <p className="admin-muted" style={{ marginTop: 12, fontSize: '0.82rem', lineHeight: 1.5 }}>
-            <strong>Link shows an error?</strong> Supabase → <strong>Authentication</strong> →{' '}
-            <strong>URL Configuration</strong>: <strong>Site URL</strong> and <strong>Redirect URLs</strong> must
-            include the green-box URL above (same https host, same path, trailing slash). Add <code>www</code> and
-            non-<code>www</code> if needed. Open the email link in your real browser; if it still fails, set GitHub
-            secret <code>VITE_AUTH_REDIRECT_URL</code> to that URL and redeploy — see{' '}
-            <code>docs/ADMIN_LOGIN_ONE_PAGE.md</code>.
-          </p>
-          <p className="admin-muted" style={{ marginTop: 20, marginBottom: 8, fontSize: '0.85rem' }}>
-            Optional: Google (extra setup — OAuth + redirect in Supabase). See{' '}
-            <code>docs/SUPABASE_FIRST_TIME_SETUP.md</code>.
+            Bookmark <strong>/admin</strong>. Optional: show “Team login” in the header with{' '}
+            <code>VITE_SHOW_ADMIN_NAV=true</code>.
           </p>
           <button
             type="button"
@@ -1503,9 +1345,9 @@ export function AdminPage() {
             Signed in as <strong>{auth.user.email}</strong>. This address is not on the editor allow list.
           </p>
           <p className="admin-muted" style={{ marginTop: 12 }}>
-            In Supabase → <strong>SQL Editor</strong>, run:{' '}
-            <code>insert into site_admin_emails (email) values (&apos;your@email.com&apos;) on conflict do nothing;</code>
-            — or add your domain to <code>site_admin_domains</code>. See <code>docs/ADMIN_LOGIN_ONE_PAGE.md</code>.
+            <strong>Fix:</strong> Edit <code>cms/admin-config.json</code> in the repo and add your email to{' '}
+            <code>admin_emails</code>, or your domain to <code>admin_domains</code>. Then redeploy. See{' '}
+            <code>docs/NO_SUPABASE_SETUP.md</code>.
           </p>
           <button type="button" style={{ marginTop: 16 }} onClick={() => auth.signOut()}>
             Sign out
@@ -2997,18 +2839,8 @@ export function AdminPage() {
                   </a>
                   <br />
                   <span style={{ opacity: 0.92 }}>
-                    This deploy’s Supabase host:{' '}
-                    <code>
-                      {(() => {
-                        try {
-                          return new URL(getBuildTimeSupabaseUrl()).hostname;
-                        } catch {
-                          return '(invalid URL)';
-                        }
-                      })()}
-                    </code>{' '}
-                    — must match <code>https://&lt;Project ID from Supabase General&gt;.supabase.co</code> exactly (no
-                    extra letters).
+                    Games are hosted from <code>games/&lt;slug&gt;/</code> in the repo or via an external{' '}
+                    <strong>Play URL</strong> in <code>games.json</code>. See <code>docs/NO_SUPABASE_SETUP.md</code>.
                   </span>
                 </p>
               ) : null}

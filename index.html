@@ -24,31 +24,6 @@
     <meta name="theme-color" content="#0d111a" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>CRIMINALLY DEV DADS - Game Hub</title>
-    <!-- Before app JS: path URLs (/play/…) must become /#/… at site root or relative ./assets fail on refresh. -->
-    <script>
-      (function () {
-        var loc = window.location;
-        var path = loc.pathname.replace(/\/index\.html$/i, '') || '/';
-        if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-        var search = loc.search || '';
-        var hash = loc.hash || '';
-        var params = new URLSearchParams(search);
-
-        if (params.get('code') && hash.indexOf('#/auth/callback') !== 0) {
-          loc.replace(loc.origin + '/#/auth/callback' + search);
-          return;
-        }
-
-        if (hash.indexOf('#/') === 0) {
-          if (path !== '/') loc.replace(loc.origin + '/' + hash + search);
-          return;
-        }
-
-        if (path !== '/') {
-          loc.replace(loc.origin + '/#' + path + search);
-        }
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

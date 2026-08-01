@@ -1,14 +1,14 @@
 /**
- * App routes (hash router: paths are really /#/play/..., /#/admin, …).
+ * App routes (BrowserRouter — real URLs like /play/..., /admin, /game/...).
  *
  * To add a NEW top-level PAGE:
  * 1. Create `src/pages/MyPage.tsx` (copy an existing page as a template).
  * 2. Import it here and add `<Route path="/my-path" element={<MyPage />} />`.
- * 3. Optional: add a nav link in `src/components/SiteChrome.tsx` (`coreNav`) or use a CMS nav item if Supabase on.
+ * 3. Optional: add a nav link in `src/components/SiteChrome.tsx` (`coreNav`) or use a CMS nav item.
  *
- * Dynamic CMS-backed pages use `/p/:slug` → StaticPage (content from DB when configured).
+ * Dynamic CMS-backed pages use `/p/:slug` → StaticPage (content from cms/site-pages.json).
  */
-import { HashRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ClickSound } from './components/ClickSound';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { FxBackdrop } from './components/FxBackdrop';
@@ -41,7 +41,7 @@ import { ServicesPage } from './pages/ServicesPage';
 
 export function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <SiteBackgroundVideo />
       <GlobalHtmlFxSync />
       <SiteThemeApply />
@@ -109,6 +109,6 @@ export function App() {
       </Routes>
       </MaintenanceGate>
       <CookieConsentBanner />
-    </HashRouter>
+    </BrowserRouter>
   );
 }

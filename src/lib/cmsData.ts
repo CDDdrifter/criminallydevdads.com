@@ -64,6 +64,8 @@ import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePr
 import { supabase, supabaseConfigured } from './supabase';
 import { normalizePageSections } from './pageSections';
 import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
+import { loadLegacyGames } from './legacyGames';
+import { syncGamesJsonToGitHub, syncSiteContentToGitHub } from './githubCms';
 import { fetchStaticJson } from './staticCms';
 import { normalizePromoEvents } from './promoEvents';
 import { normalizeRouteFxOverride } from './routeFx';
@@ -482,69 +484,182 @@ export async function fetchVaultGames(): Promise<GameView[]> {
   return rows.map(recordToView);
 }
 
-/** Single game for detail/play routes (hub, vault, or admin-visible draft). */
+/** Single game for detail/play routes — reads games.json + games/ folder (no Supabase required). */
 export async function fetchGameViewBySlug(slug: string): Promise<GameView | null> {
-  if (!slug.trim() || !supabaseConfigured || !supabase) {
+  const trimmed = slug.trim();
+  if (!trimmed) {
     return null;
   }
-  const { data, error } = await supabase.from('site_games').select('*').eq('slug', slug.trim()).maybeSingle();
-  if (error) {
-    console.error(error);
-    return null;
+
+  const legacy = await loadLegacyGames();
+  const hit = legacy.find((g) => g.slug === trimmed || g.id === trimmed);
+  if (hit) {
+    return hit;
   }
-  if (!data) {
-    return null;
+
+  if (supabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('site_games').select('*').eq('slug', trimmed).maybeSingle();
+    if (!error && data) {
+      return recordToView(data as GameRecord);
+    }
+    if (error) {
+      console.error(error);
+    }
   }
-  return recordToView(data as GameRecord);
+  return null;
+}
+
+function gameViewToRecord(g: GameView, sortOrder: number): GameRecord {
+  return {
+    id: g.id,
+    slug: g.slug,
+    title: g.title,
+    type: g.type,
+    description: g.description,
+    details: g.details,
+    thumbnail_url: g.thumbnail || null,
+    tab_icon_url: g.tab_icon || null,
+    preview_video_url: g.preview_video || null,
+    external_url: g.external_url || null,
+    local_folder: g.local_folder || null,
+    sections: g.sections,
+    visual_preset: g.visual_preset || null,
+    price_cents: g.price_cents,
+    purchase_url: g.purchase_url || null,
+    gumroad_url: g.gumroad_url || null,
+    stripe_price_id: g.stripe_price_id || null,
+    pricing_model: g.pricing_model,
+    pwyw_min_cents: g.pwyw_min_cents,
+    pwyw_suggested_cents: g.pwyw_suggested_cents,
+    donation_presets_cents: g.donation_presets_cents,
+    sort_order: sortOrder,
+    published: g.published,
+    in_vault: g.in_vault,
+    immersive_layout: g.immersive_layout,
+    custom_mood_css: g.custom_mood_css,
+    route_fx: g.route_fx,
+    tags: g.tags,
+    release_date: g.release_date,
+    platforms: g.platforms,
+    screenshots: g.screenshots,
+    features: g.features,
+    controls: g.controls,
+    credits: g.credits,
+    changelog: g.changelog,
+    system_requirements: g.system_requirements,
+  };
+}
+
+function gameRecordToLegacyJson(g: GameRecord): Record<string, unknown> {
+  const row: Record<string, unknown> = {
+    id: g.slug,
+    title: g.title,
+    type: g.type ?? 'game',
+    description: g.description ?? '',
+  };
+  if (g.details) row.details = g.details;
+  if (g.thumbnail_url) row.thumbnail = g.thumbnail_url;
+  if (g.external_url) row.url = g.external_url;
+  if (g.preview_video_url) row.preview_video = g.preview_video_url;
+  if (g.local_folder) row.filename = `${g.local_folder}.zip`;
+  if (g.pricing_model) row.pricing_model = g.pricing_model;
+  if (g.price_cents) row.price_cents = g.price_cents;
+  if (g.purchase_url) row.purchase_url = g.purchase_url;
+  if (g.gumroad_url) row.gumroad_url = g.gumroad_url;
+  if (g.stripe_price_id) row.stripe_price_id = g.stripe_price_id;
+  if (g.visual_preset) row.visual_preset = g.visual_preset;
+  return row;
+}
+
+async function loadAllGamesForAdmin(): Promise<GameRecord[]> {
+  const legacy = await loadLegacyGames();
+  return legacy.map((g, i) => gameViewToRecord(g, i));
+}
+
+async function persistGamesJson(games: GameRecord[]): Promise<void> {
+  const sorted = [...games].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const json = sorted.map(gameRecordToLegacyJson);
+  const result = await syncGamesJsonToGitHub(json);
+  if (result.error) {
+    throw new Error(result.error);
+  }
 }
 
 export async function fetchAllGamesAdmin(): Promise<GameRecord[]> {
-  if (!supabase) {
-    return [];
+  if (supabase) {
+    const { data, error } = await supabase.from('site_games').select('*').order('sort_order');
+    if (!error && data && data.length > 0) {
+      return (data ?? []).map((row) => {
+        const r = row as Record<string, unknown>;
+        return {
+          ...(row as GameRecord),
+          route_fx: normalizeRouteFxOverride(r.route_fx),
+        };
+      });
+    }
+    if (error) {
+      console.error(error);
+    }
   }
-  const { data, error } = await supabase.from('site_games').select('*').order('sort_order');
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return (data ?? []).map((row) => {
-    const r = row as Record<string, unknown>;
-    return {
-      ...(row as GameRecord),
-      route_fx: normalizeRouteFxOverride(r.route_fx),
-    };
-  });
+  return loadAllGamesForAdmin();
 }
 
 export async function upsertGame(row: Partial<GameRecord> & { slug: string; title: string }) {
-  if (!supabase) {
-    throw new Error('Supabase not configured');
-  }
-  const payload: Record<string, unknown> = { ...row };
-  // Backward-compatible writes: if DB schema lags behind frontend fields, retry without unknown columns.
-  for (let attempt = 0; attempt < 16; attempt++) {
-    const { error } = await supabase.from('site_games').upsert(payload, { onConflict: 'slug' });
-    if (!error) {
-      return;
+  if (supabase) {
+    const payload: Record<string, unknown> = { ...row };
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const { error } = await supabase.from('site_games').upsert(payload, { onConflict: 'slug' });
+      if (!error) {
+        return;
+      }
+      const msg = error.message ?? '';
+      const unknown = unknownColumnFromPostgrestMessage(msg);
+      if (!unknown || !(unknown in payload)) {
+        throw error;
+      }
+      delete payload[unknown];
     }
-    const msg = error.message ?? '';
-    const unknown = unknownColumnFromPostgrestMessage(msg);
-    if (!unknown || !(unknown in payload)) {
-      throw error;
-    }
-    delete payload[unknown];
+    throw new Error('Could not save game row after column retries.');
   }
-  throw new Error('Could not save game row after column retries (run 014_ensure_admin_write_schema.sql).');
+
+  const games = await loadAllGamesForAdmin();
+  const idx = games.findIndex((g) => g.slug === row.slug.trim());
+  const base: GameRecord =
+    idx >= 0
+      ? games[idx]!
+      : {
+          id: row.slug,
+          slug: row.slug.trim(),
+          title: row.title.trim(),
+          type: 'game',
+          description: '',
+          details: null,
+          thumbnail_url: null,
+          external_url: null,
+          local_folder: row.slug.trim(),
+          sort_order: games.length,
+          published: true,
+        };
+  const merged = { ...base, ...row, slug: row.slug.trim(), title: row.title.trim() };
+  if (idx >= 0) {
+    games[idx] = merged;
+  } else {
+    games.push(merged);
+  }
+  await persistGamesJson(games);
 }
 
 export async function deleteGameBySlug(slug: string) {
-  if (!supabase) {
-    throw new Error('Supabase not configured');
+  if (supabase) {
+    const { error } = await supabase.from('site_games').delete().eq('slug', slug);
+    if (error) {
+      throw error;
+    }
+    return;
   }
-  const { error } = await supabase.from('site_games').delete().eq('slug', slug);
-  if (error) {
-    throw error;
-  }
+  const games = await loadAllGamesForAdmin();
+  const filtered = games.filter((g) => g.slug !== slug);
+  await persistGamesJson(filtered);
 }
 
 export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
@@ -634,6 +749,10 @@ export async function fetchDevLogBySlug(slug: string): Promise<DevLogPost | null
 }
 
 export async function fetchDevLogs(): Promise<DevLogPost[]> {
+  const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
+  if (Array.isArray(staticLogs) && staticLogs.length > 0) {
+    return staticLogs;
+  }
   if (!supabaseConfigured || !supabase) {
     return [];
   }
@@ -667,91 +786,92 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
 }
 
 export async function saveSiteSettings(patch: Partial<SiteSettings>) {
-  if (!supabase) {
-    throw new Error('Supabase not configured');
-  }
   const current = await fetchSiteSettings();
   const merged = { ...current, ...patch };
-  const payload: Record<string, unknown> = {
-    id: 1,
-    hero_title: merged.hero_title,
-    hero_subtitle: merged.hero_subtitle,
-    support_title: merged.support_title,
-    support_body: merged.support_body,
-    support_page_href: merged.support_page_href,
-    stripe_donation_url: merged.stripe_donation_url,
-    support_buttons: merged.support_buttons,
-    footer_text: merged.footer_text,
-    site_visual_preset: normalizeVisualPresetInput(merged.site_visual_preset) || null,
-    fx_scanlines: merged.fx_scanlines,
-    fx_noise: merged.fx_noise,
-    fx_vignette: merged.fx_vignette,
-    fx_hue_shift: merged.fx_hue_shift,
-    fx_cursor_spotlight: merged.fx_cursor_spotlight,
-    fx_intensity: normalizeFxIntensity(merged.fx_intensity),
-    promo_events: merged.promo_events,
-    custom_css: merged.custom_css,
-    // Studio columns (migration 016). The retry loop below silently drops
-    // any of these if the DB hasn't been migrated yet, so this is forward-
-    // compatible without forcing the user to run the SQL immediately.
-    theme: merged.theme,
-    effects: merged.effects,
-    typography: merged.typography,
-    layout: merged.layout,
-    components: merged.components,
-    behavior: merged.behavior,
-    seo: merged.seo,
-    custom_head_html: merged.custom_head_html,
-    theme_presets: merged.theme_presets,
-    // Studio expansion (migration 017). Unknown columns drop on retry.
-    animations: merged.animations,
-    audio: merged.audio,
-    cursor: merged.cursor,
-    particles: merged.particles,
-    social: merged.social,
-    hero: merged.hero,
-    game_cards: merged.game_cards,
-    branding: merged.branding,
-    performance: merged.performance,
-    accessibility: merged.accessibility,
-    sharing: merged.sharing,
-    homepage_sections: merged.homepage_sections,
-    homepage_layout_mode: merged.homepage_layout_mode,
-    shipping: merged.shipping,
-    prebuilt_pages: merged.prebuilt_pages,
-    legal: merged.legal,
-  };
-  for (let attempt = 0; attempt < 16; attempt++) {
-    const { error } = await supabase.from('site_settings').upsert(payload);
-    if (!error) {
-      return;
+
+  if (supabase) {
+    const payload: Record<string, unknown> = {
+      id: 1,
+      hero_title: merged.hero_title,
+      hero_subtitle: merged.hero_subtitle,
+      support_title: merged.support_title,
+      support_body: merged.support_body,
+      support_page_href: merged.support_page_href,
+      stripe_donation_url: merged.stripe_donation_url,
+      support_buttons: merged.support_buttons,
+      footer_text: merged.footer_text,
+      site_visual_preset: normalizeVisualPresetInput(merged.site_visual_preset) || null,
+      fx_scanlines: merged.fx_scanlines,
+      fx_noise: merged.fx_noise,
+      fx_vignette: merged.fx_vignette,
+      fx_hue_shift: merged.fx_hue_shift,
+      fx_cursor_spotlight: merged.fx_cursor_spotlight,
+      fx_intensity: normalizeFxIntensity(merged.fx_intensity),
+      promo_events: merged.promo_events,
+      custom_css: merged.custom_css,
+      theme: merged.theme,
+      effects: merged.effects,
+      typography: merged.typography,
+      layout: merged.layout,
+      components: merged.components,
+      behavior: merged.behavior,
+      seo: merged.seo,
+      custom_head_html: merged.custom_head_html,
+      theme_presets: merged.theme_presets,
+      animations: merged.animations,
+      audio: merged.audio,
+      cursor: merged.cursor,
+      particles: merged.particles,
+      social: merged.social,
+      hero: merged.hero,
+      game_cards: merged.game_cards,
+      branding: merged.branding,
+      performance: merged.performance,
+      accessibility: merged.accessibility,
+      sharing: merged.sharing,
+      homepage_sections: merged.homepage_sections,
+      homepage_layout_mode: merged.homepage_layout_mode,
+      shipping: merged.shipping,
+      prebuilt_pages: merged.prebuilt_pages,
+      legal: merged.legal,
+    };
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const { error } = await supabase.from('site_settings').upsert(payload);
+      if (!error) {
+        return;
+      }
+      const msg = error.message ?? '';
+      const unknown = unknownColumnFromPostgrestMessage(msg);
+      if (!unknown || !(unknown in payload)) {
+        throw error;
+      }
+      delete payload[unknown];
     }
-    const msg = error.message ?? '';
-    const unknown = unknownColumnFromPostgrestMessage(msg);
-    if (!unknown || !(unknown in payload)) {
-      throw error;
-    }
-    delete payload[unknown];
+    throw new Error('Could not save site_settings.');
   }
-  throw new Error('Could not save site_settings after column retries (run 014_ensure_admin_write_schema.sql).');
+
+  const result = await syncSiteContentToGitHub([
+    { path: 'cms/site-settings.json', data: { id: 1, ...merged } },
+  ]);
+  if (result.error) {
+    throw new Error(result.error);
+  }
 }
 
 export async function fetchAllPagesAdmin(): Promise<SitePage[]> {
-  if (!supabase) {
-    return [];
+  if (supabase) {
+    const { data, error } = await supabase.from('site_pages').select('*').order('sort_order');
+    if (!error && data && data.length > 0) {
+      return (data as Record<string, unknown>[]).map(normalizeSitePage);
+    }
+    if (error) {
+      console.error(error);
+    }
   }
-  const { data, error } = await supabase.from('site_pages').select('*').order('sort_order');
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return (data as Record<string, unknown>[]).map(normalizeSitePage);
+  return fetchSitePages();
 }
 
 export async function upsertPage(row: Partial<SitePage> & { slug: string; title: string }) {
-  if (!supabase) {
-    throw new Error('Supabase not configured');
-  }
   const payload: Record<string, unknown> = {
     slug: row.slug.trim(),
     title: row.title.trim(),
@@ -772,47 +892,66 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
     html_iframe_compat: Boolean(row.html_iframe_compat),
     route_fx: row.route_fx ?? normalizeRouteFxOverride(null),
   };
-  for (let attempt = 0; attempt < 48; attempt++) {
-    const { error } = await supabase.from('site_pages').upsert(payload, { onConflict: 'slug' });
-    if (!error) {
-      return;
+
+  if (supabase) {
+    for (let attempt = 0; attempt < 48; attempt++) {
+      const { error } = await supabase.from('site_pages').upsert(payload, { onConflict: 'slug' });
+      if (!error) {
+        return;
+      }
+      const msg = error.message ?? '';
+      const unknown = unknownColumnFromPostgrestMessage(msg);
+      if (!unknown || !(unknown in payload)) {
+        throw error;
+      }
+      delete payload[unknown];
     }
-    const msg = error.message ?? '';
-    const unknown = unknownColumnFromPostgrestMessage(msg);
-    if (!unknown || !(unknown in payload)) {
-      throw error;
-    }
-    delete payload[unknown];
+    throw new Error('Could not save site_pages row.');
   }
-  throw new Error('Could not save site_pages row after column retries (run 014_ensure_admin_write_schema.sql).');
+
+  const pages = await fetchSitePages();
+  const idx = pages.findIndex((p) => p.slug === row.slug.trim());
+  const merged = normalizeSitePage({ ...(idx >= 0 ? pages[idx] : {}), ...payload });
+  if (idx >= 0) {
+    pages[idx] = merged;
+  } else {
+    pages.push(merged);
+  }
+  const result = await syncSiteContentToGitHub([{ path: 'cms/site-pages.json', data: pages }]);
+  if (result.error) {
+    throw new Error(result.error);
+  }
 }
 
 export async function deletePageSlug(slug: string) {
-  if (!supabase) {
-    throw new Error('Supabase not configured');
+  if (supabase) {
+    const { error } = await supabase.from('site_pages').delete().eq('slug', slug);
+    if (error) {
+      throw error;
+    }
+    return;
   }
-  const { error } = await supabase.from('site_pages').delete().eq('slug', slug);
-  if (error) {
-    throw error;
+  const pages = (await fetchSitePages()).filter((p) => p.slug !== slug);
+  const result = await syncSiteContentToGitHub([{ path: 'cms/site-pages.json', data: pages }]);
+  if (result.error) {
+    throw new Error(result.error);
   }
 }
 
 export async function fetchAllNavAdmin(): Promise<NavItem[]> {
-  if (!supabase) {
-    return [];
+  if (supabase) {
+    const { data, error } = await supabase.from('site_nav_items').select('*').order('sort_order');
+    if (!error && data && data.length > 0) {
+      return data ?? [];
+    }
+    if (error) {
+      console.error(error);
+    }
   }
-  const { data, error } = await supabase.from('site_nav_items').select('*').order('sort_order');
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return data ?? [];
+  return fetchNavItems();
 }
 
 export async function upsertNav(row: Partial<NavItem> & { label: string; href: string }) {
-  if (!supabase) {
-    throw new Error('Supabase not configured');
-  }
   const payload = {
     id: row.id ?? crypto.randomUUID(),
     label: row.label,
@@ -820,42 +959,60 @@ export async function upsertNav(row: Partial<NavItem> & { label: string; href: s
     external: row.external ?? false,
     sort_order: row.sort_order ?? 0,
   };
-  const { error } = await supabase.from('site_nav_items').upsert(payload, { onConflict: 'id' });
-  if (error) {
-    throw error;
+  if (supabase) {
+    const { error } = await supabase.from('site_nav_items').upsert(payload, { onConflict: 'id' });
+    if (error) {
+      throw error;
+    }
+    return;
+  }
+  const nav = await fetchNavItems();
+  const idx = nav.findIndex((n) => n.id === payload.id);
+  if (idx >= 0) {
+    nav[idx] = payload;
+  } else {
+    nav.push(payload);
+  }
+  const result = await syncSiteContentToGitHub([{ path: 'cms/site-nav.json', data: nav }]);
+  if (result.error) {
+    throw new Error(result.error);
   }
 }
 
 export async function deleteNavId(id: string) {
-  if (!supabase) {
-    throw new Error('Supabase not configured');
+  if (supabase) {
+    const { error } = await supabase.from('site_nav_items').delete().eq('id', id);
+    if (error) {
+      throw error;
+    }
+    return;
   }
-  const { error } = await supabase.from('site_nav_items').delete().eq('id', id);
-  if (error) {
-    throw error;
+  const nav = (await fetchNavItems()).filter((n) => n.id !== id);
+  const result = await syncSiteContentToGitHub([{ path: 'cms/site-nav.json', data: nav }]);
+  if (result.error) {
+    throw new Error(result.error);
   }
 }
 
 export async function fetchAllDevLogsAdmin(): Promise<DevLogPost[]> {
-  if (!supabase) {
-    return [];
+  if (supabase) {
+    const { data, error } = await supabase.from('site_dev_logs').select('*').order('published_at', {
+      ascending: false,
+    });
+    if (!error && data && data.length > 0) {
+      return data ?? [];
+    }
+    if (error) {
+      console.error(error);
+    }
   }
-  const { data, error } = await supabase.from('site_dev_logs').select('*').order('published_at', {
-    ascending: false,
-  });
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return data ?? [];
+  const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
+  return Array.isArray(staticLogs) ? staticLogs : [];
 }
 
 export async function upsertDevLog(
   row: Partial<DevLogPost> & { slug: string; title: string; body: string },
 ) {
-  if (!supabase) {
-    throw new Error('Supabase not configured');
-  }
   const publishedAt =
     typeof row.published_at === 'string' && row.published_at.trim()
       ? row.published_at.trim()
@@ -867,23 +1024,43 @@ export async function upsertDevLog(
     published_at: publishedAt,
     sections: row.sections ?? [],
   };
-  // Retry without `sections` if the column hasn't been migrated yet (030).
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const { error } = await supabase.from('site_dev_logs').upsert(payload, { onConflict: 'slug' });
-    if (!error) return;
-    const unknown = unknownColumnFromPostgrestMessage(error.message ?? '');
-    if (!unknown || !(unknown in payload)) throw error;
-    delete payload[unknown];
+
+  if (supabase) {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { error } = await supabase.from('site_dev_logs').upsert(payload, { onConflict: 'slug' });
+      if (!error) return;
+      const unknown = unknownColumnFromPostgrestMessage(error.message ?? '');
+      if (!unknown || !(unknown in payload)) throw error;
+      delete payload[unknown];
+    }
+    throw new Error('Could not save dev log.');
   }
-  throw new Error('Could not save dev log (run migration 030).');
+
+  const logs = await fetchAllDevLogsAdmin();
+  const idx = logs.findIndex((l) => l.slug === row.slug.trim());
+  const merged = { ...(idx >= 0 ? logs[idx] : {}), ...payload } as DevLogPost;
+  if (idx >= 0) {
+    logs[idx] = merged;
+  } else {
+    logs.push(merged);
+  }
+  const result = await syncSiteContentToGitHub([{ path: 'cms/site-devlogs.json', data: logs }]);
+  if (result.error) {
+    throw new Error(result.error);
+  }
 }
 
 export async function deleteDevLogSlug(slug: string) {
-  if (!supabase) {
-    throw new Error('Supabase not configured');
+  if (supabase) {
+    const { error } = await supabase.from('site_dev_logs').delete().eq('slug', slug);
+    if (error) {
+      throw error;
+    }
+    return;
   }
-  const { error } = await supabase.from('site_dev_logs').delete().eq('slug', slug);
-  if (error) {
-    throw error;
+  const logs = (await fetchAllDevLogsAdmin()).filter((l) => l.slug !== slug);
+  const result = await syncSiteContentToGitHub([{ path: 'cms/site-devlogs.json', data: logs }]);
+  if (result.error) {
+    throw new Error(result.error);
   }
 }

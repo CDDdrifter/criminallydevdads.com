@@ -1,223 +1,174 @@
-import type { Session, User } from '@supabase/supabase-js';
+import type { User } from 'firebase/auth';
+import {
+  GoogleAuthProvider,
+  getRedirectResult,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut as firebaseSignOut,
+} from 'firebase/auth';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { getOAuthRedirectUrl, stashAuthReturn } from '../lib/authBootstrap';
-import { trackSignIn } from '../lib/analytics';
-import { ensureProfile, fetchProfile, type SiteProfile } from '../lib/communityData';
+import { isAdminEmail } from '../lib/adminConfig';
+import { stashAuthReturn } from '../lib/authBootstrap';
 import { installGameCloudBridge } from '../lib/gameCloudBridge';
-import { supabase, supabaseConfigured } from '../lib/supabase';
+import { auth, firebaseConfigured } from '../lib/firebase';
+
+export type AuthProfile = {
+  display_name: string;
+  avatar_url: string;
+  username: string;
+  mailing_list_opt_in?: boolean;
+  created_at?: string;
+};
+
+/** App-level user shape (Firebase `uid` exposed as `id` for compatibility). */
+export type AppUser = {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+};
 
 type AuthState = {
-  session: Session | null;
-  user: User | null;
-  profile: SiteProfile | null;
+  user: AppUser | null;
+  profile: AuthProfile | null;
   loading: boolean;
   isAdmin: boolean;
   isSignedIn: boolean;
   adminCheckError: string | null;
+  authConfigured: boolean;
   signInWithGoogle: (returnPath?: string) => Promise<void>;
-  signInWithEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
-function metaFromUser(user: User) {
-  const m = user.user_metadata ?? {};
+function mapUser(u: User): AppUser {
   return {
-    name: String(m.full_name ?? m.name ?? user.email?.split('@')[0] ?? 'Player'),
-    avatar: String(m.avatar_url ?? m.picture ?? ''),
+    id: u.uid,
+    email: u.email,
+    displayName: u.displayName,
+    photoURL: u.photoURL,
+  };
+}
+
+function profileFromUser(user: User): AuthProfile {
+  return {
+    display_name: user.displayName ?? user.email?.split('@')[0] ?? 'Player',
+    avatar_url: user.photoURL ?? '',
+    username: '',
+    mailing_list_opt_in: false,
+    created_at: user.metadata.creationTime ?? undefined,
   };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<SiteProfile | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [serverIsAdmin, setServerIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [adminCheckError, setAdminCheckError] = useState<string | null>(null);
 
-  const loadProfile = useCallback(async (user: User | null) => {
-    if (!user) {
-      setProfile(null);
-      return;
-    }
-    const meta = metaFromUser(user);
-    let p = await fetchProfile(user.id);
-    if (!p) {
-      p = await ensureProfile(user.id, meta);
-    }
-    setProfile(p);
-  }, []);
-
-  const applySession = useCallback(
-    async (next: Session | null, event?: string) => {
-      setSession(next);
-      setAdminCheckError(null);
-      if (!supabase) {
-        setServerIsAdmin(false);
-        setProfile(null);
-        return;
-      }
-      if (!next?.user) {
-        setServerIsAdmin(false);
-        setProfile(null);
-        return;
-      }
-
-      await loadProfile(next.user);
-
-      const { data, error } = await supabase.rpc('is_site_admin');
-      if (error) {
-        console.error('is_site_admin RPC failed', error);
-        setServerIsAdmin(false);
-        setAdminCheckError(
-          error.message ||
-            'Could not verify editor access. Run supabase/schema.sql in the SQL Editor, then try again.',
-        );
-      } else {
-        setServerIsAdmin(data === true);
-      }
-
-      if (event === 'SIGNED_IN') {
-        void trackSignIn(next.user.id);
-      }
-    },
-    [loadProfile],
-  );
-
   useEffect(() => {
-    if (!supabaseConfigured || !supabase) {
+    if (!firebaseConfigured || !auth) {
       setLoading(false);
       return;
     }
 
     let cancelled = false;
 
-    supabase.auth.getSession().then(({ data }) => {
+    void getRedirectResult(auth).catch((err) => {
+      console.warn('[auth] redirect result error', err);
+    });
+
+    const unsub = onAuthStateChanged(auth, async (next) => {
       if (cancelled) {
         return;
       }
-      void applySession(data.session ?? null).finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-    });
+      setUser(next ? mapUser(next) : null);
+      setAdminCheckError(null);
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, next) => {
-      setLoading(true);
-      void applySession(next, event).finally(() => {
+      if (!next) {
+        setProfile(null);
+        setIsAdmin(false);
+        setLoading(false);
+        return;
+      }
+
+      setProfile(profileFromUser(next));
+      try {
+        const admin = await isAdminEmail(next.email);
         if (!cancelled) {
-          setLoading(false);
+          setIsAdmin(admin);
         }
-      });
+      } catch (err) {
+        if (!cancelled) {
+          setIsAdmin(false);
+          setAdminCheckError(err instanceof Error ? err.message : 'Could not verify admin access');
+        }
+      }
+      if (!cancelled) {
+        setLoading(false);
+      }
     });
 
     return () => {
       cancelled = true;
-      subscription.unsubscribe();
+      unsub();
     };
-  }, [applySession]);
-
-  const user = session?.user ?? null;
-  const isAdmin = serverIsAdmin;
-  const isSignedIn = Boolean(user);
+  }, []);
 
   useEffect(() => {
     installGameCloudBridge(() => user?.id ?? null);
   }, [user?.id]);
 
-  const signInWithGoogle = useCallback(async (returnPath?: string) => {
-    if (!supabase) {
-      throw new Error('Supabase is not configured');
-    }
-    stashAuthReturn(returnPath);
-    const redirectTo = getOAuthRedirectUrl();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        queryParams: {
-          prompt: 'select_account',
-          access_type: 'online',
-        },
-      },
-    });
-    if (error) {
-      throw error;
-    }
+  const refreshProfile = useCallback(async () => {
+    // Profile is derived from Firebase user — no separate backend to refresh.
   }, []);
 
-  const signInWithEmail = useCallback(async (email: string) => {
-    if (!supabase) {
-      throw new Error('Supabase is not configured');
+  const signInWithGoogle = useCallback(async (returnPath?: string) => {
+    if (!auth) {
+      throw new Error('Firebase is not configured. Add VITE_FIREBASE_* env vars — see docs/NO_SUPABASE_SETUP.md');
     }
-    const trimmed = email.trim().toLowerCase();
-    const { data: allowed, error: allowErr } = await supabase.rpc('can_request_editor_login', {
-      check_email: trimmed,
-    });
-    if (allowErr) {
-      throw allowErr;
-    }
-    if (!allowed) {
-      throw new Error(
-        'This email is not on the editor allow list. In Supabase → SQL, add the domain to site_admin_domains or your exact address to site_admin_emails.',
-      );
-    }
-    const redirectTo = getOAuthRedirectUrl();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: { emailRedirectTo: redirectTo },
-    });
-    if (error) {
-      throw error;
+    stashAuthReturn(returnPath);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      const code = err && typeof err === 'object' && 'code' in err ? String((err as { code: string }).code) : '';
+      if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user') {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+      throw err;
     }
   }, []);
 
   const signOut = useCallback(async () => {
-    if (!supabase) {
+    if (!auth) {
       return;
     }
-    await supabase.auth.signOut();
+    await firebaseSignOut(auth);
     setProfile(null);
+    setIsAdmin(false);
   }, []);
-
-  const refreshProfile = useCallback(async () => {
-    if (user) {
-      await loadProfile(user);
-    }
-  }, [user, loadProfile]);
 
   const value = useMemo(
     () => ({
-      session,
       user,
       profile,
       loading,
       isAdmin,
-      isSignedIn,
+      isSignedIn: Boolean(user),
       adminCheckError,
+      authConfigured: firebaseConfigured,
       signInWithGoogle,
-      signInWithEmail,
       signOut,
       refreshProfile,
     }),
-    [
-      session,
-      user,
-      profile,
-      loading,
-      isAdmin,
-      isSignedIn,
-      adminCheckError,
-      signInWithGoogle,
-      signInWithEmail,
-      signOut,
-      refreshProfile,
-    ],
+    [user, profile, loading, isAdmin, adminCheckError, signInWithGoogle, signOut, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -229,4 +180,9 @@ export function useAuth(): AuthState {
     throw new Error('useAuth must be used within AuthProvider');
   }
   return ctx;
+}
+
+/** @deprecated Use authConfigured from useAuth() */
+export function authConfigured(): boolean {
+  return firebaseConfigured;
 }

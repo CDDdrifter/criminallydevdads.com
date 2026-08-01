@@ -1,8 +1,8 @@
 # Builds the React hub and deploys dist/ to GitHub Pages.
 #
-# Games catalog default (VITE_GAME_CATALOG unset = auto): uses games.json + games/ unless site_games has rows.
-# Optional: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_AUTH_REDIRECT_URL (canonical site URL for auth),
-# VITE_SHOW_ADMIN_NAV (true = show Team login in nav)
+# Required secrets: VITE_FIREBASE_* (see docs/NO_SUPABASE_SETUP.md)
+# Games: games.json + games/ folder (no cloud storage)
+# Optional: VITE_SHOW_ADMIN_NAV, VITE_AUTH_REDIRECT_URL
 #
 # Repo: Settings → Pages → Source: GitHub Actions
 
@@ -11,7 +11,6 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main, fixing.fortfury]
-  # Lets you run a deploy without a commit: Actions → Deploy to GitHub Pages → Run workflow → pick branch.
   workflow_dispatch:
 
 permissions:
@@ -39,33 +38,35 @@ jobs:
           node-version: '20'
           cache: npm
 
-      # Does not print secret values — only warns if Actions *Secrets* (not Variables) are missing/empty.
-      - name: Check Supabase secrets visible to this workflow
+      - name: Check Firebase secrets visible to this workflow
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
         run: |
           ok=1
-          if [ -z "${VITE_SUPABASE_URL:-}" ]; then
-            echo "::warning::VITE_SUPABASE_URL is empty. Add it under Settings → Secrets and variables → Actions → Secrets (not Variables). Name must match exactly."
+          if [ -z "${VITE_FIREBASE_API_KEY:-}" ]; then
+            echo "::warning::VITE_FIREBASE_API_KEY is empty. Add Firebase secrets — see docs/NO_SUPABASE_SETUP.md"
             ok=0
           fi
-          if [ -z "${VITE_SUPABASE_ANON_KEY:-}" ]; then
-            echo "::warning::VITE_SUPABASE_ANON_KEY is empty. Same place: Repository secrets."
+          if [ -z "${VITE_FIREBASE_AUTH_DOMAIN:-}" ]; then
+            echo "::warning::VITE_FIREBASE_AUTH_DOMAIN is empty."
+            ok=0
+          fi
+          if [ -z "${VITE_FIREBASE_PROJECT_ID:-}" ]; then
+            echo "::warning::VITE_FIREBASE_PROJECT_ID is empty."
             ok=0
           fi
           if [ "$ok" -eq 1 ]; then
-            echo "Supabase env vars are non-empty for this build (values not shown)."
+            echo "Firebase env vars are non-empty for this build."
           fi
-          # Compare these numbers to /#/admin “length” lines. If CI shows long anon (~180+) but the site still shows ~41,
-          # you are not loading this deployment (wrong URL, cache, or different GitHub repo).
-          echo "CI VITE_SUPABASE_URL length: ${#VITE_SUPABASE_URL}"
-          echo "CI VITE_SUPABASE_ANON_KEY length: ${#VITE_SUPABASE_ANON_KEY}"
 
       - name: Install and build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_AUTH_REDIRECT_URL: ${{ secrets.VITE_AUTH_REDIRECT_URL }}
           VITE_GITHUB_REPO_OWNER: ${{ github.repository_owner }}
           VITE_GITHUB_REPO_NAME: ${{ github.event.repository.name }}

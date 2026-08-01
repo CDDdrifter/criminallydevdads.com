@@ -7,7 +7,7 @@ import {
   updateMyProfile,
   type SiteGameSave,
 } from '../lib/communityData';
-import { supabaseConfigured } from '../lib/supabase';
+import { firebaseConfigured } from '../lib/firebase';
 import { MailingListOptInCard } from '../components/MailingListOptInCard';
 import { SiteChrome } from '../components/SiteChrome';
 
@@ -46,10 +46,10 @@ export function AccountPage() {
     }
   }, [auth.profile]);
 
-  if (!supabaseConfigured) {
+  if (!firebaseConfigured) {
     return (
       <SiteChrome>
-        <div className="empty-state">Sign-in requires Supabase configuration.</div>
+        <div className="empty-state">Sign-in requires Firebase configuration. See docs/NO_SUPABASE_SETUP.md</div>
       </SiteChrome>
     );
   }
