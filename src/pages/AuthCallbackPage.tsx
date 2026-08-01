@@ -1,42 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { SiteChrome } from '../components/SiteChrome';
 import { popAuthReturn } from '../lib/authBootstrap';
-import { humanizeOAuthError } from '../lib/authErrors';
-import { auth, firebaseConfigured } from '../lib/firebase';
 
-/**
- * Handles Firebase redirect sign-in completion.
- * Popup sign-in does not need this page — redirect fallback does.
- */
+/** Legacy route — redirect sign-in completes on whatever page you started from. */
 export function AuthCallbackPage() {
   const navigate = useNavigate();
-  const [detail, setDetail] = useState<string | null>(null);
+  const auth = useAuth();
 
   useEffect(() => {
-    if (!firebaseConfigured || !auth) {
-      setDetail('Firebase is not configured on this build. See docs/NO_SUPABASE_SETUP.md');
+    if (auth.loading) {
       return;
     }
-
-    const params = new URLSearchParams(window.location.search);
-    const oauthError = params.get('error_description') ?? params.get('error');
-    if (oauthError) {
-      setDetail(humanizeOAuthError(oauthError));
-      return;
-    }
-
-    // onAuthStateChanged in AuthContext handles getRedirectResult — just wait briefly then redirect
-    const timer = window.setTimeout(() => {
-      if (auth?.currentUser) {
-        navigate(popAuthReturn(), { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
-    }, 1500);
-
-    return () => window.clearTimeout(timer);
-  }, [navigate]);
+    navigate(auth.isSignedIn ? popAuthReturn() : '/', { replace: true });
+  }, [auth.loading, auth.isSignedIn, navigate]);
 
   return (
     <SiteChrome>
@@ -44,13 +22,13 @@ export function AuthCallbackPage() {
         <h1 className="header-title" style={{ fontSize: '1.4rem' }}>
           Signing you in…
         </h1>
-        {detail ? (
+        {auth.authInitError ? (
           <p style={{ color: 'var(--danger)', marginTop: 16, lineHeight: 1.5 }} role="alert">
-            {detail}
+            {auth.authInitError}
           </p>
         ) : (
           <p className="admin-muted" style={{ marginTop: 16 }}>
-            Completing Google sign-in. If this takes more than a few seconds, check Firebase authorized domains.
+            Completing Google sign-in…
           </p>
         )}
       </div>

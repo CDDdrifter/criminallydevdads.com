@@ -17,6 +17,12 @@ export function humanizeOAuthError(raw: string): string {
   const lower = t.toLowerCase();
   const base = getAuthRedirectBaseUrl();
 
+  if (lower.includes('unauthorized-domain') || lower.includes('auth/unauthorized-domain')) {
+    return `${t}
+
+Firebase → Authentication → Settings → Authorized domains must include your live site domain (e.g. criminallydevdads.com). Add the exact domain with no https://.`;
+  }
+
   if (lower.includes('redirect_uri') || lower.includes('redirect uri')) {
     return `${t}
 

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { humanizeOAuthError } from '../lib/authErrors';
-import { firebaseConfigured } from '../lib/firebase';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 /**
@@ -15,7 +14,7 @@ export function UserAuthNav() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  if (!firebaseConfigured) {
+  if (!auth.authConfigured) {
     return null;
   }
   if (b?.player_google_sign_in_enabled === false) {

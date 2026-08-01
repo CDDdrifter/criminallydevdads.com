@@ -19,7 +19,6 @@ import {
   upsertNav,
   upsertPage,
 } from '../lib/cmsData';
-import { firebaseConfigured } from '../lib/firebase';
 import { HrefQuickPick } from '../components/admin/HrefQuickPick';
 import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSectionsForm';
 import {
@@ -539,7 +538,7 @@ export function AdminPage() {
   }, []);
 
   const reload = useCallback(async () => {
-    if (!firebaseConfigured || !auth.isAdmin) {
+    if (!auth.authConfigured || !auth.isAdmin) {
       return;
     }
     const [s, g, svc, p, n, l] = await Promise.all([
@@ -1231,7 +1230,7 @@ export function AdminPage() {
     }
   };
 
-  if (!firebaseConfigured) {
+  if (!auth.authConfigured) {
     return (
       <div className="admin-shell">
         <div className="admin-panel">
@@ -1239,13 +1238,16 @@ export function AdminPage() {
             Admin
           </h1>
           <p className="admin-muted" style={{ marginTop: 12, lineHeight: 1.6 }}>
-            Firebase is not configured in this build. Add <code>VITE_FIREBASE_*</code> env vars to enable Google
-            sign-in and admin. See <code>docs/NO_SUPABASE_SETUP.md</code> for step-by-step setup.
+            Firebase is not connected yet. Open <code>cms/firebase-config.json</code> in this repo and paste your four
+            values from the Firebase web app config (<code>apiKey</code>, <code>authDomain</code>,{' '}
+            <code>projectId</code>, <code>appId</code>). Commit, push, wait for deploy — see{' '}
+            <code>docs/FIREBASE_SETUP.md</code>.
           </p>
-          <p className="admin-muted" style={{ marginTop: 12 }}>
-            <strong>Local dev:</strong> create <code>.env.local</code> with your Firebase config, then{' '}
-            <code>npm run dev</code> and open <code>http://localhost:5173/admin</code>.
-          </p>
+          {auth.authInitError ? (
+            <p className="admin-muted danger-zone" style={{ marginTop: 12 }}>
+              {auth.authInitError}
+            </p>
+          ) : null}
           <p style={{ marginTop: 16 }}>
             <Link to="/">← Back to site</Link>
           </p>

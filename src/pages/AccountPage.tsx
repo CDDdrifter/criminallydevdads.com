@@ -7,7 +7,6 @@ import {
   updateMyProfile,
   type SiteGameSave,
 } from '../lib/communityData';
-import { firebaseConfigured } from '../lib/firebase';
 import { MailingListOptInCard } from '../components/MailingListOptInCard';
 import { SiteChrome } from '../components/SiteChrome';
 
@@ -46,10 +45,13 @@ export function AccountPage() {
     }
   }, [auth.profile]);
 
-  if (!firebaseConfigured) {
+  if (!auth.authConfigured) {
     return (
       <SiteChrome>
-        <div className="empty-state">Sign-in requires Firebase configuration. See docs/NO_SUPABASE_SETUP.md</div>
+        <div className="empty-state">
+          Sign-in is not configured yet. Add your Firebase web config to <code>cms/firebase-config.json</code> — see{' '}
+          <code>docs/FIREBASE_SETUP.md</code>
+        </div>
       </SiteChrome>
     );
   }
