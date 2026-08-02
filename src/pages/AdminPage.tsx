@@ -15,6 +15,7 @@ import {
   fetchPageBySlug,
   fetchSiteSettings,
   saveSiteSettings,
+  siteSettingsSnapshot,
   upsertDevLog,
   upsertGame,
   upsertNav,
@@ -433,7 +434,7 @@ export function AdminPage() {
 
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [savedSettingsSnapshot, setSavedSettingsSnapshot] = useState<string>(() =>
-    JSON.stringify(defaultSiteSettings),
+    siteSettingsSnapshot(defaultSiteSettings),
   );
   const [games, setGames] = useState<GameRecord[]>([]);
   const [pages, setPages] = useState<SitePage[]>([]);
@@ -475,7 +476,7 @@ export function AdminPage() {
   const settingsLinkHints = useMemo(() => softSiteSettingsLinkHints(settings, pages), [settings, pages]);
 
   const settingsDirty = useMemo(
-    () => JSON.stringify(settings) !== savedSettingsSnapshot,
+    () => siteSettingsSnapshot(settings) !== savedSettingsSnapshot,
     [settings, savedSettingsSnapshot],
   );
 
@@ -552,7 +553,7 @@ export function AdminPage() {
       fetchAllDevLogsAdmin(),
     ]);
     setSettings(s);
-    setSavedSettingsSnapshot(JSON.stringify(s));
+    setSavedSettingsSnapshot(siteSettingsSnapshot(s));
     setGames(g);
     setServicesCount(svc.length);
     setPages(p);
@@ -679,12 +680,13 @@ export function AdminPage() {
     }
 
     try {
-      await saveSiteSettings(settings);
-      const fresh = await fetchSiteSettings();
-      setSettings(fresh);
-      setSavedSettingsSnapshot(JSON.stringify(fresh));
-      await refreshSiteSettings();
+      const saved = await saveSiteSettings(settings);
+      const snapshot = siteSettingsSnapshot(saved);
+      setSettings(saved);
+      setSavedSettingsSnapshot(snapshot);
+      void refreshSiteSettings();
       setSettingsSaveStatus('success');
+      setSettingsSaveDetail('Saved — live site updated.');
       flash('Site settings saved — live site updated.');
       if (settingsSaveSuccessTimerRef.current) {
         clearTimeout(settingsSaveSuccessTimerRef.current);

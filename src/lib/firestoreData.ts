@@ -53,6 +53,27 @@ function ts(): string {
   return new Date().toISOString();
 }
 
+/** Firestore rejects `undefined` anywhere in the payload. */
+export function stripFirestoreData<T>(value: T): T {
+  if (value === undefined) {
+    return value;
+  }
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => stripFirestoreData(item)) as T;
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (v === undefined) {
+      continue;
+    }
+    out[k] = stripFirestoreData(v);
+  }
+  return out as T;
+}
+
 function saveDocId(userId: string, gameSlug: string): string {
   return `${userId}__${gameSlug}`;
 }
@@ -70,11 +91,8 @@ export async function firestoreGetSiteSettings(): Promise<Record<string, unknown
 
 export async function firestoreSaveSiteSettings(data: Record<string, unknown>): Promise<void> {
   if (!(await ensureFirestore())) throw new Error('Firebase not configured');
-  await setDoc(
-    doc(firestore(), COL.siteSettings, SETTINGS_DOC),
-    { ...data, id: 1, updated_at: ts() },
-    { merge: true },
-  );
+  const payload = stripFirestoreData({ ...data, id: 1, updated_at: ts() });
+  await setDoc(doc(firestore(), COL.siteSettings, SETTINGS_DOC), payload, { merge: true });
 }
 
 // ---------------------------------------------------------------------------

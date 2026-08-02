@@ -49,7 +49,7 @@ export function isFirebasePermissionError(err: unknown): boolean {
 export function describeAdminWriteFailure(err: unknown): string {
   const core = formatAdminWriteError(err);
   if (isFirebasePermissionError(err)) {
-    return `${core}\n\nSign in at /admin with a @criminallydevdads.com Google account. Deploy firestore.rules if writes still fail.`;
+    return `${core}\n\nSign in at /admin with a @criminallydevdads.com Google account, then run: npx firebase deploy --only firestore:rules,firestore:indexes --project criminallydevdads`;
   }
   if (/github token|no github token/i.test(core)) {
     return `${core}\n\nGame file uploads need a GitHub PAT in Admin → System → GitHub sync (repo scope).`;

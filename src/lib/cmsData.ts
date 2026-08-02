@@ -81,6 +81,7 @@ import {
 } from './firestoreData';
 import { normalizePageSections } from './pageSections';
 import { loadLegacyGames } from './legacyGames';
+import { auth } from './firebase';
 import { githubCmsConfigured, syncGamesJsonToGitHub } from './githubCms';
 import { fetchStaticJson } from './staticCms';
 import { normalizePromoEvents } from './promoEvents';
@@ -241,6 +242,16 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
     prebuilt_pages: normalizePrebuiltPages(raw.prebuilt_pages),
     legal: normalizeLegalConfig(raw.legal),
   };
+}
+
+/** Stable shape for save + dirty checks (normalizes nested studio JSON). */
+export function canonicalizeSiteSettings(input: SiteSettings): SiteSettings {
+  const row = JSON.parse(JSON.stringify(input)) as Record<string, unknown>;
+  return siteSettingsFromRow(row) ?? input;
+}
+
+export function siteSettingsSnapshot(input: SiteSettings): string {
+  return JSON.stringify(canonicalizeSiteSettings(input));
 }
 
 function normalizeLegalConfig(raw: unknown): LegalConfig {
@@ -788,13 +799,19 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
   return defaultSiteSettings;
 }
 
-export async function saveSiteSettings(patch: Partial<SiteSettings>) {
+export async function saveSiteSettings(patch: Partial<SiteSettings>): Promise<SiteSettings> {
   if (!(await ensureFirestore())) {
     throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
   }
+  if (!auth?.currentUser) {
+    throw new Error(
+      'Not signed in to Firebase. Sign in at /admin with your @criminallydevdads.com Google account, then save again.',
+    );
+  }
   const current = await fetchSiteSettings();
-  const merged = { ...current, ...patch };
-  await firestoreSaveSiteSettings({ id: 1, ...merged });
+  const merged = canonicalizeSiteSettings({ ...current, ...patch });
+  await firestoreSaveSiteSettings(merged as unknown as Record<string, unknown>);
+  return merged;
 }
 
 export async function fetchAllPagesAdmin(): Promise<SitePage[]> {
