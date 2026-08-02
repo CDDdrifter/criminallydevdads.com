@@ -304,7 +304,9 @@
     "comments_globally_enabled": true,
     "homepage_autoplay_previews": false,
     "first_party_analytics_enabled": true,
-    "player_google_sign_in_enabled": true
+    "player_google_sign_in_enabled": true,
+    "ads_enabled": true,
+    "adsense_client_id": "ca-pub-7272083145787802"
   },
   "seo": {
     "favicon_url": "",

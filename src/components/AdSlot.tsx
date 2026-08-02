@@ -70,14 +70,17 @@ export function AdSlot({ placement = 'hub-footer' }: { placement?: string }) {
   );
 }
 
-/** Loads AdSense script once when ads are enabled. */
+/** Loads AdSense script once when a client ID is configured (skips if index.html already loaded it). */
 export function AdSenseScriptLoader() {
   const { settings } = useSiteSettings();
   const clientId = settings.behavior?.adsense_client_id?.trim() ?? '';
-  const enabled = settings.behavior?.ads_enabled === true;
 
   useEffect(() => {
-    if (!enabled || !clientId) {
+    if (!clientId) {
+      return;
+    }
+    const existing = document.querySelector('script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]');
+    if (existing) {
       return;
     }
     const id = 'cdd-adsense-script';
@@ -90,7 +93,7 @@ export function AdSenseScriptLoader() {
     script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(clientId)}`;
     script.crossOrigin = 'anonymous';
     document.head.appendChild(script);
-  }, [enabled, clientId]);
+  }, [clientId]);
 
   return null;
 }

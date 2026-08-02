@@ -228,7 +228,7 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
           value={b.adsense_client_id ?? ''}
           onChange={(adsense_client_id) => set({ adsense_client_id })}
           placeholder="ca-pub-XXXXXXXXXXXXXXXX"
-          help="From AdSense → Account → Account information. Requires ads enabled above."
+          help="From AdSense → Account → Account information. The verification script is also in index.html for Google site review."
         />
       </FieldGroup>
 
