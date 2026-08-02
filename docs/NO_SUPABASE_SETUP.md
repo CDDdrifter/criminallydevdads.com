@@ -79,36 +79,35 @@ You do **not** need a `games/my-big-game/` folder when `url` is set.
 
 ---
 
-## Part 2 — Firebase setup (Google sign-in)
+## Part 2 — Admin setup (Google sign-in + GitHub saves)
 
-**Simple step-by-step:** see **[`FIREBASE_SETUP.md`](FIREBASE_SETUP.md)** (start here).
+**Simple Firebase Auth guide:** [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) — only needed for `/admin` sign-in (not for storing games).
 
-Summary:
-- **Any Google account** can sign in to play
-- **Admins:** `@criminallydevdads.com` or emails in `cms/admin-config.json`
-- Copy 4 Firebase values into `.env.local` and GitHub Actions secrets
+### GitHub token (required to save from `/admin`)
 
-### GitHub token (required to save changes)
-
-Admin saves write JSON files to GitHub. You need a **Personal Access Token**:
+Admin saves write **JSON files in this repo** via the GitHub API. You need a **Personal Access Token**:
 
 1. GitHub → Settings → Developer settings → Personal access tokens → **Tokens (classic)**
 2. Generate new token → check **`repo`** scope
 3. Open `/admin` → sign in with Google → **System** tab → paste token under **GitHub sync**
 
-The token is stored in your browser session only (not in the repo or build).
+The token stays in your browser session only (not in the repo).
 
-### What admin can edit
+### What admin can edit (all saves → repo JSON → auto deploy)
 
-| Tab | Saves to |
-|-----|----------|
-| Games | `games.json` |
-| Settings / Theme / etc. | `cms/site-settings.json` |
-| Pages | `cms/site-pages.json` |
-| Nav | `cms/site-nav.json` |
-| Dev logs | `cms/site-devlogs.json` |
+| Tab | Saves to | Live after |
+|-----|----------|------------|
+| Games (metadata) | `games.json` | ~2–3 min (GitHub Actions) |
+| Site copy / Theme / Layout / Effects | `cms/site-settings.json` | ~2–3 min |
+| Pages (blocks, images, layouts) | `cms/site-pages.json` | ~2–3 min |
+| Nav | `cms/site-nav.json` | ~2–3 min |
+| Dev logs | `cms/site-devlogs.json` | ~2–3 min |
 
-After each save, GitHub Actions redeploys the site (usually within 2–3 minutes).
+**Game files** (`games/<slug>/`) are **not** uploaded through admin — add them via git (small games) or host externally and set `url` in JSON (large games).
+
+**Images:** use image URLs in page blocks and game thumbnails, or upload via Admin (uses Firebase Storage — optional). External URLs (imgur, itch, your CDN) work without Storage.
+
+After each admin save, wait for **Deploy to GitHub Pages** (Actions tab) to finish, then hard-refresh the site.
 
 ---
 

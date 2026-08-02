@@ -63,19 +63,12 @@ import {
 import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePricing';
 import {
   ensureFirestore,
-  firestoreDeleteDevLog,
-  firestoreDeleteNav,
-  firestoreDeletePage,
   firestoreGetDevLogBySlug,
   firestoreGetPageBySlug,
   firestoreGetSiteSettings,
   firestoreListDevLogs,
   firestoreListNav,
   firestoreListPages,
-  firestoreSaveSiteSettings,
-  firestoreUpsertDevLog,
-  firestoreUpsertNav,
-  firestoreUpsertPage,
 } from './firestoreData';
 import { normalizePageSections } from './pageSections';
 import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
@@ -605,12 +598,6 @@ export async function deleteGameBySlug(slug: string) {
 }
 
 export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
-  if (await ensureFirestore()) {
-    const data = await firestoreGetPageBySlug(slug);
-    if (data) {
-      return normalizeSitePage(data);
-    }
-  }
   const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
   if (Array.isArray(staticPages)) {
     const row = staticPages.find((p) => typeof p === 'object' && p && String((p as Record<string, unknown>).slug) === slug);
@@ -618,35 +605,41 @@ export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
       return normalizeSitePage(row as Record<string, unknown>);
     }
   }
+  if (await ensureFirestore()) {
+    const data = await firestoreGetPageBySlug(slug);
+    if (data) {
+      return normalizeSitePage(data);
+    }
+  }
   return null;
 }
 
 export async function fetchSitePages(): Promise<SitePage[]> {
-  if (await ensureFirestore()) {
-    const rows = await firestoreListPages();
-    if (rows.length > 0) {
-      return rows.map(normalizeSitePage);
-    }
-  }
   const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
   if (Array.isArray(staticPages) && staticPages.length > 0) {
     return staticPages
       .filter((p): p is Record<string, unknown> => Boolean(p && typeof p === 'object'))
       .map(normalizeSitePage);
   }
+  if (await ensureFirestore()) {
+    const rows = await firestoreListPages();
+    if (rows.length > 0) {
+      return rows.map(normalizeSitePage);
+    }
+  }
   return [];
 }
 
 export async function fetchNavItems(): Promise<NavItem[]> {
+  const staticNav = await fetchStaticJson<NavItem[]>('cms/site-nav.json');
+  if (Array.isArray(staticNav) && staticNav.length > 0) {
+    return staticNav;
+  }
   if (await ensureFirestore()) {
     const rows = await firestoreListNav();
     if (rows.length > 0) {
       return rows as NavItem[];
     }
-  }
-  const staticNav = await fetchStaticJson<NavItem[]>('cms/site-nav.json');
-  if (Array.isArray(staticNav) && staticNav.length > 0) {
-    return staticNav;
   }
   return [];
 }
@@ -708,21 +701,18 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
   return defaultSiteSettings;
 }
 
-export async function saveSiteSettings(patch: Partial<SiteSettings>) {
-  const current = await fetchSiteSettings();
-  const merged = { ...current, ...patch };
-
-  if (await ensureFirestore()) {
-    await firestoreSaveSiteSettings({ id: 1, ...merged });
-    return;
-  }
-
-  const result = await syncSiteContentToGitHub([
-    { path: 'cms/site-settings.json', data: { id: 1, ...merged } },
-  ]);
+/** CMS content lives in repo JSON — admin saves commit via GitHub PAT, then Actions redeploys. */
+async function persistCmsToGitHub(path: string, data: unknown): Promise<void> {
+  const result = await syncSiteContentToGitHub([{ path, data }]);
   if (result.error) {
     throw new Error(result.error);
   }
+}
+
+export async function saveSiteSettings(patch: Partial<SiteSettings>) {
+  const current = await fetchSiteSettings();
+  const merged = { ...current, ...patch };
+  await persistCmsToGitHub('cms/site-settings.json', { id: 1, ...merged });
 }
 
 export async function fetchAllPagesAdmin(): Promise<SitePage[]> {
@@ -751,11 +741,6 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
     route_fx: row.route_fx ?? normalizeRouteFxOverride(null),
   };
 
-  if (await ensureFirestore()) {
-    await firestoreUpsertPage(row.slug.trim(), payload);
-    return;
-  }
-
   const pages = await fetchSitePages();
   const idx = pages.findIndex((p) => p.slug === row.slug.trim());
   const merged = normalizeSitePage({ ...(idx >= 0 ? pages[idx] : {}), ...payload });
@@ -764,22 +749,12 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
   } else {
     pages.push(merged);
   }
-  const result = await syncSiteContentToGitHub([{ path: 'cms/site-pages.json', data: pages }]);
-  if (result.error) {
-    throw new Error(result.error);
-  }
+  await persistCmsToGitHub('cms/site-pages.json', pages);
 }
 
 export async function deletePageSlug(slug: string) {
-  if (await ensureFirestore()) {
-    await firestoreDeletePage(slug);
-    return;
-  }
   const pages = (await fetchSitePages()).filter((p) => p.slug !== slug);
-  const result = await syncSiteContentToGitHub([{ path: 'cms/site-pages.json', data: pages }]);
-  if (result.error) {
-    throw new Error(result.error);
-  }
+  await persistCmsToGitHub('cms/site-pages.json', pages);
 }
 
 export async function fetchAllNavAdmin(): Promise<NavItem[]> {
@@ -794,10 +769,6 @@ export async function upsertNav(row: Partial<NavItem> & { label: string; href: s
     external: row.external ?? false,
     sort_order: row.sort_order ?? 0,
   };
-  if (await ensureFirestore()) {
-    await firestoreUpsertNav(payload.id, payload);
-    return;
-  }
   const nav = await fetchNavItems();
   const idx = nav.findIndex((n) => n.id === payload.id);
   if (idx >= 0) {
@@ -805,33 +776,26 @@ export async function upsertNav(row: Partial<NavItem> & { label: string; href: s
   } else {
     nav.push(payload);
   }
-  const result = await syncSiteContentToGitHub([{ path: 'cms/site-nav.json', data: nav }]);
-  if (result.error) {
-    throw new Error(result.error);
-  }
+  await persistCmsToGitHub('cms/site-nav.json', nav);
 }
 
 export async function deleteNavId(id: string) {
-  if (await ensureFirestore()) {
-    await firestoreDeleteNav(id);
-    return;
-  }
   const nav = (await fetchNavItems()).filter((n) => n.id !== id);
-  const result = await syncSiteContentToGitHub([{ path: 'cms/site-nav.json', data: nav }]);
-  if (result.error) {
-    throw new Error(result.error);
-  }
+  await persistCmsToGitHub('cms/site-nav.json', nav);
 }
 
 export async function fetchAllDevLogsAdmin(): Promise<DevLogPost[]> {
+  const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
+  if (Array.isArray(staticLogs) && staticLogs.length > 0) {
+    return staticLogs;
+  }
   if (await ensureFirestore()) {
     const rows = await firestoreListDevLogs();
     if (rows.length > 0) {
       return rows as DevLogPost[];
     }
   }
-  const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
-  return Array.isArray(staticLogs) ? staticLogs : [];
+  return [];
 }
 
 export async function upsertDevLog(
@@ -849,11 +813,6 @@ export async function upsertDevLog(
     sections: row.sections ?? [],
   };
 
-  if (await ensureFirestore()) {
-    await firestoreUpsertDevLog(row.slug.trim(), payload);
-    return;
-  }
-
   const logs = await fetchAllDevLogsAdmin();
   const idx = logs.findIndex((l) => l.slug === row.slug.trim());
   const merged = { ...(idx >= 0 ? logs[idx] : {}), ...payload } as DevLogPost;
@@ -862,20 +821,10 @@ export async function upsertDevLog(
   } else {
     logs.push(merged);
   }
-  const result = await syncSiteContentToGitHub([{ path: 'cms/site-devlogs.json', data: logs }]);
-  if (result.error) {
-    throw new Error(result.error);
-  }
+  await persistCmsToGitHub('cms/site-devlogs.json', logs);
 }
 
 export async function deleteDevLogSlug(slug: string) {
-  if (await ensureFirestore()) {
-    await firestoreDeleteDevLog(slug);
-    return;
-  }
   const logs = (await fetchAllDevLogsAdmin()).filter((l) => l.slug !== slug);
-  const result = await syncSiteContentToGitHub([{ path: 'cms/site-devlogs.json', data: logs }]);
-  if (result.error) {
-    throw new Error(result.error);
-  }
+  await persistCmsToGitHub('cms/site-devlogs.json', logs);
 }
