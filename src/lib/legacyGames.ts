@@ -47,6 +47,11 @@ type LegacyMeta = {
   url?: string;
   /** Same as `url` — use whichever name you prefer in JSON. */
   external_url?: string;
+  /** Firebase Storage folder under game-builds/ (set by Admin ZIP upload). */
+  storage_slug?: string;
+  storage_entry_in_zip?: string;
+  /** Direct link to offline .zip / .html download (Firebase Storage or repo path). */
+  download_url?: string;
   pricing_model?: string;
   price_cents?: number;
   purchase_url?: string;
@@ -212,8 +217,10 @@ async function buildGameFromFolder(
 ): Promise<GameView> {
   const metadata = metadataById[folderId] ?? {};
   const external = playUrl(metadata);
-  const localIndex = `games/${folderId}/index.html`;
-  const isLocalPlayable = await pathExists(localIndex);
+  const entryRel = (metadata.storage_entry_in_zip ?? 'index.html').trim() || 'index.html';
+  const downloadUrl = (metadata.download_url ?? '').trim();
+  const localLaunch = `games/${folderId}/${entryRel}`;
+  const isLocalPlayable = await pathExists(localLaunch);
   const thumbnailCandidates = [
     `games/${folderId}/index.png`,
     `games/${folderId}/index.icon.png`,
@@ -228,7 +235,7 @@ async function buildGameFromFolder(
     }
   }
   if (!resolvedThumbnail && isLocalPlayable) {
-    resolvedThumbnail = await resolveThumbnailFromIndexHtml(localIndex, folderId);
+    resolvedThumbnail = await resolveThumbnailFromIndexHtml(localLaunch, folderId);
   }
   const id = metadata.id ?? folderId;
   const previewRaw = (metadata.preview_video ?? '').trim();
@@ -247,8 +254,11 @@ async function buildGameFromFolder(
     preview_video: previewRaw ? resolvePublicAssetUrl(previewRaw) : '',
     external_url: external,
     local_folder: folderId,
-    launchPath: external || localIndex,
-    isPlayable: Boolean(external) || isLocalPlayable,
+    storage_slug: '',
+    storage_entry_in_zip: entryRel,
+    download_url: downloadUrl,
+    launchPath: external || localLaunch,
+    isPlayable: Boolean(external || isLocalPlayable || downloadUrl),
     sections: [],
     visual_preset: normalizeVisualPresetInput(metadata.visual_preset),
     pricing_model: gamePricingModelFromRecord(metadata.pricing_model, priceCents),

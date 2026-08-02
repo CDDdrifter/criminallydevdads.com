@@ -16,6 +16,7 @@ import { useSiteSettings } from '../hooks/useSiteSettings';
 import { useAuth } from '../context/AuthContext';
 import { applyVisualPresetToDocument, resolveVisualPreset } from '../lib/routeFx';
 import { verifyGamePlayability } from '../lib/verifyGamePlayability';
+import { resolvePublicAssetUrl } from '../lib/paths';
 import type { GameView } from '../types';
 
 export function GamePage() {
@@ -385,12 +386,25 @@ export function GamePage() {
         <CommentSection targetType="game" targetKey={game.slug} />
 
         <div className="game-actions" style={{ maxWidth: 480, marginTop: 24, flexWrap: 'wrap' }}>
-          <Link to={`/play/${game.slug}`} className="btn-download" style={{ textAlign: 'center' }}>
-            Full-screen player page
-          </Link>
-          {game.external_url ? (
+          {game.isPlayable ? (
+            <Link to={`/play/${game.slug}`} className="btn-download" style={{ textAlign: 'center' }}>
+              {game.download_url && !game.launchPath.startsWith('http') ? 'Try in browser' : 'Full-screen player'}
+            </Link>
+          ) : null}
+          {game.download_url ? (
+            <a
+              className="btn-download"
+              href={resolvePublicAssetUrl(game.download_url)}
+              download
+              target="_blank"
+              rel="noreferrer"
+            >
+              Download game
+            </a>
+          ) : null}
+          {game.external_url && !game.local_folder ? (
             <a className="btn-download" href={game.external_url} target="_blank" rel="noreferrer">
-              External link
+              Open link
             </a>
           ) : null}
           <GamePurchaseBlock game={game} />

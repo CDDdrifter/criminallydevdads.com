@@ -24,18 +24,20 @@ import { PageSectionsForm, ensureSectionIds } from '../components/admin/PageSect
 import {
   deleteGameBuild,
   publicGameEntryUrl,
-  repairGameBuildContentTypes,
   sanitizeGameStorageSlug,
   uploadGamePreviewVideo,
   uploadGameTabIcon,
   uploadGameThumbnail,
   uploadGameZip,
+  uploadGameDownloadFile,
 } from '../lib/gameStorageUpload';
 import {
   invokeSyncAllCmsToGitHub,
   invokeSyncGamesJsonToGitHub,
   invokeSyncSiteContentToGitHub,
 } from '../lib/syncRepoGitHub';
+import { githubCmsConfigured } from '../lib/githubCms';
+import { resolvePublicAssetUrl } from '../lib/paths';
 import { blockingSiteSettingsIssues, softSiteSettingsLinkHints } from '../lib/adminSettingsValidate';
 import { donationPresetsFromUnknown } from '../lib/gamePricing';
 import { unknownColumnFromPostgrestMessage } from '../lib/postgrestUnknownColumn';
@@ -190,6 +192,7 @@ const emptyGame = (): Partial<GameRecord> & { slug: string; title: string } => (
   tab_icon_url: '',
   preview_video_url: '',
   external_url: '',
+  download_url: '',
   local_folder: '',
   storage_slug: null,
   storage_entry_in_zip: null,
@@ -284,6 +287,7 @@ function gameUpsertPayload(draft: Partial<GameRecord> & { slug: string; title: s
     tab_icon_url: draft.tab_icon_url?.trim() || null,
     preview_video_url: draft.preview_video_url ?? '',
     external_url: draft.external_url ?? '',
+    download_url: draft.download_url?.trim() || null,
     local_folder: draft.local_folder?.trim() || draft.slug.trim(),
     storage_slug: draft.storage_slug ?? null,
     storage_entry_in_zip: draft.storage_entry_in_zip?.trim() || null,
@@ -327,7 +331,11 @@ function summarizeGameSave(p: ReturnType<typeof gameUpsertPayload>): string {
       : p.pricing_model && p.pricing_model !== 'free'
         ? `Commerce: ${p.pricing_model} (${p.price_cents ?? 0}¢)`
         : 'Commerce: free (no Gumroad)';
-  const host = p.storage_slug ? 'Hosted: ZIP on Storage' : p.external_url?.trim() ? 'Play: external URL' : 'Play: local / repo path';
+  const host = p.local_folder?.trim()
+    ? `Play: games/${p.local_folder}/`
+    : p.external_url?.trim()
+      ? 'Play: external URL'
+      : 'Play: not set';
   const vis = p.published === false ? 'Hidden from main hub' : 'On main hub';
   const vault = p.in_vault ? 'Listed in Vault (/vault)' : 'Not in Vault';
   const imm = p.immersive_layout ? 'Immersive layout' : 'Standard layout';
@@ -445,6 +453,7 @@ export function AdminPage() {
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [syncRepoMessage, setSyncRepoMessage] = useState<string | null>(null);
   const [gameZipFile, setGameZipFile] = useState<File | null>(null);
+  const [gameDownloadFile, setGameDownloadFile] = useState<File | null>(null);
   /** Live status line during ZIP upload (parse → delete → parallel file uploads). */
   const [zipUploadHint, setZipUploadHint] = useState<string | null>(null);
   /** Paths to index.html found in the last uploaded ZIP. */
@@ -724,16 +733,16 @@ export function AdminPage() {
       return;
     }
 
-    const storageOk = Boolean(gameDraft.storage_slug?.trim());
+    const repoOk = Boolean(gameDraft.local_folder?.trim()) || Boolean(gameDraft.storage_entry_in_zip?.trim());
     const extOk = Boolean(gameDraft.external_url?.trim());
     const isExisting = games.some((g) => g.slug === slug);
-    if (!isExisting && !storageOk && !extOk) {
+    if (!isExisting && !repoOk && !extOk) {
       setGameSaveStatus('error');
       setGameFieldErrors({
         play: '✗ Upload the Web export ZIP (below) or set External play URL — new games need a playable build.',
       });
       setGameSaveDetail(
-        '✗ New games need a ZIP on Storage or an external play URL. Upload a ZIP first, or paste an itch.io / host URL.',
+        '✗ New games need a ZIP in games/<slug>/ or an external play URL. Upload a ZIP first (requires GitHub token).',
       );
       flash('Add a ZIP or external play URL before saving a new game.');
       return;
@@ -770,23 +779,27 @@ export function AdminPage() {
   };
 
   const onUploadGameZip = async () => {
+    if (!githubCmsConfigured()) {
+      flash('Set up GitHub first: System tab → paste a Personal Access Token with repo scope.', 12000);
+      return;
+    }
     const title = gameDraft.title.trim();
     if (!title) {
-      flash('Enter a game title first (we derive the storage folder from title or slug).');
+      flash('Enter a game title first (we derive the repo folder from title or slug).');
       return;
     }
     const slugRaw = gameDraft.slug.trim() || slugifyFromTitle(title);
     if (!slugRaw) {
-      flash('Title must include letters or numbers for the game URL / storage folder.');
+      flash('Title must include letters or numbers for the game URL / repo folder.');
       return;
     }
     if (!gameZipFile) {
       flash('Choose a .zip file (Godot Web export folder).');
       return;
     }
-    const storageKey = sanitizeGameStorageSlug(slugRaw);
-    if (!storageKey) {
-      flash('Slug must include letters or numbers for cloud hosting.');
+    const repoKey = sanitizeGameStorageSlug(slugRaw);
+    if (!repoKey) {
+      flash('Slug must include letters or numbers for the games/ folder.');
       return;
     }
     const titleSaved = title;
@@ -809,7 +822,7 @@ export function AdminPage() {
               `${p.fileCount} files (${sizeLabel}) from "${p.exportRootLabel}" — uploading (${p.uploadConcurrency} at a time, large files first)…`,
             );
           } else if (p.phase === 'clearing') {
-            setZipUploadHint('Removing previous build from server…');
+            setZipUploadHint('Removing previous build from repo…');
           } else {
             const tail = p.currentPath ? ` — ${p.currentPath.split('/').pop()}` : '';
             setZipUploadHint(`Uploading ${p.done}/${p.total} files…${tail}`);
@@ -834,7 +847,8 @@ export function AdminPage() {
       setGameDraft((prev) => ({
         ...prev,
         slug: prev.slug.trim() || slugRaw,
-        storage_slug: storageKey,
+        local_folder: repoKey,
+        storage_slug: null,
         storage_entry_in_zip: chosenEntry || null,
         title: prev.title?.trim() ? prev.title : titleSaved,
       }));
@@ -844,16 +858,17 @@ export function AdminPage() {
             ...gameDraft,
             slug: slugRaw,
             title: titleSaved,
+            local_folder: repoKey,
             storage_entry_in_zip: chosenEntry || null,
           }),
-          storage_slug: storageKey,
+          storage_slug: null,
         });
       } catch (dbErr) {
         console.error(dbErr);
         flash(
-          `Uploaded ${fileCount} files (from ZIP folder "${exportRootLabel}") to cloud storage, but saving the game row failed: ${
+          `Uploaded ${fileCount} files (from ZIP folder "${exportRootLabel}") to games/${repoKey}/, but saving games.json failed: ${
             dbErr instanceof Error ? dbErr.message : 'unknown error'
-          }. Files are already on Storage — click **Save game** to retry.`,
+          }. Files are already in the repo — click **Save game** to retry.`,
           14000,
         );
         await reload();
@@ -861,7 +876,7 @@ export function AdminPage() {
       }
       await reload();
       flash(
-        `✓ Uploaded ${fileCount} files from "${exportRootLabel}". Play now uses "${chosenEntry}" from this ZIP.`,
+        `✓ Uploaded ${fileCount} files to games/${repoKey}/ (from "${exportRootLabel}"). Play uses "${chosenEntry}". Site redeploys in ~2 min.`,
         12000,
       );
     } catch (e) {
@@ -874,12 +889,12 @@ export function AdminPage() {
   };
 
   const onClearHostedGame = async () => {
-    const key = gameDraft.storage_slug?.trim();
+    const key = (gameDraft.local_folder ?? gameDraft.slug)?.trim();
     if (!key) {
-      flash('This draft has no cloud build (storage_slug empty).');
+      flash('This draft has no repo folder set.');
       return;
     }
-    if (!confirm('Remove all uploaded files for this game from Supabase Storage?')) {
+    if (!confirm(`Remove all files under games/${key}/ from the GitHub repo?`)) {
       return;
     }
     setBusy(true);
@@ -890,10 +905,10 @@ export function AdminPage() {
         storage_slug: null,
         storage_entry_in_zip: null,
       });
-      setGameDraft((prev) => ({ ...prev, storage_slug: null, storage_entry_in_zip: null }));
+      setGameDraft((prev) => ({ ...prev, storage_entry_in_zip: null }));
       setZipEntryPick('');
       await reload();
-      flash('Cloud build removed.');
+      flash('Repo game folder removed.');
     } catch (e) {
       console.error(e);
       flash(e instanceof Error ? e.message : 'Could not remove cloud build');
@@ -1362,9 +1377,11 @@ export function AdminPage() {
     );
   }
 
-  /** Cloud ZIP is saved on Storage and no replacement file is queued — show confirmation without refresh. */
-  const zipCloudConfirmed =
-    Boolean(gameDraft.storage_slug?.trim()) && gameZipFile === null;
+  /** Repo ZIP is committed under games/<slug>/ and no replacement file is queued. */
+  const zipRepoConfirmed =
+    Boolean(gameDraft.local_folder?.trim()) &&
+    Boolean(gameDraft.storage_entry_in_zip?.trim()) &&
+    gameZipFile === null;
 
   return (
     <div className="admin-shell" style={{ paddingBottom: showFloatingSettingsSave ? 120 : 24 }}>
@@ -2139,11 +2156,17 @@ export function AdminPage() {
               Add or update game
             </h2>
             <p className="admin-muted" style={{ lineHeight: 1.55 }}>
-              <strong>Quick add:</strong> enter a <strong>title</strong>, upload the Godot Web <strong>.zip</strong> (or set an
-              external play URL). The URL slug is optional — if you leave it blank, we derive it from the title. Main game
-              hub is <code>/#/</code>; the <strong>secret library</strong> is <code>/#/vault</code> (check “List in Vault”
-              so the row appears there; uncheck “Published” to hide it from the main hub).
+              <strong>Like the old Supabase flow:</strong> enter a <strong>title</strong>, upload your Godot Web{' '}
+              <strong>.zip</strong>, and we commit the files to <code>games/&lt;slug&gt;/</code> plus{' '}
+              <code>games.json</code> in GitHub — no Firebase, no external host. Requires a{' '}
+              <strong>GitHub token</strong> in the <strong>System</strong> tab first. After upload, wait ~2 min for the site to redeploy, then the game is playable from its page.
             </p>
+            {!githubCmsConfigured() ? (
+              <p className="admin-muted" style={{ color: 'var(--accent)', lineHeight: 1.55, marginTop: 0 }}>
+                ⚠ No GitHub token yet — open <strong>System → GitHub sync</strong> and paste a token with <strong>repo</strong>{' '}
+                scope before uploading.
+              </p>
+            ) : null}
             <div className="admin-field">
               <label htmlFor="g_title">Title (required)</label>
               <p className="admin-muted" style={{ margin: '0 0 6px', textTransform: 'none', fontSize: '0.8rem' }}>
@@ -2640,10 +2663,53 @@ export function AdminPage() {
               </div>
             </div>
             <div className="admin-field">
-              <label htmlFor="g_ext">External play URL (optional)</label>
+              <label htmlFor="g_download_url">Download URL (optional — offline .zip / .html)</label>
               <p className="admin-muted" style={{ margin: '0 0 6px', textTransform: 'none', fontSize: '0.82rem' }}>
-                Only used when <strong>no cloud ZIP</strong> is linked below. If both are set, Play uses your uploaded
-                ZIP. Clear this field if you pasted a bad link (wrong links here used to make Play show raw JS/code).
+                Shown as <strong>Download game</strong> on the game page. Use for big builds that cannot run in the
+                browser, or as a backup. Upload below (goes to <code>games/&lt;slug&gt;/</code>) or paste a repo path like{' '}
+                <code>/games/my-game/download.zip</code>.
+              </p>
+              <input
+                id="g_download_url"
+                value={gameDraft.download_url ?? ''}
+                onChange={(e) => setGameDraft({ ...gameDraft, download_url: e.target.value })}
+              />
+              <div style={{ marginTop: 8 }}>
+                <input
+                  type="file"
+                  accept=".zip,.html,.htm,application/zip"
+                  disabled={busy || !gameSlugEffective}
+                  onChange={(e) => setGameDownloadFile(e.target.files?.[0] ?? null)}
+                />
+                <button
+                  type="button"
+                  style={{ marginLeft: 8 }}
+                  disabled={busy || !gameDownloadFile || !gameSlugEffective}
+                  onClick={async () => {
+                    if (!gameDownloadFile) return;
+                    const slug = effectiveGameSlug(gameDraft);
+                    setBusy(true);
+                    try {
+                      const url = await uploadGameDownloadFile(slug, gameDownloadFile);
+                      setGameDraft((prev) => ({ ...prev, download_url: url }));
+                      setGameDownloadFile(null);
+                      flash('Download file uploaded — click Save game to persist.');
+                    } catch (e) {
+                      flash(e instanceof Error ? e.message : 'Download upload failed');
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Upload download file
+                </button>
+              </div>
+            </div>
+            <div className="admin-field">
+              <label htmlFor="g_ext">External play URL (optional — legacy)</label>
+              <p className="admin-muted" style={{ margin: '0 0 6px', textTransform: 'none', fontSize: '0.82rem' }}>
+                Prefer <strong>ZIP upload</strong> below (commits to <code>games/&lt;slug&gt;/</code> in this repo).
+                External URL is only if you host the build somewhere else.
               </p>
               <input
                 id="g_ext"
@@ -2806,52 +2872,49 @@ export function AdminPage() {
             </div>
             <div className="admin-panel admin-grid danger-zone" style={{ borderStyle: 'dashed' }}>
               <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--accent)' }}>
-                Cloud HTML5 (itch-style ZIP)
+                HTML5 build (upload ZIP → games/ folder)
               </h3>
               <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
-                Upload <strong>one .zip per game</strong> (the whole Godot Web export). We upload <strong>every file</strong>{' '}
-                with the same folders as in the ZIP — like itch/static hosting — then open the best{' '}
-                <code>index.html</code> next to <code>.wasm</code> / <code>.pck</code>. If Play breaks after a code update,
-                upload the ZIP again for that game.
+                Upload <strong>one .zip per game</strong> (whole Godot Web export). Files are committed to{' '}
+                <strong>games/&lt;slug&gt;/</strong> in this GitHub repo — same place as your existing games. Large
+                binaries (.pck, .wasm, …) use <strong>Git LFS</strong> automatically. No Firebase, no external host.
               </p>
               <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
-                <strong>Godot 4 — blank screen or SharedArrayBuffer / cross-origin errors?</strong> Supabase
-                Storage does not send the special isolation headers some threaded Web builds need. Fix: export with{' '}
-                <strong>threads disabled</strong> for HTML5, <em>or</em> host the build on itch.io / Netlify /
-                Cloudflare Pages and paste that URL in <strong>External play URL</strong> instead of ZIP upload.
+                Requires a <strong>GitHub token</strong> in Admin → System. Multi-GB uploads: keep this tab open until
+                finished. After upload, GitHub Actions redeploys the site in ~2 minutes.
               </p>
-              <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
-                Multi-GB builds are supported — keep this tab open until upload finishes. Files upload a few
-                at a time so your browser does not run out of memory on large <code>.pck</code> /{' '}
-                <code>.wasm</code> files.
-              </p>
-              {gameDraft.storage_slug ? (
+              {gameDraft.local_folder?.trim() ? (
                 <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
-                  Cloud folder: <code>{gameDraft.storage_slug}</code>
-                  {' · '}
-                  <a
-                    href={publicGameEntryUrl(
-                      gameDraft.storage_slug,
-                      gameDraft.storage_entry_in_zip?.trim() || 'index.html',
-                    )}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open hosted game page (sanity check)
-                  </a>
+                  Repo folder: <code>games/{gameDraft.local_folder}/</code>
+                  {gameDraft.storage_entry_in_zip?.trim() ? (
+                    <>
+                      {' · '}
+                      <a
+                        href={resolvePublicAssetUrl(
+                          publicGameEntryUrl(
+                            gameDraft.local_folder,
+                            gameDraft.storage_entry_in_zip?.trim() || 'index.html',
+                          ),
+                        )}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open game page (after deploy)
+                      </a>
+                    </>
+                  ) : null}
                   <br />
                   <span style={{ opacity: 0.92 }}>
-                    Games are hosted from <code>games/&lt;slug&gt;/</code> in the repo or via an external{' '}
-                    <strong>Play URL</strong> in <code>games.json</code>. See <code>docs/NO_SUPABASE_SETUP.md</code>.
+                    Save the game so <code>games.json</code> lists this title alongside your other games.
                   </span>
                 </p>
               ) : null}
-              {zipCloudConfirmed ? (
+              {zipRepoConfirmed ? (
                 <div className="admin-cloud-build-ok" role="status" aria-live="polite">
-                  <strong>✓ Cloud build linked</strong>
+                  <strong>✓ Build in repo</strong>
                   <span className="admin-muted" style={{ display: 'block', marginTop: 6, lineHeight: 1.5 }}>
-                    Folder <code>{gameDraft.storage_slug}</code> is on Storage and tied to this game. Pick another ZIP
-                    only when you want to replace it.
+                    Folder <code>games/{gameDraft.local_folder}/</code> is committed. Pick another ZIP only to replace
+                    the build.
                   </span>
                 </div>
               ) : null}
@@ -2863,7 +2926,7 @@ export function AdminPage() {
                   <label htmlFor="g_zip" style={{ marginBottom: 0 }}>
                     Web export .zip
                   </label>
-                  {zipCloudConfirmed ? (
+                  {zipRepoConfirmed ? (
                     <span className="admin-upload-ok admin-upload-ok--inline" role="status">
                       ✓ Ready
                     </span>
@@ -2928,33 +2991,10 @@ export function AdminPage() {
                 </button>
                 <button
                   type="button"
-                  disabled={busy || !gameDraft.storage_slug}
-                  title="Re-tags HTML/JS/WASM on Storage if Play shows raw code"
-                  onClick={async () => {
-                    const key = gameDraft.storage_slug?.trim();
-                    if (!key || !confirm('Re-apply correct file types for every file in this game’s Storage folder? Large games can take a few minutes.')) {
-                      return;
-                    }
-                    setBusy(true);
-                    setZipUploadHint(null);
-                    try {
-                      const { repaired } = await repairGameBuildContentTypes(key, (done, total) => {
-                        setZipUploadHint(`Fixing types ${done}/${total}…`);
-                      });
-                      flash(`Updated ${repaired} file(s). Try Play again (hard refresh).`, 8000);
-                    } catch (e) {
-                      console.error(e);
-                      flash(e instanceof Error ? e.message : 'MIME repair failed', 10000);
-                    } finally {
-                      setZipUploadHint(null);
-                      setBusy(false);
-                    }
-                  }}
+                  disabled={busy || !gameDraft.local_folder?.trim()}
+                  onClick={onClearHostedGame}
                 >
-                  Fix file types on Storage
-                </button>
-                <button type="button" disabled={busy || !gameDraft.storage_slug} onClick={onClearHostedGame}>
-                  Remove cloud build
+                  Remove repo build
                 </button>
               </div>
             </div>

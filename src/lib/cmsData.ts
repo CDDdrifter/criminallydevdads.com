@@ -71,7 +71,6 @@ import {
   firestoreListPages,
 } from './firestoreData';
 import { normalizePageSections } from './pageSections';
-import { publicGameEntryUrl, publicGameIndexUrl } from './gameStorageUpload';
 import { loadLegacyGames } from './legacyGames';
 import { syncGamesJsonToGitHub, syncSiteContentToGitHub } from './githubCms';
 import { fetchStaticJson } from './staticCms';
@@ -352,27 +351,13 @@ function normalizeSupportButtons(raw: unknown): SupportButton[] {
 /** Maps DB row → hub `GameView` (play URL resolution + commerce fields for GamePurchaseBlock). */
 export function recordToView(g: GameRecord): GameView {
   const folder = g.local_folder ?? g.slug;
-  const localPath = `games/${folder}/index.html`;
+  const entryRel = (g.storage_entry_in_zip?.trim() || 'index.html').replace(/^\//, '');
+  const localPath = `games/${folder}/${entryRel}`;
   const ext = g.external_url?.trim();
-  const storageSlug = g.storage_slug?.trim();
-  const entryInZip = g.storage_entry_in_zip?.trim();
-  const storageUrl = storageSlug
-    ? publicGameEntryUrl(storageSlug, entryInZip || 'index.html') || publicGameIndexUrl(storageSlug)
-    : '';
+  const downloadUrl = String(g.download_url ?? '').trim();
 
-  /**
-   * If this row is a cloud ZIP game (`storage_slug`), never fall back to `games/<slug>/index.html` unless
-   * we truly have no Storage URL (misbuilt site) — that fallback often 404s into the SPA shell and looks like “code”.
-   * Storage URL must use the same normalized origin as the Supabase client (see `publicGameEntryUrl`).
-   */
   let launchPath = localPath;
-  if (storageSlug) {
-    if (storageUrl) {
-      launchPath = storageUrl;
-    } else if (ext) {
-      launchPath = ext;
-    }
-  } else if (ext) {
+  if (ext) {
     launchPath = ext;
   }
 
@@ -389,8 +374,11 @@ export function recordToView(g: GameRecord): GameView {
     preview_video: g.preview_video_url ?? '',
     external_url: g.external_url ?? '',
     local_folder: folder,
+    storage_slug: '',
+    storage_entry_in_zip: entryRel,
+    download_url: downloadUrl,
     launchPath,
-    isPlayable: Boolean(ext) || Boolean(storageUrl) || Boolean(folder),
+    isPlayable: Boolean(ext) || Boolean(folder) || Boolean(downloadUrl),
     sections: normalizePageSections(g.sections as unknown),
     visual_preset: normalizeVisualPresetInput(g.visual_preset),
     pricing_model: gamePricingModelFromRecord(g.pricing_model, priceCents),
@@ -496,6 +484,9 @@ function gameViewToRecord(g: GameView, sortOrder: number): GameRecord {
     preview_video_url: g.preview_video || null,
     external_url: g.external_url || null,
     local_folder: g.local_folder || null,
+    storage_slug: g.storage_slug || null,
+    storage_entry_in_zip: g.storage_entry_in_zip || null,
+    download_url: g.download_url || null,
     sections: g.sections,
     visual_preset: g.visual_preset || null,
     price_cents: g.price_cents,
@@ -534,8 +525,14 @@ function gameRecordToLegacyJson(g: GameRecord): Record<string, unknown> {
   if (g.details) row.details = g.details;
   if (g.thumbnail_url) row.thumbnail = g.thumbnail_url;
   if (g.external_url) row.url = g.external_url;
+  if (g.storage_entry_in_zip) row.storage_entry_in_zip = g.storage_entry_in_zip;
+  if (g.download_url) row.download_url = g.download_url;
   if (g.preview_video_url) row.preview_video = g.preview_video_url;
-  if (g.local_folder) row.filename = `${g.local_folder}.zip`;
+  if (g.local_folder) {
+    row.filename = `${g.local_folder}.zip`;
+  } else {
+    row.filename = `${g.slug}.zip`;
+  }
   if (g.pricing_model) row.pricing_model = g.pricing_model;
   if (g.price_cents) row.price_cents = g.price_cents;
   if (g.purchase_url) row.purchase_url = g.purchase_url;

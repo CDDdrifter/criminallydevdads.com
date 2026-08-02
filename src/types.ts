@@ -276,6 +276,8 @@ export type GameRecord = {
   storage_slug?: string | null;
   /** Path inside the uploaded ZIP to the real index.html when auto-detect is wrong (e.g. `Release/index.html`). */
   storage_entry_in_zip?: string | null;
+  /** Offline download URL (.zip / .html) — Firebase Storage or `/games/<slug>/file.zip`. */
+  download_url?: string | null;
   /** Blocks shown on the game detail page below the embed (CMS only). */
   sections?: PageSection[] | null;
   /** Site-wide FX accent preset when viewing this game’s page (optional). */
@@ -340,6 +342,11 @@ export type GameView = {
   preview_video: string;
   external_url: string;
   local_folder: string;
+  /** Firebase Storage slug under game-builds/ when uploaded via Admin. */
+  storage_slug: string;
+  storage_entry_in_zip: string;
+  /** Offline download link (.zip / .html). */
+  download_url: string;
   launchPath: string;
   isPlayable: boolean;
   sections: PageSection[];

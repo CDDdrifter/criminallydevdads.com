@@ -1,21 +1,37 @@
 import JSZip from 'jszip';
-import { firebaseUploadPublicFile } from './firebaseStorageUpload';
+import {
+  deleteRepoGameFolder,
+  githubGameUploadReady,
+  MAX_REPO_GAME_FILE_BYTES,
+  publicRepoGameUrl,
+  repoGamePath,
+  uploadGameFilesToRepo,
+  uploadSingleGameRepoFile,
+} from './githubGameUpload';
+import {
+  firebaseUploadPublicFile,
+} from './firebaseStorageUpload';
 import { isFirebaseReady } from './firebase';
 
 export const GAME_BUILDS_BUCKET = 'game-builds';
 
-/** Cover images for hub cards / game pages (Admin upload). */
+/** Cover images for hub cards / game pages (Admin upload → repo). */
 export const GAME_THUMBNAILS_BUCKET = 'game-thumbnails';
 
-/** Preview clips on game detail / hub modal (Admin upload). */
+/** Preview clips on game detail / hub modal (Admin upload → repo). */
 export const GAME_VIDEOS_BUCKET = 'game-videos';
 
 export const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
 
 export const MAX_PREVIEW_VIDEO_BYTES = 100 * 1024 * 1024;
 
-/** Game ZIP uploads are disabled — host builds in games/ folder instead. */
-export const MAX_GAME_BUILD_FILE_BYTES = 0;
+/** Per-file limit for game build uploads (Git LFS in repo). */
+export const MAX_GAME_BUILD_FILE_BYTES = MAX_REPO_GAME_FILE_BYTES;
+
+/** Standalone download package (single .zip / .html in repo). */
+export const GAME_DOWNLOADS_BUCKET = 'game-downloads';
+
+export const MAX_GAME_DOWNLOAD_BYTES = MAX_REPO_GAME_FILE_BYTES;
 
 const THUMB_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']);
 
@@ -25,28 +41,27 @@ function extFromFilename(name: string): string {
   return name.split('.').pop()?.toLowerCase() ?? '';
 }
 
-/** Public object URL for a file in a public Storage bucket (legacy — returns empty). */
-export function publicStorageObjectUrl(_bucket: string, _objectPath: string): string {
-  return '';
+/** Repo-relative path for a playable entry under games/<slug>/. */
+export function publicGameEntryUrl(gameSlug: string, entryPath: string): string {
+  const slug = sanitizeGameStorageSlug(gameSlug);
+  if (!slug) {
+    return '';
+  }
+  return publicRepoGameUrl(slug, entryPath.replace(/^\//, '') || 'index.html');
 }
 
-/** Folder-safe slug for Storage paths (matches recommended game slug pattern). */
+/** @deprecated Use publicGameEntryUrl — kept for older call sites. */
+export function publicGameIndexUrl(storageSlug: string): string {
+  return publicGameEntryUrl(storageSlug, 'index.html');
+}
+
+/** Folder-safe slug for repo paths (matches recommended game slug pattern). */
 export function sanitizeGameStorageSlug(raw: string): string {
   return raw
     .trim()
     .replace(/[^a-zA-Z0-9-_]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
-}
-
-/** Public URL for the hosted index.html — games are in games/ folder, not cloud storage. */
-export function publicGameIndexUrl(_storageSlug: string): string {
-  return '';
-}
-
-/** Public URL for any uploaded entry path — games are in games/ folder, not cloud storage. */
-export function publicGameEntryUrl(_storageSlug: string, _entryPath: string): string {
-  return '';
 }
 
 function guessContentType(filename: string): string {
@@ -84,6 +99,7 @@ function guessContentType(filename: string): string {
     wav: 'audio/wav',
     ico: 'image/x-icon',
     icns: 'image/icns',
+    zip: 'application/zip',
     /** Source maps optional but harmless if uploaded */
     map: 'application/json',
   };
@@ -287,8 +303,7 @@ async function _loadZipUploadPlan(zipFile: File): Promise<{
       .map((e) => `${e.normPath} (${formatBytes(e.size)})`)
       .join(', ');
     throw new Error(
-      `${oversize.length} file(s) exceed the ${formatBytes(MAX_GAME_BUILD_FILE_BYTES)} Storage limit (e.g. ${sample}). ` +
-        'Run migration 033 in Supabase SQL, or split/host the build elsewhere.',
+      `${oversize.length} file(s) exceed the ${formatBytes(MAX_GAME_BUILD_FILE_BYTES)} per-file limit (e.g. ${sample}).`,
     );
   }
 
@@ -376,41 +391,23 @@ async function _listStorageFilesRecursive(_prefix: string): Promise<string[]> {
   return [];
 }
 
-async function _uploadStorageObjectWithRetries(_objectPath: string, _blob: Blob, _contentType: string): Promise<void> {
-  throw new Error('Cloud game build storage is disabled.');
-}
-
-/**
- * Extract each ZIP entry on demand, upload, then drop the blob so multi-GB builds do not OOM the tab.
- */
-async function _uploadZipEntriesStreaming(
+async function _uploadZipEntriesToRepo(
   zip: JSZip,
   slug: string,
   entries: ZipUploadEntry[],
+  wipeFirst: boolean,
   onChunk?: (done: number, total: number, currentPath?: string) => void,
 ): Promise<number> {
-  const total = entries.length;
-  let done = 0;
-  /** Large binaries first so slow uploads start early; only a few blobs live in memory at once. */
-  const queue = [...entries].sort((a, b) => b.size - a.size);
-  const concurrency = pickUploadConcurrency(entries);
-
-  async function worker(): Promise<void> {
-    while (queue.length > 0) {
-      const item = queue.shift();
-      if (!item) {
-        break;
-      }
-      const blob = await extractZipEntryBlob(zip, item);
-      const objectPath = `${slug}/${item.normPath}`;
-      await _uploadStorageObjectWithRetries(objectPath, blob, guessContentType(item.normPath));
-      done += 1;
-      onChunk?.(done, total, item.normPath);
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(1, total)) }, () => worker()));
-  return total;
+  const sorted = [...entries].sort((a, b) => b.size - a.size);
+  const files = sorted.map((item) => ({
+    repoPath: repoGamePath(slug, item.normPath),
+    getBlob: () => extractZipEntryBlob(zip, item),
+  }));
+  await uploadGameFilesToRepo(slug, files, {
+    wipeFolderFirst: wipeFirst,
+    onProgress: (done, total, currentPath) => onChunk?.(done, total, currentPath),
+  });
+  return entries.length;
 }
 
 /** Progress callbacks while processing a Web export ZIP (optional UI wiring). */
@@ -449,38 +446,90 @@ export async function repairGameBuildContentTypes(
   _storageSlug: string,
   _onProgress?: (done: number, total: number) => void,
 ): Promise<{ repaired: number }> {
-  throw new Error('Cloud game build storage is disabled. Host games in games/<slug>/ instead.');
+  return { repaired: 0 };
 }
 
-/** Remove all objects under game-builds/<storageSlug>/ — no-op (cloud builds disabled). */
-export async function deleteGameBuild(_storageSlug: string): Promise<void> {
-  return;
+/** Remove all files under games/<storageSlug>/ in the repo. */
+export async function deleteGameBuild(storageSlug: string): Promise<void> {
+  if (!githubGameUploadReady()) {
+    throw new Error('GitHub token required to remove repo game files.');
+  }
+  const slug = sanitizeGameStorageSlug(storageSlug);
+  if (!slug) {
+    return;
+  }
+  await deleteRepoGameFolder(slug);
 }
 
 /**
- * Upload a Godot/HTML5 ZIP to public storage at game-builds/<storageSlug>/...
- * Overwrites paths that appear in the ZIP; optional wipe first removes orphans.
+ * Upload a Godot/HTML5 ZIP to games/<slug>/ in the GitHub repo.
+ * Large binaries use Git LFS (*.pck, *.wasm, …). Requires GitHub PAT in Admin → System.
  */
 export async function uploadGameZip(
-  _storageSlug: string,
-  _zipFile: File,
-  _wipeFirst = true,
-  _onProgress?: (p: ZipUploadProgress) => void,
+  storageSlug: string,
+  zipFile: File,
+  wipeFirst = true,
+  onProgress?: (p: ZipUploadProgress) => void,
 ): Promise<{
   fileCount: number;
   exportRootLabel: string;
   indexCandidates: string[];
   detectedEntry: string;
 }> {
-  throw new Error(
-    'Cloud game ZIP upload is disabled. Export your game as HTML5 and add it to games/<slug>/ in the repo — see docs/NO_SUPABASE_SETUP.md.',
-  );
+  if (!githubGameUploadReady()) {
+    throw new Error(
+      'No GitHub token. In Admin → System → GitHub sync, paste a Personal Access Token with repo scope.',
+    );
+  }
+  const slug = sanitizeGameStorageSlug(storageSlug);
+  if (!slug) {
+    throw new Error('Invalid game slug for repo upload.');
+  }
+
+  onProgress?.({ phase: 'parse' });
+  const plan = await _loadZipUploadPlan(zipFile);
+
+  onProgress?.({
+    phase: 'packaged',
+    exportRootLabel: plan.exportRootLabel,
+    fileCount: plan.entries.length,
+    totalBytes: plan.totalBytes,
+    uploadConcurrency: pickUploadConcurrency(plan.entries),
+  });
+
+  if (wipeFirst) {
+    onProgress?.({ phase: 'clearing' });
+  }
+
+  await _uploadZipEntriesToRepo(plan.zip, slug, plan.entries, wipeFirst, (done, total, currentPath) => {
+    onProgress?.({ phase: 'upload', done, total, currentPath });
+  });
+
+  return {
+    fileCount: plan.entries.length,
+    exportRootLabel: plan.exportRootLabel,
+    indexCandidates: plan.indexCandidates,
+    detectedEntry: plan.detectedEntry,
+  };
+}
+
+/** Upload a single download package (.zip or .html) to games/<slug>/ in the repo. */
+export async function uploadGameDownloadFile(gameSlug: string, file: File): Promise<string> {
+  if (!githubGameUploadReady()) {
+    throw new Error('No GitHub token — enter one in Admin → System → GitHub sync.');
+  }
+  const slug = sanitizeGameStorageSlug(gameSlug);
+  if (!slug) {
+    throw new Error('Invalid game slug.');
+  }
+  if (file.size > MAX_GAME_DOWNLOAD_BYTES) {
+    throw new Error(`Download file must be ≤ ${formatBytes(MAX_GAME_DOWNLOAD_BYTES)}.`);
+  }
+  const ext = extFromFilename(file.name) || 'zip';
+  return uploadSingleGameRepoFile(slug, `download.${ext}`, file);
 }
 
 export async function uploadGameTabIcon(gameSlug: string, file: File): Promise<string> {
-  if (!isFirebaseReady()) {
-    throw new Error('Firebase not configured');
-  }
   const slug = sanitizeGameStorageSlug(gameSlug);
   if (!slug) {
     throw new Error('Invalid game slug for tab icon upload.');
@@ -492,14 +541,10 @@ export async function uploadGameTabIcon(gameSlug: string, file: File): Promise<s
   if (file.size > MAX_THUMBNAIL_BYTES) {
     throw new Error(`Tab icon must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
   }
-  const objectPath = `${slug}/tab-icon.${ext}`;
-  return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, objectPath, file, guessContentType(`x.${ext}`));
+  return uploadSingleGameRepoFile(slug, `tab-icon.${ext}`, file);
 }
 
 export async function uploadGameThumbnail(gameSlug: string, file: File): Promise<string> {
-  if (!isFirebaseReady()) {
-    throw new Error('Firebase not configured');
-  }
   const slug = sanitizeGameStorageSlug(gameSlug);
   if (!slug) {
     throw new Error('Invalid game slug for thumbnail upload.');
@@ -511,14 +556,10 @@ export async function uploadGameThumbnail(gameSlug: string, file: File): Promise
   if (file.size > MAX_THUMBNAIL_BYTES) {
     throw new Error(`Thumbnail must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
   }
-  const objectPath = `${slug}/cover.${ext}`;
-  return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, objectPath, file, guessContentType(`x.${ext}`));
+  return uploadSingleGameRepoFile(slug, `cover.${ext}`, file);
 }
 
 export async function uploadGamePreviewVideo(gameSlug: string, file: File): Promise<string> {
-  if (!isFirebaseReady()) {
-    throw new Error('Firebase not configured');
-  }
   const slug = sanitizeGameStorageSlug(gameSlug);
   if (!slug) {
     throw new Error('Invalid game slug for video upload.');
@@ -530,8 +571,7 @@ export async function uploadGamePreviewVideo(gameSlug: string, file: File): Prom
   if (file.size > MAX_PREVIEW_VIDEO_BYTES) {
     throw new Error(`Video must be ≤ ${MAX_PREVIEW_VIDEO_BYTES / 1024 / 1024} MB.`);
   }
-  const objectPath = `${slug}/preview.${ext}`;
-  return firebaseUploadPublicFile(GAME_VIDEOS_BUCKET, objectPath, file, guessContentType(`x.${ext}`));
+  return uploadSingleGameRepoFile(slug, `preview.${ext}`, file);
 }
 
 /** Image block on a custom page or game detail page (≤ thumbnail bucket limit). */
@@ -631,6 +671,6 @@ void [
   _sleep,
   _listFolderPaginated,
   _listStorageFilesRecursive,
-  _uploadZipEntriesStreaming,
+  _uploadZipEntriesToRepo,
   _mimeRepairOrder,
 ];
