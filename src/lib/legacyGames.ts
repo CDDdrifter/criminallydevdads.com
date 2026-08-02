@@ -22,6 +22,7 @@ import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePr
 import { defaultRouteFxOverride } from './routeFx';
 import { normalizeVisualPresetInput } from './visualPresets';
 import { resolvePublicAssetUrl } from './paths';
+import { firestoreGetGamesCatalog } from './firestoreData';
 
 const REPO_OWNER = import.meta.env.VITE_GITHUB_REPO_OWNER ?? 'CDDdrifter';
 const REPO_NAME = import.meta.env.VITE_GITHUB_REPO_NAME ?? 'criminallydevdads.com';
@@ -164,6 +165,14 @@ async function resolveThumbnailFromIndexHtml(
 }
 
 async function loadOptionalMetadata(): Promise<LegacyMeta[]> {
+  try {
+    const fromFirestore = await firestoreGetGamesCatalog();
+    if (Array.isArray(fromFirestore) && fromFirestore.length > 0) {
+      return fromFirestore as LegacyMeta[];
+    }
+  } catch {
+    // Fall through to static games.json
+  }
   try {
     const response = await fetch('/games.json', { cache: 'no-store' });
     if (!response.ok) {

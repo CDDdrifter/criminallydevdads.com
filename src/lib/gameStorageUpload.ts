@@ -541,7 +541,10 @@ export async function uploadGameTabIcon(gameSlug: string, file: File): Promise<s
   if (file.size > MAX_THUMBNAIL_BYTES) {
     throw new Error(`Tab icon must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
   }
-  return uploadSingleGameRepoFile(slug, `tab-icon.${ext}`, file);
+  if (!isFirebaseReady()) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+  }
+  return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, `${slug}/tab-icon.${ext}`, file, guessContentType(`x.${ext}`));
 }
 
 export async function uploadGameThumbnail(gameSlug: string, file: File): Promise<string> {
@@ -556,7 +559,10 @@ export async function uploadGameThumbnail(gameSlug: string, file: File): Promise
   if (file.size > MAX_THUMBNAIL_BYTES) {
     throw new Error(`Thumbnail must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
   }
-  return uploadSingleGameRepoFile(slug, `cover.${ext}`, file);
+  if (!isFirebaseReady()) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+  }
+  return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, `${slug}/cover.${ext}`, file, guessContentType(`x.${ext}`));
 }
 
 export async function uploadGamePreviewVideo(gameSlug: string, file: File): Promise<string> {
@@ -571,7 +577,10 @@ export async function uploadGamePreviewVideo(gameSlug: string, file: File): Prom
   if (file.size > MAX_PREVIEW_VIDEO_BYTES) {
     throw new Error(`Video must be ≤ ${MAX_PREVIEW_VIDEO_BYTES / 1024 / 1024} MB.`);
   }
-  return uploadSingleGameRepoFile(slug, `preview.${ext}`, file);
+  if (!isFirebaseReady()) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+  }
+  return firebaseUploadPublicFile(GAME_VIDEOS_BUCKET, `${slug}/preview.${ext}`, file, guessContentType(`x.${ext}`));
 }
 
 /** Image block on a custom page or game detail page (≤ thumbnail bucket limit). */

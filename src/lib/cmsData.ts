@@ -63,16 +63,23 @@ import {
 import { donationPresetsFromUnknown, gamePricingModelFromRecord } from './gamePricing';
 import {
   ensureFirestore,
+  firestoreDeleteDevLog,
+  firestoreDeleteNav,
+  firestoreDeletePage,
   firestoreGetDevLogBySlug,
   firestoreGetPageBySlug,
   firestoreGetSiteSettings,
   firestoreListDevLogs,
   firestoreListNav,
   firestoreListPages,
+  firestoreSaveSiteSettings,
+  firestoreUpsertDevLog,
+  firestoreUpsertNav,
+  firestoreUpsertPage,
 } from './firestoreData';
 import { normalizePageSections } from './pageSections';
 import { loadLegacyGames } from './legacyGames';
-import { syncGamesJsonToGitHub, syncSiteContentToGitHub } from './githubCms';
+import { syncGamesJsonToGitHub } from './githubCms';
 import { fetchStaticJson } from './staticCms';
 import { normalizePromoEvents } from './promoEvents';
 import { normalizeRouteFxOverride } from './routeFx';
@@ -595,6 +602,12 @@ export async function deleteGameBySlug(slug: string) {
 }
 
 export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
+  if (await ensureFirestore()) {
+    const data = await firestoreGetPageBySlug(slug);
+    if (data) {
+      return normalizeSitePage(data);
+    }
+  }
   const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
   if (Array.isArray(staticPages)) {
     const row = staticPages.find((p) => typeof p === 'object' && p && String((p as Record<string, unknown>).slug) === slug);
@@ -602,46 +615,46 @@ export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
       return normalizeSitePage(row as Record<string, unknown>);
     }
   }
-  if (await ensureFirestore()) {
-    const data = await firestoreGetPageBySlug(slug);
-    if (data) {
-      return normalizeSitePage(data);
-    }
-  }
   return null;
 }
 
 export async function fetchSitePages(): Promise<SitePage[]> {
-  const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
-  if (Array.isArray(staticPages) && staticPages.length > 0) {
-    return staticPages
-      .filter((p): p is Record<string, unknown> => Boolean(p && typeof p === 'object'))
-      .map(normalizeSitePage);
-  }
   if (await ensureFirestore()) {
     const rows = await firestoreListPages();
     if (rows.length > 0) {
       return rows.map(normalizeSitePage);
     }
   }
+  const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
+  if (Array.isArray(staticPages) && staticPages.length > 0) {
+    return staticPages
+      .filter((p): p is Record<string, unknown> => Boolean(p && typeof p === 'object'))
+      .map(normalizeSitePage);
+  }
   return [];
 }
 
 export async function fetchNavItems(): Promise<NavItem[]> {
-  const staticNav = await fetchStaticJson<NavItem[]>('cms/site-nav.json');
-  if (Array.isArray(staticNav) && staticNav.length > 0) {
-    return staticNav;
-  }
   if (await ensureFirestore()) {
     const rows = await firestoreListNav();
     if (rows.length > 0) {
       return rows as NavItem[];
     }
   }
+  const staticNav = await fetchStaticJson<NavItem[]>('cms/site-nav.json');
+  if (Array.isArray(staticNav) && staticNav.length > 0) {
+    return staticNav;
+  }
   return [];
 }
 
 export async function fetchDevLogBySlug(slug: string): Promise<DevLogPost | null> {
+  if (await ensureFirestore()) {
+    const data = await firestoreGetDevLogBySlug(slug);
+    if (data) {
+      return data as DevLogPost;
+    }
+  }
   const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
   if (Array.isArray(staticLogs)) {
     const hit = staticLogs.find((p) => p.slug === slug);
@@ -649,36 +662,24 @@ export async function fetchDevLogBySlug(slug: string): Promise<DevLogPost | null
       return hit;
     }
   }
-  if (await ensureFirestore()) {
-    const data = await firestoreGetDevLogBySlug(slug);
-    if (data) {
-      return data as DevLogPost;
-    }
-  }
   return null;
 }
 
 export async function fetchDevLogs(): Promise<DevLogPost[]> {
-  const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
-  if (Array.isArray(staticLogs) && staticLogs.length > 0) {
-    return staticLogs;
-  }
   if (await ensureFirestore()) {
     const rows = await firestoreListDevLogs();
     if (rows.length > 0) {
       return rows as DevLogPost[];
     }
   }
+  const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
+  if (Array.isArray(staticLogs) && staticLogs.length > 0) {
+    return staticLogs;
+  }
   return [];
 }
 
 export async function fetchSiteSettings(): Promise<SiteSettings> {
-  const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
-  const fromStatic = siteSettingsFromRow(staticRow);
-  if (fromStatic) {
-    return fromStatic;
-  }
-
   try {
     if (await ensureFirestore()) {
       const data = await Promise.race([
@@ -687,29 +688,31 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
           window.setTimeout(() => resolve(null), 5000);
         }),
       ]);
-      if (data) {
-        return siteSettingsFromRow(data) ?? defaultSiteSettings;
+      const fromFirestore = siteSettingsFromRow(data);
+      if (fromFirestore) {
+        return fromFirestore;
       }
     }
   } catch (err) {
-    console.warn('[cms] Firestore site settings unavailable, using defaults', err);
+    console.warn('[cms] Firestore site settings unavailable, using static fallback', err);
+  }
+
+  const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
+  const fromStatic = siteSettingsFromRow(staticRow);
+  if (fromStatic) {
+    return fromStatic;
   }
 
   return defaultSiteSettings;
 }
 
-/** CMS content lives in repo JSON — admin saves commit via GitHub PAT, then Actions redeploys. */
-async function persistCmsToGitHub(path: string, data: unknown): Promise<void> {
-  const result = await syncSiteContentToGitHub([{ path, data }]);
-  if (result.error) {
-    throw new Error(result.error);
-  }
-}
-
 export async function saveSiteSettings(patch: Partial<SiteSettings>) {
+  if (!(await ensureFirestore())) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+  }
   const current = await fetchSiteSettings();
   const merged = { ...current, ...patch };
-  await persistCmsToGitHub('cms/site-settings.json', { id: 1, ...merged });
+  await firestoreSaveSiteSettings({ id: 1, ...merged });
 }
 
 export async function fetchAllPagesAdmin(): Promise<SitePage[]> {
@@ -741,17 +744,17 @@ export async function upsertPage(row: Partial<SitePage> & { slug: string; title:
   const pages = await fetchSitePages();
   const idx = pages.findIndex((p) => p.slug === row.slug.trim());
   const merged = normalizeSitePage({ ...(idx >= 0 ? pages[idx] : {}), ...payload });
-  if (idx >= 0) {
-    pages[idx] = merged;
-  } else {
-    pages.push(merged);
+  if (!(await ensureFirestore())) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
   }
-  await persistCmsToGitHub('cms/site-pages.json', pages);
+  await firestoreUpsertPage(row.slug.trim(), merged as unknown as Record<string, unknown>);
 }
 
 export async function deletePageSlug(slug: string) {
-  const pages = (await fetchSitePages()).filter((p) => p.slug !== slug);
-  await persistCmsToGitHub('cms/site-pages.json', pages);
+  if (!(await ensureFirestore())) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+  }
+  await firestoreDeletePage(slug);
 }
 
 export async function fetchAllNavAdmin(): Promise<NavItem[]> {
@@ -766,33 +769,21 @@ export async function upsertNav(row: Partial<NavItem> & { label: string; href: s
     external: row.external ?? false,
     sort_order: row.sort_order ?? 0,
   };
-  const nav = await fetchNavItems();
-  const idx = nav.findIndex((n) => n.id === payload.id);
-  if (idx >= 0) {
-    nav[idx] = payload;
-  } else {
-    nav.push(payload);
+  if (!(await ensureFirestore())) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
   }
-  await persistCmsToGitHub('cms/site-nav.json', nav);
+  await firestoreUpsertNav(payload.id, payload);
 }
 
 export async function deleteNavId(id: string) {
-  const nav = (await fetchNavItems()).filter((n) => n.id !== id);
-  await persistCmsToGitHub('cms/site-nav.json', nav);
+  if (!(await ensureFirestore())) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+  }
+  await firestoreDeleteNav(id);
 }
 
 export async function fetchAllDevLogsAdmin(): Promise<DevLogPost[]> {
-  const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
-  if (Array.isArray(staticLogs) && staticLogs.length > 0) {
-    return staticLogs;
-  }
-  if (await ensureFirestore()) {
-    const rows = await firestoreListDevLogs();
-    if (rows.length > 0) {
-      return rows as DevLogPost[];
-    }
-  }
-  return [];
+  return fetchDevLogs();
 }
 
 export async function upsertDevLog(
@@ -813,15 +804,15 @@ export async function upsertDevLog(
   const logs = await fetchAllDevLogsAdmin();
   const idx = logs.findIndex((l) => l.slug === row.slug.trim());
   const merged = { ...(idx >= 0 ? logs[idx] : {}), ...payload } as DevLogPost;
-  if (idx >= 0) {
-    logs[idx] = merged;
-  } else {
-    logs.push(merged);
+  if (!(await ensureFirestore())) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
   }
-  await persistCmsToGitHub('cms/site-devlogs.json', logs);
+  await firestoreUpsertDevLog(row.slug.trim(), merged as unknown as Record<string, unknown>);
 }
 
 export async function deleteDevLogSlug(slug: string) {
-  const logs = (await fetchAllDevLogsAdmin()).filter((l) => l.slug !== slug);
-  await persistCmsToGitHub('cms/site-devlogs.json', logs);
+  if (!(await ensureFirestore())) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+  }
+  await firestoreDeleteDevLog(slug);
 }

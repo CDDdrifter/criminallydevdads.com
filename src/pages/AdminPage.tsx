@@ -40,8 +40,7 @@ import { githubCmsConfigured } from '../lib/githubCms';
 import { resolvePublicAssetUrl } from '../lib/paths';
 import { blockingSiteSettingsIssues, softSiteSettingsLinkHints } from '../lib/adminSettingsValidate';
 import { donationPresetsFromUnknown } from '../lib/gamePricing';
-import { unknownColumnFromPostgrestMessage } from '../lib/postgrestUnknownColumn';
-import { formatSupabaseWriteError, isRlsOrPermissionError } from '../lib/supabaseWriteError';
+import { describeAdminWriteFailure, formatAdminWriteError } from '../lib/adminWriteError';
 import { ADMIN_CMS_TABS, ADMIN_OVERVIEW_CARDS, ADMIN_STUDIO_TABS } from '../lib/adminLabels';
 import { defaultRouteFxOverride, normalizeRouteFxOverride } from '../lib/routeFx';
 import { normalizeVisualPresetInput } from '../lib/visualPresets';
@@ -119,13 +118,6 @@ type Tab =
   | 'analytics'
   | 'mailing';
 
-function describeAdminWriteFailure(err: unknown): string {
-  const core = formatSupabaseWriteError(err);
-  if (isRlsOrPermissionError(err)) {
-    return `${core}\n\nRow security / permission: you must be signed in as an allowed editor. In Supabase, check site_admin_domains and site_admin_emails for this project. Try Sign out, then sign in again.`;
-  }
-    return `${core}\n\nIf a database column is missing, run migrations 014, 019, 020, 022, 026, and 027 in supabase/migrations/ once in the Supabase SQL Editor.`;
-}
 
 function emptyPageDraft(): Partial<SitePage> & {
   slug: string;
@@ -694,14 +686,7 @@ export function AdminPage() {
       console.error(e);
       setSettingsSaveStatus('error');
       setSettingsSaveDetail(describeAdminWriteFailure(e));
-      const msg = formatSupabaseWriteError(e);
-      const col = unknownColumnFromPostgrestMessage(msg);
-      if (col) {
-        setSettingsFieldErrors({
-          _migration: `Missing column "${col}". Run supabase/migrations/014_ensure_admin_write_schema.sql in the Supabase SQL Editor.`,
-        });
-      }
-      flash(formatSupabaseWriteError(e));
+      flash(formatAdminWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -772,7 +757,7 @@ export function AdminPage() {
       const detail = describeAdminWriteFailure(e);
       setGameSaveStatus('error');
       setGameSaveDetail(detail);
-      flash(formatSupabaseWriteError(e));
+      flash(formatAdminWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -1136,7 +1121,7 @@ export function AdminPage() {
       console.error(e);
       setPageSaveStatus('error');
       setPageSaveDetail(describeAdminWriteFailure(e));
-      flash(formatSupabaseWriteError(e));
+      flash(formatAdminWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -1183,7 +1168,7 @@ export function AdminPage() {
       console.error(e);
       setNavSaveStatus('error');
       setNavSaveDetail(describeAdminWriteFailure(e));
-      flash(formatSupabaseWriteError(e));
+      flash(formatAdminWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -1239,7 +1224,7 @@ export function AdminPage() {
       console.error(e);
       setLogSaveStatus('error');
       setLogSaveDetail(describeAdminWriteFailure(e));
-      flash(formatSupabaseWriteError(e));
+      flash(formatAdminWriteError(e));
     } finally {
       setBusy(false);
     }
@@ -1289,7 +1274,7 @@ export function AdminPage() {
           <p className="admin-muted" style={{ marginBottom: 16, lineHeight: 1.5 }}>
             Sign in with Google using an email on the admin allow list. Edit{' '}
             <code>cms/admin-config.json</code> to add your email or domain. Full guide:{' '}
-            <code>docs/NO_SUPABASE_SETUP.md</code>.
+            <code>docs/FIREBASE_MIGRATION.md</code>.
           </p>
           <p className="admin-muted" style={{ marginBottom: 12, fontSize: '0.85rem' }}>
             Bookmark <strong>/admin</strong>. Optional: show “Team login” in the header with{' '}
@@ -1332,12 +1317,13 @@ export function AdminPage() {
               Can’t verify editor access
             </h1>
             <p className="admin-muted" style={{ marginTop: 12 }}>
-              Signed in as <strong>{auth.user.email}</strong>, but the database check failed. This is usually{' '}
-              <strong>not</strong> your password — it means Supabase couldn’t run <code>is_site_admin</code>.
+              Signed in as <strong>{auth.user.email}</strong>, but admin access could not be verified. Check Firebase Auth
+              and <code>cms/admin-config.json</code>.
             </p>
             <p className="admin-muted" style={{ marginTop: 12 }}>
-              <strong>Fix:</strong> Supabase → <strong>SQL Editor</strong> → run the full{' '}
-              <code>supabase/schema.sql</code> from this repo (one paste, Run). Then sign out and sign in again.
+              <strong>Fix:</strong> Enable Firestore in Firebase Console, deploy <code>firestore.rules</code>, and confirm
+              your email is in <code>admin_emails</code> or your domain in <code>admin_domains</code>. See{' '}
+              <code>docs/FIREBASE_MIGRATION.md</code>.
             </p>
             <p className="admin-muted" style={{ marginTop: 12, fontSize: '0.85rem' }}>
               Technical detail: {auth.adminCheckError}
@@ -1364,7 +1350,7 @@ export function AdminPage() {
           <p className="admin-muted" style={{ marginTop: 12 }}>
             <strong>Fix:</strong> Edit <code>cms/admin-config.json</code> in the repo and add your email to{' '}
             <code>admin_emails</code>, or your domain to <code>admin_domains</code>. Then redeploy. See{' '}
-            <code>docs/NO_SUPABASE_SETUP.md</code>.
+            <code>docs/FIREBASE_MIGRATION.md</code>.
           </p>
           <button type="button" style={{ marginTop: 16 }} onClick={() => auth.signOut()}>
             Sign out
@@ -1495,12 +1481,12 @@ export function AdminPage() {
         </div>
         <div className="admin-panel" style={{ marginTop: 20, borderColor: 'rgba(115, 248, 255, 0.25)' }}>
           <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>
-            Push CMS snapshots to GitHub
+            Push repo backups to GitHub (optional)
           </h2>
           <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55 }}>
-            Saves live in <strong>Supabase</strong>. Use these buttons to write snapshots into GitHub so deploys can ship
-            content/layout changes with the build. ZIP game files still stay in Storage and are never committed. Setup:{' '}
-            <code>docs/SYNC_CMS_TO_GITHUB.md</code>.
+            CMS edits save to <strong>Firebase Firestore</strong> live. Use these buttons to snapshot{' '}
+            <code>games.json</code> or <code>cms/*.json</code> into GitHub for backup or deploy bundling. Game builds
+            live in <code>games/&lt;slug&gt;/</code> (upload via Games tab + GitHub token).
           </p>
           <div className="admin-row" style={{ marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
             <button
@@ -2156,15 +2142,13 @@ export function AdminPage() {
               Add or update game
             </h2>
             <p className="admin-muted" style={{ lineHeight: 1.55 }}>
-              <strong>Like the old Supabase flow:</strong> enter a <strong>title</strong>, upload your Godot Web{' '}
-              <strong>.zip</strong>, and we commit the files to <code>games/&lt;slug&gt;/</code> plus{' '}
-              <code>games.json</code> in GitHub — no Firebase, no external host. Requires a{' '}
-              <strong>GitHub token</strong> in the <strong>System</strong> tab first. After upload, wait ~2 min for the site to redeploy, then the game is playable from its page.
+              Enter a <strong>title</strong> and save — game metadata goes to <strong>Firebase</strong> (live immediately) when you are signed in as admin.
+              To upload a Godot Web <strong>.zip</strong> into <code>games/&lt;slug&gt;/</code>, paste a GitHub token in <strong>System → GitHub sync</strong>,
+              or paste an external play URL instead.
             </p>
             {!githubCmsConfigured() ? (
-              <p className="admin-muted" style={{ color: 'var(--accent)', lineHeight: 1.55, marginTop: 0 }}>
-                ⚠ No GitHub token yet — open <strong>System → GitHub sync</strong> and paste a token with <strong>repo</strong>{' '}
-                scope before uploading.
+              <p className="admin-muted" style={{ color: 'var(--muted)', lineHeight: 1.55, marginTop: 0 }}>
+                GitHub token not set — metadata saves still work. Token is only needed for ZIP uploads to the repo.
               </p>
             ) : null}
             <div className="admin-field">
@@ -2876,12 +2860,8 @@ export function AdminPage() {
               </h3>
               <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
                 Upload <strong>one .zip per game</strong> (whole Godot Web export). Files are committed to{' '}
-                <strong>games/&lt;slug&gt;/</strong> in this GitHub repo — same place as your existing games. Large
-                binaries (.pck, .wasm, …) use <strong>Git LFS</strong> automatically. No Firebase, no external host.
-              </p>
-              <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>
-                Requires a <strong>GitHub token</strong> in Admin → System. Multi-GB uploads: keep this tab open until
-                finished. After upload, GitHub Actions redeploys the site in ~2 minutes.
+                <strong>games/&lt;slug&gt;/</strong> in this GitHub repo. Requires a GitHub token in Admin → System.
+                Multi-GB uploads: keep this tab open until finished.
               </p>
               {gameDraft.local_folder?.trim() ? (
                 <p className="admin-muted" style={{ margin: '0 0 10px', lineHeight: 1.55 }}>

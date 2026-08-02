@@ -59,8 +59,8 @@ I've set up prototype Security Rules to keep Firestore and Storage data safe. Th
 | Action | Where it saves |
 |--------|----------------|
 | Theme, settings, pages, nav, devlogs, services | **Firestore** (live immediately) |
-| Games (title, slug, etc.) | `games.json` via GitHub PAT in Admin → System |
-| Game HTML5 builds | `games/<slug>/` folder in repo |
+| Games (metadata + catalog) | **GitHub** `games.json` (GitHub PAT) |
+| Game HTML5 builds | **GitHub** `games/<slug>/` (Games tab ZIP upload) |
 
 Optional: still use **GitHub sync** (PAT) to snapshot Firestore content into `cms/*.json` for backup — Firestore is the live source when Firebase is configured.
 

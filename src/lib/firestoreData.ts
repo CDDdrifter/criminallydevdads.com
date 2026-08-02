@@ -24,6 +24,7 @@ export const COL = {
   sitePages: 'site_pages',
   siteNav: 'site_nav_items',
   siteDevLogs: 'site_dev_logs',
+  siteGames: 'site_games',
   siteServices: 'site_services',
   profiles: 'profiles',
   comments: 'comments',
@@ -151,6 +152,25 @@ export async function firestoreUpsertDevLog(slug: string, data: Record<string, u
 export async function firestoreDeleteDevLog(slug: string): Promise<void> {
   if (!(await ensureFirestore())) throw new Error('Firebase not configured');
   await deleteDoc(doc(firestore(), COL.siteDevLogs, slug));
+}
+
+// ---------------------------------------------------------------------------
+// Games catalog (replaces games.json when Firebase CMS is live)
+// ---------------------------------------------------------------------------
+
+const GAMES_CATALOG_DOC = 'catalog';
+
+export async function firestoreGetGamesCatalog(): Promise<unknown[] | null> {
+  if (!(await ensureFirestore())) return null;
+  const snap = await getDoc(doc(firestore(), COL.siteGames, GAMES_CATALOG_DOC));
+  if (!snap.exists()) return null;
+  const games = snap.data().games;
+  return Array.isArray(games) ? games : null;
+}
+
+export async function firestoreSaveGamesCatalog(games: unknown[]): Promise<void> {
+  if (!(await ensureFirestore())) throw new Error('Firebase not configured');
+  await setDoc(doc(firestore(), COL.siteGames, GAMES_CATALOG_DOC), { games, updated_at: ts() });
 }
 
 // ---------------------------------------------------------------------------
