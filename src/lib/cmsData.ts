@@ -67,11 +67,13 @@ import {
   firestoreDeleteNav,
   firestoreDeletePage,
   firestoreGetDevLogBySlug,
+  firestoreGetGamesCatalog,
   firestoreGetPageBySlug,
   firestoreGetSiteSettings,
   firestoreListDevLogs,
   firestoreListNav,
   firestoreListPages,
+  firestoreSaveGamesCatalog,
   firestoreSaveSiteSettings,
   firestoreUpsertDevLog,
   firestoreUpsertNav,
@@ -79,7 +81,7 @@ import {
 } from './firestoreData';
 import { normalizePageSections } from './pageSections';
 import { loadLegacyGames } from './legacyGames';
-import { syncGamesJsonToGitHub } from './githubCms';
+import { githubCmsConfigured, syncGamesJsonToGitHub } from './githubCms';
 import { fetchStaticJson } from './staticCms';
 import { normalizePromoEvents } from './promoEvents';
 import { normalizeRouteFxOverride } from './routeFx';
@@ -555,12 +557,92 @@ async function loadAllGamesForAdmin(): Promise<GameRecord[]> {
 }
 
 async function persistGamesJson(games: GameRecord[]): Promise<void> {
+  if (!(await ensureFirestore())) {
+    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+  }
   const sorted = [...games].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const json = sorted.map(gameRecordToLegacyJson);
-  const result = await syncGamesJsonToGitHub(json);
-  if (result.error) {
-    throw new Error(result.error);
+  await firestoreSaveGamesCatalog(json);
+  if (githubCmsConfigured()) {
+    const result = await syncGamesJsonToGitHub(json);
+    if (result.error) {
+      console.warn('[cms] GitHub games.json sync failed (Firestore saved):', result.error);
+    }
   }
+}
+
+/** One-time seed: copy bundled cms/*.json into Firestore when collections are empty. */
+export async function bootstrapFirestoreFromStaticIfEmpty(): Promise<string[]> {
+  if (!(await ensureFirestore())) {
+    return [];
+  }
+  const seeded: string[] = [];
+
+  const settings = await firestoreGetSiteSettings();
+  if (!settings) {
+    const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
+    const fromStatic = siteSettingsFromRow(staticRow);
+    if (fromStatic) {
+      await firestoreSaveSiteSettings({ id: 1, ...fromStatic });
+      seeded.push('site_settings');
+    }
+  }
+
+  const pages = await firestoreListPages();
+  if (pages.length === 0) {
+    const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
+    if (Array.isArray(staticPages) && staticPages.length > 0) {
+      for (const p of staticPages) {
+        if (p && typeof p === 'object' && 'slug' in p) {
+          const slug = String((p as Record<string, unknown>).slug).trim();
+          if (slug) {
+            await firestoreUpsertPage(
+              slug,
+              normalizeSitePage(p as Record<string, unknown>) as unknown as Record<string, unknown>,
+            );
+          }
+        }
+      }
+      seeded.push('site_pages');
+    }
+  }
+
+  const nav = await firestoreListNav();
+  if (nav.length === 0) {
+    const staticNav = await fetchStaticJson<NavItem[]>('cms/site-nav.json');
+    if (Array.isArray(staticNav) && staticNav.length > 0) {
+      for (const item of staticNav) {
+        if (item?.id) {
+          await firestoreUpsertNav(item.id, item as unknown as Record<string, unknown>);
+        }
+      }
+      seeded.push('site_nav');
+    }
+  }
+
+  const logs = await firestoreListDevLogs();
+  if (logs.length === 0) {
+    const staticLogs = await fetchStaticJson<DevLogPost[]>('cms/site-devlogs.json');
+    if (Array.isArray(staticLogs) && staticLogs.length > 0) {
+      for (const log of staticLogs) {
+        if (log?.slug) {
+          await firestoreUpsertDevLog(log.slug, log as unknown as Record<string, unknown>);
+        }
+      }
+      seeded.push('site_dev_logs');
+    }
+  }
+
+  const games = await firestoreGetGamesCatalog();
+  if (!games || games.length === 0) {
+    const staticGames = await fetchStaticJson<unknown[]>('games.json');
+    if (Array.isArray(staticGames) && staticGames.length > 0) {
+      await firestoreSaveGamesCatalog(staticGames);
+      seeded.push('site_games');
+    }
+  }
+
+  return seeded;
 }
 
 export async function fetchAllGamesAdmin(): Promise<GameRecord[]> {

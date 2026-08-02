@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import {
+  bootstrapFirestoreFromStaticIfEmpty,
   deleteDevLogSlug,
   deleteGameBySlug,
   deleteNavId,
@@ -560,8 +561,18 @@ export function AdminPage() {
   }, [auth.isAdmin]);
 
   useEffect(() => {
-    reload().catch(console.error);
-  }, [reload]);
+    if (!auth.authConfigured || !auth.isAdmin) {
+      return;
+    }
+    bootstrapFirestoreFromStaticIfEmpty()
+      .then((seeded) => {
+        if (seeded.length) {
+          console.info('[cms] Seeded Firestore from static files:', seeded.join(', '));
+        }
+        return reload();
+      })
+      .catch(console.error);
+  }, [auth.authConfigured, auth.isAdmin, reload]);
 
   useEffect(() => {
     return () => {
@@ -1592,26 +1603,6 @@ export function AdminPage() {
 
       {tab === 'settings' && (
         <div className="admin-panel admin-grid">
-          {settingsFieldErrors._migration ? (
-            <div
-              role="alert"
-              style={{
-                gridColumn: '1 / -1',
-                padding: '12px 14px',
-                borderRadius: 8,
-                border: '1px solid var(--danger)',
-                background: 'rgba(255, 95, 191, 0.12)',
-                color: 'var(--text)',
-                fontSize: '0.88rem',
-                lineHeight: 1.5,
-              }}
-            >
-              <span style={{ color: 'var(--danger)', marginRight: 8 }} aria-hidden>
-                ✗
-              </span>
-              {settingsFieldErrors._migration}
-            </div>
-          ) : null}
           <p className="admin-muted" style={{ gridColumn: '1 / -1', lineHeight: 1.55, fontSize: '0.88rem' }}>
             Hero title, logo, and tagline:{' '}
             <button type="button" style={adminJumpBtnStyle} onClick={() => setTab('brand')}>

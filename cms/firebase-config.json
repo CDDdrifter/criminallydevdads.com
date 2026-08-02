@@ -2,5 +2,6 @@
   "apiKey": "AIzaSyBdFhycl2M9Odt5KMddVq0ukey3A43PsvM",
   "authDomain": "criminallydevdads.firebaseapp.com",
   "projectId": "criminallydevdads",
-  "appId": "1:258021496390:web:93e0bc501afc2b6d5fdc47"
+  "appId": "1:258021496390:web:93e0bc501afc2b6d5fdc47",
+  "storageBucket": "criminallydevdads.firebasestorage.app"
 }
