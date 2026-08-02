@@ -13,7 +13,7 @@ const SETTINGS_KEYS = new Set([
   'support_title',
   'support_body',
   'footer_text',
-  'stripe_donation_url',
+  'stripe_tip_url',
   'support_page_href',
 ]);
 

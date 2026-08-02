@@ -42,34 +42,34 @@
     "body": "",
     "sections": [
       {
-        "id": "d7622a40-ee2d-4285-b42b-3e5a492a9b6c",
+        "id": "a5e1c460-7c37-4b51-94a8-0c6f716d56ec",
         "kind": "heading",
         "title": "Terms of Service",
         "subtitle": "Criminally Dev Dads"
       },
       {
-        "id": "0c93b5ab-4775-4fb4-8a1a-b3bcd25d8841",
+        "id": "b1e9dc3e-da47-4930-a6d8-5c55c53a0207",
         "kind": "panel",
         "title": "Agreement",
         "variant": "default",
         "body": "By accessing criminallydevdads.com (the \"Site\") or purchasing products, tips, or services from us, you agree to these Terms of Service. If you do not agree, please do not use the Site. We may update these Terms from time to time; continued use after changes means you accept the updated Terms."
       },
       {
-        "id": "a9d6dc05-f449-4cd3-aafb-457772fa4207",
+        "id": "63e5e30a-22a7-430c-b5d7-626161730806",
         "kind": "panel",
         "title": "Eligibility & accounts",
         "variant": "default",
         "body": "You must be at least the age of majority in your jurisdiction to use the Site or make purchases. When you sign in with Google, you are responsible for all activity under your account. Keep your account secure and notify us if you suspect unauthorized access."
       },
       {
-        "id": "2c39b221-7f7b-4d0c-ae01-8321aeeaeddb",
+        "id": "21f842dd-c074-474f-82fb-891f5241504c",
         "kind": "panel",
         "title": "Purchases & digital goods",
         "variant": "default",
-        "body": "Prices, tips, and donations are processed by Stripe or other payment providers we designate. Digital products, game access, and custom work are governed by our Refund Policy. We provide the Site and games \"as is\" and disclaim warranties to the fullest extent permitted by law. Our total liability is limited to the amount you paid us in the twelve (12) months before the claim."
+        "body": "Prices, tips, and purchases are processed by Stripe or other payment providers we designate. Voluntary tips are not tax-deductible charitable contributions. Digital products, game access, and custom work are governed by our Refund Policy. We provide the Site and games \"as is\" and disclaim warranties to the fullest extent permitted by law. Our total liability is limited to the amount you paid us in the twelve (12) months before the claim."
       },
       {
-        "id": "661075ab-4e67-4ad7-a7cb-2d4cfaa1dbe0",
+        "id": "8244e273-caf1-4bc3-90db-15268e5b3fbc",
         "kind": "panel",
         "title": "Contact",
         "variant": "default",
@@ -97,34 +97,34 @@
     "body": "",
     "sections": [
       {
-        "id": "52a9af94-aced-4478-9922-9ff1db1a893e",
+        "id": "0cb39428-c45e-4a11-8526-3f927209b444",
         "kind": "heading",
         "title": "Privacy Policy",
         "subtitle": "How we handle your information"
       },
       {
-        "id": "df8d9e47-7899-4616-82ae-17ed7b727d50",
+        "id": "7f9604a9-8f04-4b87-89b9-4c549dc218f3",
         "kind": "panel",
         "title": "Information we collect",
         "variant": "default",
-        "body": "We collect information you provide (such as your email when you sign in with Google, mailing-list preferences, and support messages), basic usage analytics if enabled, and payment metadata from Stripe (we never store full card numbers on our servers)."
+        "body": "We collect: account details (email when you sign in with Google), mailing-list preferences, support messages, and first-party analytics when enabled — including pages visited, games played, session ID, referrer URL, marketing UTM parameters, browser language, and screen size. Payment metadata comes from Stripe; we never store full card numbers."
       },
       {
-        "id": "6aa4dd21-f315-4754-80eb-98d5d599d81b",
+        "id": "fd9da474-00af-453a-8f53-9cf0cee1ac15",
         "kind": "panel",
         "title": "How we use it",
         "variant": "default",
-        "body": "We use this information to operate the Site, deliver games and services, process orders and tips, send updates you opt into, respond to support requests, and improve our products."
+        "body": "We use this information to operate the Site, deliver games and services, process purchases and tips, send updates you opt into, measure traffic, improve our products, and show ads when enabled. We do not sell your personal information to data brokers."
       },
       {
-        "id": "b97c25de-36cf-45c0-993e-e79b0c5b5c00",
+        "id": "528260de-4665-4be7-9bb4-0cf43f32af66",
         "kind": "panel",
-        "title": "Sharing & retention",
+        "title": "Advertising & third parties",
         "variant": "default",
-        "body": "We share data only with service providers who help us run the Site (hosting, email, payments, analytics) under appropriate agreements. We retain data as long as needed to provide services or as required by law."
+        "body": "If we display ads (e.g. Google AdSense), those partners may use cookies or similar technologies under their own policies. Payment processing is handled by Stripe. Hosting and analytics providers process data on our behalf under contract."
       },
       {
-        "id": "4bd5c907-bf98-4462-8d6a-ddfeb36bdcf5",
+        "id": "a9603a60-76e8-414d-b989-3598250b7495",
         "kind": "panel",
         "title": "Your rights & contact",
         "variant": "default",
@@ -152,35 +152,35 @@
     "body": "",
     "sections": [
       {
-        "id": "e4ae9f73-2ad9-41c9-b3f7-8ea1b42b8b4e",
+        "id": "8c7d17f8-1761-41c1-8e48-67851fff8441",
         "kind": "heading",
         "title": "Refund Policy",
         "subtitle": "Digital goods & services"
       },
       {
-        "id": "c1873a8f-9392-4b38-a0d8-6037ae0e1a73",
+        "id": "bad8d8d8-ae2e-4d22-9338-97b15251ef8d",
         "kind": "callout",
         "tone": "neutral",
         "icon": "ℹ️",
         "title": "Digital products",
-        "body": "Tips, donations, downloads, game access, and commissioned or custom digital work are generally non-refundable once delivered or once work has begun, except where applicable law requires otherwise."
+        "body": "Tips, downloads, game access, and commissioned or custom digital work are generally non-refundable once delivered or once work has begun, except where applicable law requires otherwise."
       },
       {
-        "id": "dd330ced-b1f4-4c15-ba4a-3f0f55a65a88",
+        "id": "d615a1da-6c91-4f13-aff0-a9f50bd42721",
         "kind": "panel",
-        "title": "Tips & voluntary support",
+        "title": "Voluntary tips",
         "variant": "default",
-        "body": "Voluntary tips and donations to support development are final and non-refundable except where required by law or at our sole discretion in cases of clear billing error."
+        "body": "Tips to support development are voluntary payments for creative work — not charitable donations. Tips are final and non-refundable except where required by law or at our sole discretion for clear billing errors."
       },
       {
-        "id": "83a8a1c3-8721-4486-a3a1-4961f5fafe4f",
+        "id": "8e4595a9-de45-4856-a0ec-01cd3d18cb12",
         "kind": "panel",
         "title": "Physical goods",
         "variant": "default",
         "body": "If we sell physical merchandise, items may be returned only if they arrive damaged or defective. Contact support@criminallydevdads.com within 14 days with your order details and photos."
       },
       {
-        "id": "75fce501-eed5-4c1a-bb4a-90b001fe01d7",
+        "id": "ce65135a-e039-4a5e-af89-67eb2763e6cc",
         "kind": "panel",
         "title": "Chargebacks",
         "variant": "default",
@@ -208,31 +208,31 @@
     "body": "",
     "sections": [
       {
-        "id": "20ac9c8a-0229-4ca0-af04-f4749834580a",
+        "id": "b7fe43c1-cd53-4dd0-83d7-5a798c6658db",
         "kind": "heading",
         "title": "Cookie Policy",
         "subtitle": "Cookies & local storage"
       },
       {
-        "id": "27d500b2-6e2d-4d8f-bbe9-30bb4855dab8",
+        "id": "cb70cdec-feb1-4f2c-83cf-aa773681ba08",
         "kind": "panel",
         "title": "What we use",
         "variant": "default",
-        "body": "Criminally Dev Dads uses essential cookies and browser local storage to run the Site — for example sign-in sessions, saved preferences, and remembering that you acknowledged this cookie notice."
+        "body": "Criminally Dev Dads uses essential cookies and local storage to run the Site (sign-in, preferences, cookie-consent acknowledgement). When analytics are enabled, we store first-party usage events. When ads are enabled, advertising partners may set additional cookies under their own policies."
       },
       {
-        "id": "eefb57c5-6c04-44fc-a512-3acde19ec093",
+        "id": "65ebd695-39b7-4697-afb8-51717802a0c2",
         "kind": "panel",
         "title": "Analytics",
         "variant": "default",
-        "body": "If first-party analytics are enabled, we may store anonymous usage events to understand how visitors use the Site. We do not sell your data."
+        "body": "Analytics may record pages visited, games played, session IDs, referrer URLs, marketing UTM tags, browser language, and screen size. This helps us understand traffic and improve the hub."
       },
       {
-        "id": "c17f2d4a-ed4d-414e-aa65-d8c1d7fa2227",
+        "id": "57b17cff-c6e4-4139-bf83-54c0dc5f2687",
         "kind": "panel",
         "title": "Your choices",
         "variant": "default",
-        "body": "You can clear cookies and site data in your browser settings at any time. Disabling essential cookies may prevent sign-in or other core features from working correctly."
+        "body": "You can clear cookies and site data in your browser at any time. Disabling essential cookies may prevent sign-in or other core features from working correctly."
       }
     ],
     "show_in_nav": false,
@@ -256,20 +256,20 @@
     "body": "",
     "sections": [
       {
-        "id": "13166ca4-fed8-4179-9285-40f392fb846f",
+        "id": "ba290a37-9e93-476a-959c-f9dc27d708cf",
         "kind": "heading",
         "title": "Copyright & DMCA",
         "subtitle": "Reporting infringement"
       },
       {
-        "id": "80f7dd7b-419d-498b-b07b-981f6e6ca552",
+        "id": "1769c58d-d97c-46c6-a058-c386fbd63e33",
         "kind": "panel",
         "title": "Our content",
         "variant": "default",
         "body": "Games, art, and other materials on this Site are owned by Criminally Dev Dads or our licensors unless otherwise noted."
       },
       {
-        "id": "edc1b98e-bd00-47a7-a15d-7f2cf6ae0adf",
+        "id": "b8b10fd8-16bd-417b-868d-0eee52d478a0",
         "kind": "panel",
         "title": "Copyright notices",
         "variant": "default",
@@ -297,20 +297,20 @@
     "body": "",
     "sections": [
       {
-        "id": "0d14ba47-c4b8-4db1-9fcb-7c3ff2609fbf",
+        "id": "b50ad91b-e34b-401e-8747-9016c21cee2c",
         "kind": "heading",
         "title": "Disclaimer",
         "subtitle": "General information"
       },
       {
-        "id": "18219b9e-c773-483b-8eb6-488e1d96c9b4",
+        "id": "f6caed96-95d5-456b-bb96-ded6cb3818be",
         "kind": "panel",
         "title": "Entertainment only",
         "variant": "default",
         "body": "Games and content on Criminally Dev Dads are provided for entertainment. We do not guarantee uninterrupted or error-free access."
       },
       {
-        "id": "ffa07fa4-1600-4f3c-ba00-5ce70ff93270",
+        "id": "5684c0b6-8eaa-4dea-bfe1-b9f36b00281a",
         "kind": "panel",
         "title": "No professional advice",
         "variant": "default",

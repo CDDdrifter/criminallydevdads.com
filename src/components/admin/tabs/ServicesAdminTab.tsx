@@ -242,7 +242,7 @@ export function ServicesAdminTab({ settings, setSettings }: ServicesAdminTabProp
           <label htmlFor="svc_cta">Button label</label>
           <input id="svc_cta" value={draft.cta_label} onChange={(e) => setDraft({ ...draft, cta_label: e.target.value })} />
         </div>
-        {(draft.pricing_model === 'fixed' || draft.pricing_model === 'pwyw' || draft.pricing_model === 'donation') && (
+        {(draft.pricing_model === 'fixed' || draft.pricing_model === 'pwyw' || draft.pricing_model === 'tip') && (
           <>
             <div className="admin-field">
               <label htmlFor="svc_price">Fixed price (USD)</label>
@@ -266,7 +266,7 @@ export function ServicesAdminTab({ settings, setSettings }: ServicesAdminTabProp
               />
             </div>
             <div className="admin-field">
-              <label htmlFor="svc_pwyw_min">PWYW / donation min (USD)</label>
+              <label htmlFor="svc_pwyw_min">PWYW / tip minimum (USD)</label>
               <input
                 id="svc_pwyw_min"
                 type="number"
@@ -293,9 +293,9 @@ export function ServicesAdminTab({ settings, setSettings }: ServicesAdminTabProp
                 />
               </div>
             ) : null}
-            {draft.pricing_model === 'donation' ? (
+            {draft.pricing_model === 'tip' ? (
               <div className="admin-field">
-                <label htmlFor="svc_presets">Donation presets (USD, comma-separated)</label>
+                <label htmlFor="svc_presets">Tip presets (USD, comma-separated)</label>
                 <input
                   id="svc_presets"
                   value={(draft.donation_presets_cents ?? []).map((c) => (c / 100).toFixed(0)).join(', ')}

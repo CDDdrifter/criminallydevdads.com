@@ -8,6 +8,7 @@ import { useAsyncMemo } from '../hooks/useAsyncMemo';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import type { BehaviorConfig } from '../types';
 import { LegalFooter } from './LegalFooter';
+import { AdSlot } from './AdSlot';
 import { SiteSocialFollow } from './SiteSocialFollow';
 import { UserAuthNav } from './UserAuthNav';
 
@@ -234,6 +235,7 @@ export function SiteChrome({
         />
       ) : null}
 
+      <AdSlot placement="site-footer" />
       <LegalFooter />
     </div>
   );

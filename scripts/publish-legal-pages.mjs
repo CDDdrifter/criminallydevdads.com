@@ -29,7 +29,7 @@ const LEGAL_CONTENT = {
       section('panel', {
         title: 'Purchases & digital goods',
         variant: 'default',
-        body: 'Prices, tips, and donations are processed by Stripe or other payment providers we designate. Digital products, game access, and custom work are governed by our Refund Policy. We provide the Site and games "as is" and disclaim warranties to the fullest extent permitted by law. Our total liability is limited to the amount you paid us in the twelve (12) months before the claim.',
+        body: 'Prices, tips, and purchases are processed by Stripe or other payment providers we designate. Voluntary tips are not tax-deductible charitable contributions. Digital products, game access, and custom work are governed by our Refund Policy. We provide the Site and games "as is" and disclaim warranties to the fullest extent permitted by law. Our total liability is limited to the amount you paid us in the twelve (12) months before the claim.',
       }),
       section('panel', {
         title: 'Contact',
@@ -45,17 +45,17 @@ const LEGAL_CONTENT = {
       section('panel', {
         title: 'Information we collect',
         variant: 'default',
-        body: 'We collect information you provide (such as your email when you sign in with Google, mailing-list preferences, and support messages), basic usage analytics if enabled, and payment metadata from Stripe (we never store full card numbers on our servers).',
+        body: 'We collect: account details (email when you sign in with Google), mailing-list preferences, support messages, and first-party analytics when enabled — including pages visited, games played, session ID, referrer URL, marketing UTM parameters, browser language, and screen size. Payment metadata comes from Stripe; we never store full card numbers.',
       }),
       section('panel', {
         title: 'How we use it',
         variant: 'default',
-        body: 'We use this information to operate the Site, deliver games and services, process orders and tips, send updates you opt into, respond to support requests, and improve our products.',
+        body: 'We use this information to operate the Site, deliver games and services, process purchases and tips, send updates you opt into, measure traffic, improve our products, and show ads when enabled. We do not sell your personal information to data brokers.',
       }),
       section('panel', {
-        title: 'Sharing & retention',
+        title: 'Advertising & third parties',
         variant: 'default',
-        body: 'We share data only with service providers who help us run the Site (hosting, email, payments, analytics) under appropriate agreements. We retain data as long as needed to provide services or as required by law.',
+        body: 'If we display ads (e.g. Google AdSense), those partners may use cookies or similar technologies under their own policies. Payment processing is handled by Stripe. Hosting and analytics providers process data on our behalf under contract.',
       }),
       section('panel', {
         title: 'Your rights & contact',
@@ -72,12 +72,12 @@ const LEGAL_CONTENT = {
         tone: 'neutral',
         icon: 'ℹ️',
         title: 'Digital products',
-        body: 'Tips, donations, downloads, game access, and commissioned or custom digital work are generally non-refundable once delivered or once work has begun, except where applicable law requires otherwise.',
+        body: 'Tips, downloads, game access, and commissioned or custom digital work are generally non-refundable once delivered or once work has begun, except where applicable law requires otherwise.',
       }),
       section('panel', {
-        title: 'Tips & voluntary support',
+        title: 'Voluntary tips',
         variant: 'default',
-        body: 'Voluntary tips and donations to support development are final and non-refundable except where required by law or at our sole discretion in cases of clear billing error.',
+        body: 'Tips to support development are voluntary payments for creative work — not charitable donations. Tips are final and non-refundable except where required by law or at our sole discretion for clear billing errors.',
       }),
       section('panel', {
         title: 'Physical goods',
@@ -98,17 +98,17 @@ const LEGAL_CONTENT = {
       section('panel', {
         title: 'What we use',
         variant: 'default',
-        body: 'Criminally Dev Dads uses essential cookies and browser local storage to run the Site — for example sign-in sessions, saved preferences, and remembering that you acknowledged this cookie notice.',
+        body: 'Criminally Dev Dads uses essential cookies and local storage to run the Site (sign-in, preferences, cookie-consent acknowledgement). When analytics are enabled, we store first-party usage events. When ads are enabled, advertising partners may set additional cookies under their own policies.',
       }),
       section('panel', {
         title: 'Analytics',
         variant: 'default',
-        body: 'If first-party analytics are enabled, we may store anonymous usage events to understand how visitors use the Site. We do not sell your data.',
+        body: 'Analytics may record pages visited, games played, session IDs, referrer URLs, marketing UTM tags, browser language, and screen size. This helps us understand traffic and improve the hub.',
       }),
       section('panel', {
         title: 'Your choices',
         variant: 'default',
-        body: 'You can clear cookies and site data in your browser settings at any time. Disabling essential cookies may prevent sign-in or other core features from working correctly.',
+        body: 'You can clear cookies and site data in your browser at any time. Disabling essential cookies may prevent sign-in or other core features from working correctly.',
       }),
     ],
   },

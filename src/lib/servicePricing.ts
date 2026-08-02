@@ -82,7 +82,10 @@ export function effectiveUnitPriceCents(service: ServiceView, selection: Variant
 export function servicePricingModelFromRecord(raw: unknown, priceCents: number): ServicePricingModel {
   const m = String(raw ?? 'quote').toLowerCase();
   if (m === 'quote') return 'quote';
-  if (m === 'fixed' || m === 'pwyw' || m === 'donation' || m === 'free') {
+  if (m === 'donation') {
+    return 'tip';
+  }
+  if (m === 'fixed' || m === 'pwyw' || m === 'tip' || m === 'free') {
     return m;
   }
   return priceCents > 0 ? 'fixed' : 'quote';
@@ -102,8 +105,8 @@ export function formatServicePriceLabel(service: ServiceView): string {
         return `From $${(service.pwyw_min_cents / 100).toFixed(2)}`;
       }
       return 'Pay what you want';
-    case 'donation':
-      return 'Tip / support';
+    case 'tip':
+      return 'Tip the devs';
     default:
       return 'Free';
   }
@@ -116,7 +119,7 @@ export function serviceOffersInternalCheckout(service: ServiceView): boolean {
   if (service.gumroad_url.trim() || service.purchase_url.trim()) {
     return false;
   }
-  if (service.pricing_model === 'pwyw' || service.pricing_model === 'donation') {
+  if (service.pricing_model === 'pwyw' || service.pricing_model === 'tip') {
     return true;
   }
   if (service.pricing_model === 'fixed') {

@@ -9,6 +9,7 @@
  * Dynamic CMS-backed pages use `/p/:slug` → StaticPage (content from cms/site-pages.json).
  */
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { AdSenseScriptLoader } from './components/AdSlot';
 import { ClickSound } from './components/ClickSound';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { FxBackdrop } from './components/FxBackdrop';
@@ -53,6 +54,7 @@ export function App() {
       <FxBackdrop />
       <SiteWatermark />
       <SiteAnalytics />
+      <AdSenseScriptLoader />
       <MaintenanceGate>
       <Routes>
         <Route path="/" element={<HomePage />} />

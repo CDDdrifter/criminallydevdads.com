@@ -10,7 +10,7 @@
  * AMOUNTS
  * -------
  * - Fixed: no `amountCents` sent; server uses `price_cents` or `stripe_price_id`.
- * - PWYW / donation: user enters USD; we send `amountCents`. Server enforces floor ≥ max(admin, 50¢).
+ * - PWYW / tip: user enters USD; we send `amountCents`. Server enforces floor ≥ max(admin, 50¢).
  *
  * STYLING
  * -------
@@ -55,7 +55,7 @@ export function GamePurchaseBlock({ game }: Props) {
       if (sug >= min) {
         cents = sug;
       }
-    } else if (game.pricing_model === 'donation') {
+    } else if (game.pricing_model === 'tip') {
       const firstPreset = game.donation_presets_cents.find((p) => p >= min);
       if (firstPreset != null) {
         cents = firstPreset;
@@ -148,7 +148,7 @@ export function GamePurchaseBlock({ game }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start', maxWidth: 420 }}>
       <label className="admin-muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-        <span>{game.pricing_model === 'donation' ? 'Amount (USD)' : 'Your price (USD)'}</span>
+        <span>{game.pricing_model === 'tip' ? 'Tip amount (USD)' : 'Your price (USD)'}</span>
         <input
           type="number"
           min={minPay / 100}
@@ -159,7 +159,7 @@ export function GamePurchaseBlock({ game }: Props) {
           style={{ padding: '8px 10px', borderRadius: 6, width: '100%', maxWidth: 280 }}
         />
       </label>
-      {game.pricing_model === 'donation' && game.donation_presets_cents.length > 0 ? (
+      {game.pricing_model === 'tip' && game.donation_presets_cents.length > 0 ? (
         <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
           {game.donation_presets_cents.map((c) => (
             <button
@@ -179,7 +179,7 @@ export function GamePurchaseBlock({ game }: Props) {
       <button type="button" className="btn-play" disabled={busy || consentBlocked} onClick={() => void submitVariable()}>
         {busy
           ? 'Redirecting…'
-          : game.pricing_model === 'donation'
+          : game.pricing_model === 'tip'
             ? `Support — ${priceText}`
             : 'Continue to checkout'}
       </button>

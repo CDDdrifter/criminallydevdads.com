@@ -199,7 +199,7 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
     support_title: r.support_title ?? defaultSiteSettings.support_title,
     support_body: r.support_body ?? defaultSiteSettings.support_body,
     support_page_href: String(raw.support_page_href ?? defaultSiteSettings.support_page_href),
-    stripe_donation_url: String(raw.stripe_donation_url ?? ''),
+    stripe_tip_url: String(raw.stripe_tip_url ?? raw.stripe_donation_url ?? ''),
     support_buttons: normalizeSupportButtons(raw.support_buttons),
     footer_text: r.footer_text ?? defaultSiteSettings.footer_text,
     site_visual_preset: normalizeVisualPresetInput(String(raw.site_visual_preset ?? '')),

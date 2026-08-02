@@ -1484,7 +1484,7 @@ export function AdminPage() {
           <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55, fontSize: '0.88rem' }}>
             <strong>Services tab:</strong> tips, demos, website/app/game gigs, merch — Stripe + email requests at{' '}
             <code>/#/services</code>. <strong>Games tab:</strong> sell playable builds. <strong>Site copy:</strong>{' '}
-            donation link. Stripe uses one Edge Function (<code>create-checkout-session</code>) — set secrets when ready.
+            Tip link. Stripe Payment Links work today; built-in Checkout needs a Cloud Function when you are ready.
           </p>
           <div className="admin-row" style={{ gap: 8, flexWrap: 'wrap' }}>
             <button type="button" onClick={() => setTab('services')}>
@@ -1676,11 +1676,11 @@ export function AdminPage() {
             />
           </div>
           <div className="admin-field">
-            <label htmlFor="stripe_donation_url">Stripe donation URL (optional)</label>
+            <label htmlFor="stripe_tip_url">Stripe tip URL (optional)</label>
             <input
-              id="stripe_donation_url"
+              id="stripe_tip_url"
               placeholder="https://buy.stripe.com/..."
-              value={settings.stripe_donation_url}
+              value={settings.stripe_tip_url}
               onChange={(e) => {
                 setSettingsFieldErrors((prev) => {
                   const next = { ...prev };
@@ -1691,11 +1691,12 @@ export function AdminPage() {
                   });
                   return next;
                 });
-                setSettings({ ...settings, stripe_donation_url: e.target.value });
+                setSettings({ ...settings, stripe_tip_url: e.target.value });
               }}
             />
             <p className="admin-muted" style={{ marginTop: 8, fontSize: '0.82rem', lineHeight: 1.5 }}>
-              If set, the Donate button automatically opens this URL. Use a Stripe Payment Link configured for
+              If set, the Tip the devs button automatically opens this URL. Use a Stripe Payment Link configured for
+              voluntary tips (not charitable donations).
               customer-chosen amount.
             </p>
           </div>
@@ -1834,7 +1835,7 @@ export function AdminPage() {
                       <code>{settings.support_page_href.trim()}</code>), not this href field, for the Contact button.
                     </p>
                   ) : null}
-                  {btn.id === 'donate' && settings.stripe_donation_url.trim() ? (
+                  {(btn.id === 'tip' || btn.id === 'donate') && settings.stripe_tip_url.trim() ? (
                     <p
                       className="admin-muted"
                       style={{
@@ -1845,7 +1846,7 @@ export function AdminPage() {
                         background: 'rgba(115, 248, 255, 0.06)',
                       }}
                     >
-                      <strong>Homepage uses</strong> the Stripe donation URL field for Donate, not this href.
+                      <strong>Homepage uses</strong> the Stripe tip URL field for Tip, not this href.
                     </p>
                   ) : null}
                   <label className="admin-row" style={{ gap: 8 }}>
@@ -2728,7 +2729,7 @@ export function AdminPage() {
                 <option value="free">Free (no Stripe checkout on this site)</option>
                 <option value="fixed">Fixed price — Stripe Checkout</option>
                 <option value="pwyw">Pay what you want — Stripe Checkout</option>
-                <option value="donation">Donation / support — Stripe Checkout</option>
+                <option value="tip">Tips — Stripe Checkout</option>
               </select>
               <p className="admin-muted" style={{ margin: '8px 0 0', fontSize: '0.82rem' }}>
                 Used only when <strong>Gumroad</strong> and <strong>Other external checkout</strong> below are empty.
@@ -2754,7 +2755,7 @@ export function AdminPage() {
                 />
               </div>
             ) : null}
-            {gameDraft.pricing_model === 'pwyw' || gameDraft.pricing_model === 'donation' ? (
+            {gameDraft.pricing_model === 'pwyw' || gameDraft.pricing_model === 'tip' ? (
               <>
                 <div className="admin-field">
                   <label htmlFor="g_pwyw_min">Minimum amount (USD)</label>
@@ -2795,11 +2796,11 @@ export function AdminPage() {
                 />
               </div>
             ) : null}
-            {gameDraft.pricing_model === 'donation' ? (
+            {gameDraft.pricing_model === 'tip' ? (
               <div className="admin-field">
-                <label htmlFor="g_donation_presets">Quick amounts (USD, comma-separated)</label>
+                <label htmlFor="g_tip_presets">Quick tip amounts (USD, comma-separated)</label>
                 <input
-                  id="g_donation_presets"
+                  id="g_tip_presets"
                   placeholder="5, 10, 25"
                   value={(gameDraft.donation_presets_cents ?? [])
                     .map((c) => (c / 100).toString())

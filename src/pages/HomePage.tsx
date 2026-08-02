@@ -30,8 +30,8 @@ export function HomePage() {
     [settings.promo_events],
   );
   const supportButtons = settings.support_buttons.map((btn) => {
-    if (btn.id === 'donate' && settings.stripe_donation_url.trim()) {
-      return { ...btn, href: settings.stripe_donation_url.trim(), external: true };
+    if ((btn.id === 'tip' || btn.id === 'donate') && settings.stripe_tip_url.trim()) {
+      return { ...btn, href: settings.stripe_tip_url.trim(), external: true };
     }
     if (btn.id === 'contact' && settings.support_page_href.trim()) {
       return { ...btn, href: settings.support_page_href.trim(), external: false };

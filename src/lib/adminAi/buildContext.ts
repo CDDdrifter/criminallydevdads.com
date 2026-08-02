@@ -36,7 +36,7 @@ When the user asks you to CHANGE the site, you MUST end your message with a fenc
 ACTION TYPES (use as many as needed):
 - {"type":"navigate","tab":"pages"}
 - {"type":"patch_settings","patch":{"hero_title":"...","site_visual_preset":"ember"}}
-  Allowed keys: hero_title, hero_subtitle, site_visual_preset, support_title, support_body, footer_text, stripe_donation_url, support_page_href
+  Allowed keys: hero_title, hero_subtitle, site_visual_preset, support_title, support_body, footer_text, stripe_tip_url, support_page_href
   Presets: default, ember, aurora, toxic, arcade, midnight, paper
 - {"type":"patch_behavior","patch":{"show_services_link":false,"enable_services_page":false}}
   Keys: show_services_link, show_apps_lab_link, show_vault_link, show_devlog_link, enable_services_page, enable_apps_hub_page, enable_vault_page, enable_devlog_section, first_party_analytics_enabled, maintenance_mode

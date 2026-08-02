@@ -150,7 +150,7 @@ export type RouteFxOverride = {
  * - fixed: Edge session from price_cents or stripe_price_id
  * - pwyw | donation: Edge session with customer amount_cents (server validates floor)
  */
-export type GamePricingModel = 'free' | 'fixed' | 'pwyw' | 'donation';
+export type GamePricingModel = 'free' | 'fixed' | 'pwyw' | 'tip';
 
 /** Services / gigs: `quote` = request form only (no Stripe on this row). */
 export type ServicePricingModel = GamePricingModel | 'quote';
@@ -761,8 +761,12 @@ export type BehaviorConfig = {
   show_player_sign_in_nav: boolean;
   /** Allow comment sections site-wide. */
   comments_globally_enabled: boolean;
-  /** Record page views / game plays into `site_analytics_events` (migration 020). */
+  /** Record page views / game plays into Firestore analytics (Admin → Analytics). */
   first_party_analytics_enabled: boolean;
+  /** Show ad slot on hub pages (pair with AdSense client ID or SEO custom script). */
+  ads_enabled: boolean;
+  /** Google AdSense publisher id, e.g. ca-pub-XXXXXXXXXXXXXXXX */
+  adsense_client_id: string;
   show_vault_link: boolean;
   show_devlog_link: boolean;
   show_filter_buttons: boolean;
@@ -1123,8 +1127,8 @@ export type SiteSettings = {
   support_body: string;
   /** Optional internal page URL for support/contact, e.g. `/p/support`. */
   support_page_href: string;
-  /** Optional Stripe donation link (payment link or hosted checkout URL). */
-  stripe_donation_url: string;
+  /** Optional Stripe tip link (Payment Link URL). Legacy key: stripe_donation_url. */
+  stripe_tip_url: string;
   /** Buttons shown in the support block at the bottom of the homepage. */
   support_buttons: SupportButton[];
   footer_text: string;
@@ -1285,7 +1289,7 @@ export const defaultLegalConfig = (): LegalConfig => ({
     'I agree to the Terms of Service and the Refund Policy. Digital goods and commissioned work are non-refundable once delivered or started.',
   cookie_banner_enabled: true,
   cookie_notice:
-    'We use essential cookies to run this site and remember your preferences. By using the site you agree to our Cookie Policy.',
+    'We use cookies and local storage to run the site, measure traffic, and remember your preferences. See our Cookie Policy.',
 });
 
 // ---------------------------------------------------------------------------
@@ -1323,9 +1327,9 @@ export const defaultSiteSettings: SiteSettings = {
   support_body:
     'Love our games? Help us keep creating by supporting our work. COMING SOON',
   support_page_href: '/p/support',
-  stripe_donation_url: '',
+  stripe_tip_url: '',
   support_buttons: [
-    { id: 'donate', label: 'Donate', href: '', external: true, variant: 'primary' },
+    { id: 'tip', label: 'Tip the devs', href: '', external: true, variant: 'primary' },
     { id: 'merch', label: 'Merch Shop', href: '', external: true, variant: 'secondary' },
     { id: 'contact', label: 'Contact / Support', href: '/p/support', external: false, variant: 'secondary' },
   ],

@@ -132,7 +132,7 @@ Try: "add button Get a quote → /services" or "hide services page while I edit"
 2. Supabase → Edge Functions → Secrets: STRIPE_SECRET_KEY, SITE_URL (your public hub URL), SERVICE_ROLE_KEY.
 3. Deploy: create-checkout-session
 4. Games tab: pricing model + price OR Games/Services → external Payment Link URL.
-5. Site copy: Stripe donation URL for homepage tips.
+5. Site copy: Stripe tip URL for homepage tips.
 
 Docs in repo: docs/STRIPE_CHECKOUT.md and docs/SERVICES_COMMERCE.md`,
     actions: [{ type: 'navigate', tab: 'services' }],
@@ -158,7 +158,7 @@ After SQL, redeploy site from GitHub Actions. Edge functions: create-checkout-se
   {
     id: 'services-page',
     test: (m) => /\b(services page|sell|gig|commission|fiverr)\b/.test(norm(m)) && !/\b(set|change|mood)\b/.test(norm(m)),
-    reply: `Public services hub: /#/services. Edit offerings in Admin → Services (migration 025). Each row can be quote-only (email form), Stripe fixed/PWYW/donation, or external Gumroad/Stripe link. Overview → Monetization panel has shortcuts.`,
+    reply: `Public services hub: /services. Edit offerings in Admin → Services. Each row can be quote-only (email form), Stripe fixed/PWYW/tip, or external Gumroad/Stripe link. Overview → Monetization panel has shortcuts.`,
     actions: [{ type: 'navigate', tab: 'services' }],
   },
   {

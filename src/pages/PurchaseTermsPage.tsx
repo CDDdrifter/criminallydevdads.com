@@ -16,7 +16,7 @@ export function PurchaseTermsPage() {
           Digital purchases
         </h1>
         <div className="admin-muted" style={{ lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
-          {`Payments on this site are processed by Stripe. When you buy or donate, you are charged by Stripe according to the amount shown at checkout.
+          {`Payments on this site are processed by Stripe. When you buy or leave a tip, you are charged by Stripe according to the amount shown at checkout.
 
 Digital goods (games, assets, or other downloads) may be delivered as described on each product page — for example via play on this site, download links, or keys sent by email, depending on how we configure that title.
 

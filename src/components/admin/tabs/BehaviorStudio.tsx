@@ -212,10 +212,23 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
           help="Turn off to hide all comment blocks until you are ready for public discussion."
         />
         <ToggleField
-          label="First-party analytics (page views, plays, sign-ins)"
+          label="First-party analytics (traffic, referrers, UTM tags)"
           checked={b.first_party_analytics_enabled !== false}
           onChange={(first_party_analytics_enabled) => set({ first_party_analytics_enabled })}
-          help="Stored in Supabase. View totals under Admin → Analytics. Run migration 020 once."
+          help="Records page views, game plays, session ID, referrer, and marketing UTM params in Firestore. View under Admin → Analytics. Disclosed in Privacy Policy."
+        />
+        <ToggleField
+          label="Show ad slot on public pages"
+          checked={b.ads_enabled === true}
+          onChange={(ads_enabled) => set({ ads_enabled })}
+          help="Displays an ad banner above the legal footer. Add your Google AdSense publisher ID below, or paste ad scripts in SEO → Custom head."
+        />
+        <TextField
+          label="Google AdSense client ID (optional)"
+          value={b.adsense_client_id ?? ''}
+          onChange={(adsense_client_id) => set({ adsense_client_id })}
+          placeholder="ca-pub-XXXXXXXXXXXXXXXX"
+          help="From AdSense → Account → Account information. Requires ads enabled above."
         />
       </FieldGroup>
 
@@ -264,7 +277,7 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
         <ToggleField label="Show Vault nav link" checked={b.show_vault_link} onChange={(show_vault_link) => set({ show_vault_link })} />
         <ToggleField label="Show Dev log nav link" checked={b.show_devlog_link} onChange={(show_devlog_link) => set({ show_devlog_link })} />
         <ToggleField label="Show filter buttons (ALL / GAMES / ASSETS)" checked={b.show_filter_buttons} onChange={(show_filter_buttons) => set({ show_filter_buttons })} />
-        <ToggleField label="Show support / donate section" checked={b.show_support_section} onChange={(show_support_section) => set({ show_support_section })} />
+        <ToggleField label="Show support / tips section" checked={b.show_support_section} onChange={(show_support_section) => set({ show_support_section })} />
         <ToggleField label="Show footer" checked={b.show_footer} onChange={(show_footer) => set({ show_footer })} />
         <ToggleField
           label="Show ‘Admin / Team login’ link in top nav"

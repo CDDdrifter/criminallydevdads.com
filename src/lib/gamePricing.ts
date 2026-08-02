@@ -21,7 +21,10 @@ import type { GamePricingModel, GameView } from '../types';
 /** Maps DB/JSON string to enum; infers `fixed` when legacy row has price but model still `free`. */
 export function gamePricingModelFromRecord(raw: unknown, priceCents: number): GamePricingModel {
   const m = String(raw ?? 'free').toLowerCase();
-  if (m === 'fixed' || m === 'pwyw' || m === 'donation') {
+  if (m === 'donation') {
+    return 'tip';
+  }
+  if (m === 'fixed' || m === 'pwyw' || m === 'tip') {
     return m;
   }
   return priceCents > 0 ? 'fixed' : 'free';
@@ -51,8 +54,8 @@ export function formatGamePriceLabel(game: GameView): string {
         return `Pay what you want ($${(game.pwyw_min_cents / 100).toFixed(2)} min)`;
       }
       return 'Pay what you want';
-    case 'donation':
-      return 'Donation / support';
+    case 'tip':
+      return 'Tip the devs';
     default:
       return game.price_cents > 0 ? `$${(game.price_cents / 100).toFixed(2)}` : 'Free';
   }
@@ -69,7 +72,7 @@ export function gameOffersInternalCheckout(game: GameView): boolean {
   if (game.purchase_url.trim()) {
     return false;
   }
-  if (game.pricing_model === 'pwyw' || game.pricing_model === 'donation') {
+  if (game.pricing_model === 'pwyw' || game.pricing_model === 'tip') {
     return true;
   }
   if (game.pricing_model === 'fixed') {

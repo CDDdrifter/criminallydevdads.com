@@ -47,7 +47,7 @@ export function ServicePurchaseBlock({ service, compact }: Props) {
     if (service.pricing_model === 'pwyw') {
       const sug = service.pwyw_suggested_cents;
       if (sug >= min) cents = sug;
-    } else if (service.pricing_model === 'donation') {
+    } else if (service.pricing_model === 'tip') {
       const first = service.donation_presets_cents.find((p) => p >= min);
       if (first != null) cents = first;
     }

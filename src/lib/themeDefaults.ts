@@ -336,6 +336,8 @@ export function defaultBehaviorConfig(): BehaviorConfig {
     show_player_sign_in_nav: true,
     comments_globally_enabled: true,
     first_party_analytics_enabled: true,
+    ads_enabled: false,
+    adsense_client_id: '',
     show_vault_link: true,
     show_devlog_link: true,
     show_filter_buttons: true,

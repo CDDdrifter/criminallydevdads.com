@@ -1,6 +1,6 @@
 /**
- * First-party analytics — inserts into Firestore `analytics_events`.
- * Respects `behavior.first_party_analytics_enabled` from site settings.
+ * First-party analytics — Firestore `analytics_events`.
+ * Collects page views, game plays, session, referrer, and UTM params (disclosed in Privacy Policy).
  */
 import { auth, isFirebaseReady } from './firebase';
 import { ensureFirestore, firestoreTrackEvent } from './firestoreData';
@@ -20,6 +20,24 @@ function getSessionId(): string {
   } catch {
     return 'anon';
   }
+}
+
+/** Traffic context attached to each event (first-party only). */
+function trafficContext(): Record<string, unknown> {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  const params = new URLSearchParams(window.location.search);
+  return {
+    referrer: document.referrer ? document.referrer.slice(0, 500) : null,
+    utm_source: params.get('utm_source'),
+    utm_medium: params.get('utm_medium'),
+    utm_campaign: params.get('utm_campaign'),
+    utm_content: params.get('utm_content'),
+    lang: navigator.language,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
+  };
 }
 
 let analyticsEnabled = true;
@@ -54,7 +72,7 @@ export async function trackEvent(
       target_key: targetKey,
       session_id: getSessionId(),
       user_id: userId,
-      metadata: opts.metadata ?? {},
+      metadata: { ...trafficContext(), ...(opts.metadata ?? {}) },
     });
   } catch (err) {
     console.warn('[analytics] insert failed', err instanceof Error ? err.message : err);

@@ -153,5 +153,5 @@ export const SERVICE_PRICING_OPTIONS: { value: ServicePricingModel; label: strin
   { value: 'free', label: 'Free label (no checkout)' },
   { value: 'fixed', label: 'Fixed price — Stripe' },
   { value: 'pwyw', label: 'Pay what you want — Stripe' },
-  { value: 'donation', label: 'Donation / tip presets — Stripe' },
+  { value: 'tip', label: 'Tips — Stripe preset amounts' },
 ];

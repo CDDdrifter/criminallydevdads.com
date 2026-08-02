@@ -42,7 +42,7 @@ export type AllowedSettingsPatch = Partial<
     | 'support_title'
     | 'support_body'
     | 'footer_text'
-    | 'stripe_donation_url'
+    | 'stripe_tip_url'
     | 'site_visual_preset'
     | 'support_page_href'
   >

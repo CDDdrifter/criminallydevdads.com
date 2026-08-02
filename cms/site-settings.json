@@ -12,7 +12,7 @@
   "fx_hue_shift": true,
   "fx_cursor_spotlight": true,
   "support_page_href": "/p/support",
-  "stripe_donation_url": "",
+  "stripe_tip_url": "",
   "support_buttons": [
     {
       "id": "75351e98-6be8-4bfa-8781-169d78acdd6c",
@@ -333,6 +333,6 @@
     "require_purchase_consent": true,
     "purchase_consent_notice": "Digital products (downloads, game access) and commissioned or custom work are non-refundable once delivered or once work has begun. By completing checkout you agree to our Terms of Service and Refund Policy.",
     "cookie_banner_enabled": true,
-    "cookie_notice": "We use essential cookies and local storage to run the site (sign-in, preferences). See our Cookie Policy for details."
+    "cookie_notice": "We use cookies and local storage to run the site, measure traffic, and remember your preferences. See our Cookie Policy for details."
   }
 }

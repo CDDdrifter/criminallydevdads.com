@@ -20,10 +20,14 @@ export function blockingSiteSettingsIssues(settings: SiteSettings): SettingsFiel
   const errors: SettingsFieldErrors = {};
 
   settings.support_buttons.forEach((btn, i) => {
-    const stripe = settings.stripe_donation_url.trim();
+    const stripe = settings.stripe_tip_url.trim();
     const supportPath = settings.support_page_href.trim();
     const effectiveHref =
-      btn.id === 'donate' && stripe ? stripe : btn.id === 'contact' && supportPath ? supportPath : btn.href;
+      (btn.id === 'tip' || btn.id === 'donate') && stripe
+        ? stripe
+        : btn.id === 'contact' && supportPath
+          ? supportPath
+          : btn.href;
 
     if (btn.external && effectiveHref.trim().startsWith('/')) {
       errors[`support_btn_${i}`] =
@@ -61,14 +65,18 @@ export function softSiteSettingsLinkHints(settings: SiteSettings, pages: SitePag
   hintMissing(settings.support_page_href, 'support_page_href');
 
   settings.support_buttons.forEach((btn, i) => {
-    const stripe = settings.stripe_donation_url.trim();
+    const stripe = settings.stripe_tip_url.trim();
     const supportPath = settings.support_page_href.trim();
     const effectiveHref =
-      btn.id === 'donate' && stripe ? stripe : btn.id === 'contact' && supportPath ? supportPath : btn.href;
+      (btn.id === 'tip' || btn.id === 'donate') && stripe
+        ? stripe
+        : btn.id === 'contact' && supportPath
+          ? supportPath
+          : btn.href;
     if (btn.external && effectiveHref.trim().startsWith('/')) {
       return;
     }
-    if (!btn.external || (btn.id === 'donate' && stripe) || (btn.id === 'contact' && supportPath)) {
+    if (!btn.external || ((btn.id === 'tip' || btn.id === 'donate') && stripe) || (btn.id === 'contact' && supportPath)) {
       hintMissing(effectiveHref, `support_btn_${i}`);
     }
   });
