@@ -656,6 +656,57 @@ export async function bootstrapFirestoreFromStaticIfEmpty(): Promise<string[]> {
   return seeded;
 }
 
+const LEGAL_POLICY_SLUGS = new Set(['terms', 'privacy', 'refund', 'cookie', 'dmca', 'disclaimer', 'support']);
+
+/** Ensure legal footer settings + published policy pages exist in Firestore (from bundled cms/*.json). */
+export async function syncLegalComplianceFromStatic(): Promise<string[]> {
+  if (!(await ensureFirestore())) {
+    return [];
+  }
+  const synced: string[] = [];
+
+  const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
+  const fromStatic = siteSettingsFromRow(staticRow);
+  if (fromStatic) {
+    const currentRow = await firestoreGetSiteSettings();
+    const current = siteSettingsFromRow(currentRow) ?? fromStatic;
+    const staticLegal = fromStatic.legal ?? defaultLegalConfig();
+    const mergedLegal = {
+      ...staticLegal,
+      ...current.legal,
+      show_footer: true,
+      cookie_banner_enabled: current.legal?.cookie_banner_enabled !== false,
+      links: (current.legal?.links?.length ?? 0) > 0 ? current.legal!.links : staticLegal.links,
+      contact_email: current.legal?.contact_email?.trim() || staticLegal.contact_email,
+      business_name: current.legal?.business_name?.trim() || staticLegal.business_name,
+    };
+    await firestoreSaveSiteSettings(
+      canonicalizeSiteSettings({ ...current, legal: mergedLegal }) as unknown as Record<string, unknown>,
+    );
+    synced.push('site_settings.legal');
+  }
+
+  const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
+  if (Array.isArray(staticPages)) {
+    for (const p of staticPages) {
+      if (!p || typeof p !== 'object' || !('slug' in p)) {
+        continue;
+      }
+      const slug = String((p as Record<string, unknown>).slug).trim();
+      if (!LEGAL_POLICY_SLUGS.has(slug)) {
+        continue;
+      }
+      await firestoreUpsertPage(
+        slug,
+        normalizeSitePage(p as Record<string, unknown>) as unknown as Record<string, unknown>,
+      );
+      synced.push(`site_pages/${slug}`);
+    }
+  }
+
+  return synced;
+}
+
 export async function fetchAllGamesAdmin(): Promise<GameRecord[]> {
   return loadAllGamesForAdmin();
 }
@@ -695,15 +746,21 @@ export async function deleteGameBySlug(slug: string) {
 }
 
 export async function fetchPageBySlug(slug: string): Promise<SitePage | null> {
+  const trimmed = slug.trim();
   if (await ensureFirestore()) {
-    const data = await firestoreGetPageBySlug(slug);
+    const data = await firestoreGetPageBySlug(trimmed);
     if (data) {
-      return normalizeSitePage(data);
+      const fromFirestore = normalizeSitePage(data);
+      if (fromFirestore.published !== false || !LEGAL_POLICY_SLUGS.has(trimmed)) {
+        return fromFirestore;
+      }
     }
   }
   const staticPages = await fetchStaticJson<unknown[]>('cms/site-pages.json');
   if (Array.isArray(staticPages)) {
-    const row = staticPages.find((p) => typeof p === 'object' && p && String((p as Record<string, unknown>).slug) === slug);
+    const row = staticPages.find(
+      (p) => typeof p === 'object' && p && String((p as Record<string, unknown>).slug) === trimmed,
+    );
     if (row && typeof row === 'object') {
       return normalizeSitePage(row as Record<string, unknown>);
     }

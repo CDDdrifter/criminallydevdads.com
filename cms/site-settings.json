@@ -318,5 +318,21 @@
     "default_meta_description": "Criminally Dev Dads is a small indie collective making fast, weird browser games and tools."
   },
   "custom_head_html": "",
-  "theme_presets": []
+  "theme_presets": [],
+  "legal": {
+    "business_name": "Criminally Dev Dads",
+    "contact_email": "support@criminallydevdads.com",
+    "show_footer": true,
+    "links": [
+      { "id": "legal-terms", "label": "Terms of Service", "href": "/p/terms" },
+      { "id": "legal-privacy", "label": "Privacy Policy", "href": "/p/privacy" },
+      { "id": "legal-refund", "label": "Refund Policy", "href": "/p/refund" },
+      { "id": "legal-cookie", "label": "Cookie Policy", "href": "/p/cookie" },
+      { "id": "legal-contact", "label": "Contact", "href": "/p/support" }
+    ],
+    "require_purchase_consent": true,
+    "purchase_consent_notice": "Digital products (downloads, game access) and commissioned or custom work are non-refundable once delivered or once work has begun. By completing checkout you agree to our Terms of Service and Refund Policy.",
+    "cookie_banner_enabled": true,
+    "cookie_notice": "We use essential cookies and local storage to run the site (sign-in, preferences). See our Cookie Policy for details."
+  }
 }

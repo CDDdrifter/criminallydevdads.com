@@ -295,7 +295,24 @@ async function buildGameFromFolder(
   };
 }
 
+/** Shared in-memory cache — avoids re-probing every game asset on each route. */
+let legacyGamesPromise: Promise<GameView[]> | null = null;
+
+export function resetLegacyGamesCache(): void {
+  legacyGamesPromise = null;
+}
+
 export async function loadLegacyGames(): Promise<GameView[]> {
+  if (!legacyGamesPromise) {
+    legacyGamesPromise = loadLegacyGamesUncached().catch((err) => {
+      legacyGamesPromise = null;
+      throw err;
+    });
+  }
+  return legacyGamesPromise;
+}
+
+async function loadLegacyGamesUncached(): Promise<GameView[]> {
   const metadataList = await loadOptionalMetadata();
   const metadataById = metadataList.reduce<Record<string, LegacyMeta>>((acc, raw) => {
     const merged: LegacyMeta = { ...raw, url: playUrl(raw) || undefined };

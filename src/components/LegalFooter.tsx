@@ -17,20 +17,21 @@ export function LegalFooter() {
 
   return (
     <footer className="legal-footer" style={{
-      marginTop: 40,
-      paddingTop: 18,
+      marginTop: 48,
+      padding: '22px 16px 28px',
       borderTop: '1px solid var(--border)',
       display: 'flex',
       flexDirection: 'column',
-      gap: 8,
+      gap: 10,
       alignItems: 'center',
       textAlign: 'center',
+      background: 'rgba(8, 12, 20, 0.35)',
     }}>
       {links.length > 0 ? (
-        <nav className="legal-footer__links" style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center' }}>
+        <nav className="legal-footer__links" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', justifyContent: 'center' }}>
           {links.map((l) =>
             l.href.startsWith('/') ? (
-              <Link key={l.id} to={l.href} className="admin-muted" style={{ fontSize: '0.82rem' }}>
+              <Link key={l.id} to={l.href} className="legal-footer__link" style={{ fontSize: '0.84rem', color: 'var(--muted)', textDecoration: 'none' }}>
                 {l.label}
               </Link>
             ) : (
@@ -39,8 +40,8 @@ export function LegalFooter() {
                 href={l.href}
                 target="_blank"
                 rel="noreferrer"
-                className="admin-muted"
-                style={{ fontSize: '0.82rem' }}
+                className="legal-footer__link"
+                style={{ fontSize: '0.84rem', color: 'var(--muted)', textDecoration: 'none' }}
               >
                 {l.label}
               </a>
@@ -48,12 +49,12 @@ export function LegalFooter() {
           )}
         </nav>
       ) : null}
-      <p className="admin-muted" style={{ fontSize: '0.78rem', margin: 0, lineHeight: 1.5 }}>
+      <p className="admin-muted" style={{ fontSize: '0.78rem', margin: 0, lineHeight: 1.5, maxWidth: 560 }}>
         © {year} {name}. All rights reserved.
         {legal.contact_email?.trim() ? (
           <>
             {' · '}
-            <a href={`mailto:${legal.contact_email.trim()}`} style={{ color: 'inherit' }}>
+            <a href={`mailto:${legal.contact_email.trim()}`} style={{ color: 'var(--link, var(--accent))' }}>
               {legal.contact_email.trim()}
             </a>
           </>

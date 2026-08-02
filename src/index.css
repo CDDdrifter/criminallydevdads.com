@@ -488,6 +488,11 @@ a:hover {
   box-shadow: 0 0 20px rgba(115, 248, 255, 0.28);
 }
 
+.legal-footer__link:hover {
+  color: var(--accent) !important;
+  text-decoration: underline !important;
+}
+
 /* HTML app embed (CMS `page_mode === 'html_app'`) */
 .html-app-embed {
   display: block;

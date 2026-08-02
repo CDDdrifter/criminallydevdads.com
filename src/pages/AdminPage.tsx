@@ -16,6 +16,7 @@ import {
   fetchSiteSettings,
   saveSiteSettings,
   siteSettingsSnapshot,
+  syncLegalComplianceFromStatic,
   upsertDevLog,
   upsertGame,
   upsertNav,
@@ -566,9 +567,11 @@ export function AdminPage() {
       return;
     }
     bootstrapFirestoreFromStaticIfEmpty()
-      .then((seeded) => {
-        if (seeded.length) {
-          console.info('[cms] Seeded Firestore from static files:', seeded.join(', '));
+      .then((seeded) => syncLegalComplianceFromStatic().then((legal) => ({ seeded, legal })))
+      .then(({ seeded, legal }) => {
+        const parts = [...seeded, ...legal];
+        if (parts.length) {
+          console.info('[cms] CMS sync:', parts.join(', '));
         }
         return reload();
       })

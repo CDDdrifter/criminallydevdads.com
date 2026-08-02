@@ -42,10 +42,9 @@ export function LegalStudio({ settings, setSettings }: Props) {
       <div className="admin-panel">
         <h2 style={{ margin: '0 0 8px', fontSize: '1rem', color: 'var(--accent)' }}>⚖️ Legal & policies</h2>
         <p className="admin-muted" style={{ marginTop: 0, fontSize: '0.88rem', lineHeight: 1.55 }}>
-          Surface your policies in the footer, require buyers to accept Terms + Refund before checkout, and show a
-          cookie banner. Create the actual policy text as CMS pages (run migration{' '}
-          <code>031_seed_legal_pages.sql</code> to scaffold drafts, then edit them under <strong>Pages</strong>). Save
-          with the floating bar. This is not legal advice — review with a professional before relying on it.
+          Surface your policies in the site-wide footer, require buyers to accept Terms + Refund before checkout, and
+          show a cookie banner. Edit the policy page text under <strong>Pages</strong> (slugs: terms, privacy, refund,
+          cookie). Save with the floating bar. Have a qualified professional review before accepting payments.
         </p>
       </div>
 

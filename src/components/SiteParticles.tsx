@@ -50,11 +50,13 @@ function reseed(p: Particle, cfg: { speed_min: number; speed_max: number; size_m
 export function SiteParticles() {
   const { settings } = useSiteSettings();
   const cfg = settings.particles;
+  const perf = settings.performance;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!cfg.enabled) return undefined;
+    if (perf.disable_all_animations || perf.battery_saver) return undefined;
     if (cfg.respect_reduce_motion && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
 
     const canvas = canvasRef.current;
@@ -187,9 +189,11 @@ export function SiteParticles() {
     cfg.direction,
     cfg.opacity,
     cfg.respect_reduce_motion,
+    perf.disable_all_animations,
+    perf.battery_saver,
   ]);
 
-  if (!cfg.enabled) return null;
+  if (!cfg.enabled || perf.disable_all_animations || perf.battery_saver) return null;
   return (
     <canvas
       ref={canvasRef}
