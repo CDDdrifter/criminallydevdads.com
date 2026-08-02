@@ -58,5 +58,14 @@
     "description": "A frantic explosive arcade game with quick rounds and big plays.",
     "details": "Dodge danger, chain reactions, and outlast the chaos in this fast-paced arcade experience.",
     "filename": "bomb-blitz.zip"
+  },
+  {
+    "id": "novadrop",
+    "title": "NovaDrop",
+    "type": "game",
+    "description": "Drop onto a procedural island, loot chests, and outlast the storm in this neon battle royale.",
+    "details": "A 2D platformer battle royale: drop from the sky with 99 fighters, loot weapons and upgrades, fight monsters, build cover, and survive the shrinking zone. Quick 3–6 minute runs with permanent progression between matches.",
+    "thumbnail": "games/novadrop/index.png",
+    "filename": "novadrop.zip"
   }
 ]
