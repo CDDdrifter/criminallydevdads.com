@@ -370,6 +370,60 @@ export async function uploadSingleGameRepoFile(
   return publicRepoGameUrl(slug, relPath);
 }
 
+/**
+ * Upload a single site asset via GitHub Contents API (plain base64 — no Git LFS).
+ * Best for cover images, clips ≤ 100 MB, and page media hosted under games/media/.
+ */
+export async function uploadRepoBinaryFile(
+  repoPath: string,
+  blob: Blob,
+  commitMessage?: string,
+): Promise<string> {
+  const { token, branch } = requireGitHub();
+  if (blob.size > GITHUB_MAX_PLAIN_BLOB_BYTES) {
+    throw new Error(
+      `${repoPath} is ${Math.round(blob.size / (1024 * 1024))} MB — GitHub plain uploads max 100 MB. Use a smaller clip or compress the file.`,
+    );
+  }
+  const cleanPath = repoPath.replace(/^\/+/, '').replace(/\/+/g, '/');
+  const content = await blobToBase64(blob);
+  const ghHeaders = {
+    Accept: 'application/vnd.github+json',
+    Authorization: `Bearer ${token}`,
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+
+  const getUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encodeURIComponent(cleanPath)}?ref=${encodeURIComponent(branch)}`;
+  const getRes = await fetch(getUrl, { headers: ghHeaders });
+  let sha: string | undefined;
+  if (getRes.ok) {
+    const meta = (await getRes.json()) as { sha?: string };
+    sha = meta.sha;
+  } else if (getRes.status !== 404) {
+    const t = await getRes.text();
+    throw new Error(`GitHub read ${cleanPath}: ${getRes.status} ${t.slice(0, 300)}`);
+  }
+
+  const putRes = await fetch(
+    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encodeURIComponent(cleanPath)}`,
+    {
+      method: 'PUT',
+      headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: commitMessage ?? `chore(media): update ${cleanPath}`,
+        content,
+        sha,
+        branch,
+      }),
+    },
+  );
+  if (!putRes.ok) {
+    const t = await putRes.text();
+    throw new Error(`GitHub upload ${cleanPath}: ${putRes.status} ${t.slice(0, 400)}`);
+  }
+  return cleanPath;
+}
+
 /** Remove every file under `games/<slug>/`. */
 export async function deleteRepoGameFolder(slug: string): Promise<number> {
   const { token, branch } = requireGitHub();

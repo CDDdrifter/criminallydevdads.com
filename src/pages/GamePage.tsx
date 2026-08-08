@@ -287,10 +287,12 @@ export function GamePage() {
               className="page-section-gallery"
               style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}
             >
-              {game.screenshots.map((src, i) => (
+              {game.screenshots.map((src, i) => {
+                const shotUrl = resolvePublicAssetUrl(src);
+                return (
                 <a
                   key={i}
-                  href={src}
+                  href={shotUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="page-section-gallery-cell game-screenshot-thumb"
@@ -301,9 +303,10 @@ export function GamePage() {
                     }
                   }}
                 >
-                  <img src={src} alt={`${game.title} screenshot ${i + 1}`} loading="lazy" />
+                  <img src={shotUrl} alt={`${game.title} screenshot ${i + 1}`} loading="lazy" />
                 </a>
-              ))}
+                );
+              })}
             </div>
           </section>
         ) : null}
@@ -458,7 +461,7 @@ export function GamePage() {
               </>
             ) : null}
             <img
-              src={game.screenshots[screenshotLightbox]}
+              src={resolvePublicAssetUrl(game.screenshots[screenshotLightbox]!)}
               alt={`${game.title} screenshot ${screenshotLightbox + 1}`}
               className="game-screenshot-lightbox__img"
             />

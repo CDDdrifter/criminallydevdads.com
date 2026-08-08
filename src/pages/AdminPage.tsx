@@ -30,6 +30,7 @@ import {
   publicGameEntryUrl,
   sanitizeGameStorageSlug,
   uploadGamePreviewVideo,
+  uploadGameScreenshot,
   uploadGameTabIcon,
   uploadGameThumbnail,
   uploadGameZip,
@@ -37,6 +38,7 @@ import {
 } from '../lib/gameStorageUpload';
 import { githubGameUploadReady } from '../lib/githubGameUpload';
 import { isFirebaseReady } from '../lib/firebase';
+import { resetLegacyGamesCache } from '../lib/legacyGames';
 import {
   invokeSyncAllCmsToGitHub,
   invokeSyncGamesJsonToGitHub,
@@ -932,6 +934,10 @@ export function AdminPage() {
       flash('Choose an image file.');
       return;
     }
+    if (!githubGameUploadReady() && !isFirebaseReady()) {
+      flash('Add a GitHub token in System → GitHub sync (recommended), or sign in with Firebase.', 12000);
+      return;
+    }
     const titleForRow = gameDraft.title.trim() || slug;
     setBusy(true);
     try {
@@ -940,6 +946,7 @@ export function AdminPage() {
         ...gameUpsertPayload({ ...gameDraft, slug, title: titleForRow }),
         thumbnail_url: url,
       });
+      resetLegacyGamesCache();
       setGameDraft((prev) => ({
         ...prev,
         slug: prev.slug.trim() || slug,
@@ -950,10 +957,49 @@ export function AdminPage() {
         thumbFileRef.current.value = '';
       }
       await reload();
-      flash('Thumbnail uploaded and saved.');
+      flash(
+        githubGameUploadReady()
+          ? 'Cover uploaded to games/' + slug + '/ — live after the site redeploys (metadata saved now).'
+          : 'Cover uploaded and saved.',
+      );
     } catch (e) {
       console.error(e);
-      flash(e instanceof Error ? e.message : 'Thumbnail upload failed');
+      flash(e instanceof Error ? e.message : 'Thumbnail upload failed', 12000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onUploadGameScreenshotFile = async (picked?: File) => {
+    const file = picked;
+    const slug = gameSlugEffective;
+    if (!slug) {
+      flash('Enter a title or slug first.');
+      return;
+    }
+    if (!file) {
+      return;
+    }
+    if (!githubGameUploadReady() && !isFirebaseReady()) {
+      flash('Add a GitHub token in System → GitHub sync (recommended), or sign in with Firebase.', 12000);
+      return;
+    }
+    const titleForRow = gameDraft.title.trim() || slug;
+    setBusy(true);
+    try {
+      const url = await uploadGameScreenshot(slug, file);
+      const nextShots = [...(gameDraft.screenshots ?? []), url];
+      await upsertGame({
+        ...gameUpsertPayload({ ...gameDraft, slug, title: titleForRow }),
+        screenshots: nextShots,
+      });
+      resetLegacyGamesCache();
+      setGameDraft((prev) => ({ ...prev, screenshots: nextShots }));
+      await reload();
+      flash('Screenshot uploaded and saved.');
+    } catch (e) {
+      console.error(e);
+      flash(e instanceof Error ? e.message : 'Screenshot upload failed', 12000);
     } finally {
       setBusy(false);
     }
@@ -2402,8 +2448,33 @@ export function AdminPage() {
                   placeholder="https://…/screen1.png — one URL per line"
                 />
                 <p className="admin-muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
-                  Or use a gallery block in the detail page editor below for captions + lightbox.
+                  Or upload images below — stored in <code>games/&lt;slug&gt;/media/</code> on the repo.
                 </p>
+                <label
+                  className="admin-row"
+                  style={{
+                    gap: 8,
+                    marginTop: 10,
+                    cursor: busy || !gameSlugEffective ? 'not-allowed' : 'pointer',
+                    opacity: busy || !gameSlugEffective ? 0.55 : 1,
+                    width: 'fit-content',
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg"
+                    disabled={busy || !gameSlugEffective}
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void onUploadGameScreenshotFile(f);
+                      e.target.value = '';
+                    }}
+                  />
+                  <span className="btn-support" style={{ pointerEvents: 'none', fontSize: '0.85rem', padding: '8px 16px' }}>
+                    {busy ? 'Uploading…' : 'Add screenshot'}
+                  </span>
+                </label>
               </div>
 
               <div className="admin-field">

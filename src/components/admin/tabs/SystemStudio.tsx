@@ -140,7 +140,7 @@ export function SystemStudio({ settings, setSettings }: Props) {
       <FieldGroup
         title="GitHub sync (optional backup)"
         tone="accent"
-        description="CMS edits save to Firebase automatically when you are signed in as admin. Use GitHub sync only to snapshot content into the repo or upload large game ZIP builds."
+        description="CMS edits save to Firebase when you are signed in as admin. A GitHub token is required for cover images, clips, screenshots, and game ZIP uploads — files land in games/ on this repo."
       >
         <div className="admin-field">
           <label htmlFor="gh_pat">GitHub Personal Access Token</label>
@@ -153,7 +153,10 @@ export function SystemStudio({ settings, setSettings }: Props) {
             onChange={(e) => setGitHubToken(e.target.value)}
           />
           <p className="admin-muted" style={{ marginTop: 6, fontSize: '0.82rem' }}>
-            Status: {githubCmsConfigured() ? '✓ Token saved for this session' : 'Not set — only needed for game ZIP uploads or repo backup'}
+            Status:{' '}
+            {githubCmsConfigured()
+              ? '✓ Token saved (this browser) — used for covers, clips, screenshots, ZIP builds'
+              : 'Required for media uploads — paste a classic PAT with repo scope'}
           </p>
         </div>
         <div className="admin-field">
@@ -167,7 +170,8 @@ export function SystemStudio({ settings, setSettings }: Props) {
         </div>
         <p className="admin-muted" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
           Create token: GitHub → Settings → Developer settings → Personal access tokens → Generate (classic) → check{' '}
-          <strong>repo</strong> scope. Required only for uploading game ZIP builds to the repo or manual GitHub backup sync.
+          <strong>repo</strong> scope. Used for cover images, preview clips, screenshots, page media, and game ZIP uploads
+          into <code>games/</code> on this site.
         </p>
       </FieldGroup>
     </div>

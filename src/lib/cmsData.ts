@@ -80,7 +80,7 @@ import {
   firestoreUpsertPage,
 } from './firestoreData';
 import { normalizePageSections } from './pageSections';
-import { loadLegacyGames } from './legacyGames';
+import { loadLegacyGames, resetLegacyGamesCache } from './legacyGames';
 import { auth } from './firebase';
 import { githubCmsConfigured, syncGamesJsonToGitHub } from './githubCms';
 import { fetchStaticJson } from './staticCms';
@@ -468,8 +468,8 @@ function normalizeGameExtras(
 }
 
 export async function fetchPublishedGames(): Promise<GameView[]> {
-  // Games catalog lives in games.json — not Firestore.
-  return [];
+  const legacy = await loadLegacyGames();
+  return legacy.filter((g) => g.published !== false);
 }
 
 /** Games flagged for the vault library (<code>/#/vault</code>). */
@@ -562,6 +562,9 @@ function gameRecordToLegacyJson(g: GameRecord): Record<string, unknown> {
   if (g.gumroad_url) row.gumroad_url = g.gumroad_url;
   if (g.stripe_price_id) row.stripe_price_id = g.stripe_price_id;
   if (g.visual_preset) row.visual_preset = g.visual_preset;
+  if (Array.isArray(g.screenshots) && g.screenshots.length > 0) {
+    row.screenshots = g.screenshots;
+  }
   return row;
 }
 
@@ -571,18 +574,34 @@ async function loadAllGamesForAdmin(): Promise<GameRecord[]> {
 }
 
 async function persistGamesJson(games: GameRecord[]): Promise<void> {
-  if (!(await ensureFirestore())) {
-    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
-  }
   const sorted = [...games].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const json = sorted.map(gameRecordToLegacyJson);
-  await firestoreSaveGamesCatalog(json);
+  let saved = false;
+
+  if (await ensureFirestore()) {
+    await firestoreSaveGamesCatalog(json);
+    saved = true;
+  }
+
   if (githubCmsConfigured()) {
     const result = await syncGamesJsonToGitHub(json);
     if (result.error) {
+      if (!saved) {
+        throw new Error(result.error);
+      }
       console.warn('[cms] GitHub games.json sync failed (Firestore saved):', result.error);
+    } else {
+      saved = true;
     }
   }
+
+  if (!saved) {
+    throw new Error(
+      'Could not save game metadata. Sign in at /admin or add a GitHub token under System → GitHub sync.',
+    );
+  }
+
+  resetLegacyGamesCache();
 }
 
 /** One-time seed: copy bundled cms/*.json into Firestore when collections are empty. */

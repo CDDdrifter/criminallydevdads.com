@@ -6,6 +6,7 @@ import {
   publicRepoGameUrl,
   repoGamePath,
   uploadGameFilesToRepo,
+  uploadRepoBinaryFile,
   uploadSingleGameRepoFile,
 } from './githubGameUpload';
 import {
@@ -529,21 +530,45 @@ export async function uploadGameDownloadFile(gameSlug: string, file: File): Prom
   return uploadSingleGameRepoFile(slug, `download.${ext}`, file);
 }
 
+function validateImageFile(file: File, label: string): string {
+  const ext = extFromFilename(file.name);
+  if (!THUMB_EXT.has(ext)) {
+    throw new Error(`${label} must be PNG, JPG, GIF, WebP, or SVG.`);
+  }
+  if (file.size > MAX_THUMBNAIL_BYTES) {
+    throw new Error(`${label} must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
+  }
+  return ext;
+}
+
+function validateVideoFile(file: File, label: string): string {
+  const ext = extFromFilename(file.name);
+  if (!VIDEO_EXT.has(ext)) {
+    throw new Error(`${label} must be MP4, WebM, or MOV.`);
+  }
+  if (file.size > MAX_PREVIEW_VIDEO_BYTES) {
+    throw new Error(`${label} must be ≤ ${MAX_PREVIEW_VIDEO_BYTES / 1024 / 1024} MB.`);
+  }
+  return ext;
+}
+
+async function uploadGameImageToRepo(slug: string, relPath: string, file: File, label: string): Promise<string> {
+  return uploadRepoBinaryFile(repoGamePath(slug, relPath), file, `chore(games): ${slug} ${label}`);
+}
+
+async function uploadSiteMediaToRepo(repoPath: string, file: File, label: string): Promise<string> {
+  return uploadRepoBinaryFile(repoPath, file, `chore(media): ${label}`);
+}
+
 export async function uploadGameTabIcon(gameSlug: string, file: File): Promise<string> {
   const slug = sanitizeGameStorageSlug(gameSlug);
   if (!slug) {
     throw new Error('Invalid game slug for tab icon upload.');
   }
-  const ext = extFromFilename(file.name);
-  if (!THUMB_EXT.has(ext)) {
-    throw new Error('Tab icon must be PNG, JPG, GIF, WebP, or SVG.');
-  }
-  if (file.size > MAX_THUMBNAIL_BYTES) {
-    throw new Error(`Tab icon must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
-  }
+  const ext = validateImageFile(file, 'Tab icon');
   const relPath = `tab-icon.${ext}`;
   if (githubGameUploadReady()) {
-    return uploadSingleGameRepoFile(slug, relPath, file, `chore(games): ${slug} tab icon`);
+    return uploadGameImageToRepo(slug, relPath, file, 'tab icon');
   }
   if (!isFirebaseReady()) {
     throw new Error(
@@ -558,27 +583,15 @@ export async function uploadGameThumbnail(gameSlug: string, file: File): Promise
   if (!slug) {
     throw new Error('Invalid game slug for thumbnail upload.');
   }
-  const ext = extFromFilename(file.name);
-  if (!THUMB_EXT.has(ext)) {
-    throw new Error('Thumbnail must be PNG, JPG, GIF, WebP, or SVG.');
-  }
-  if (file.size > MAX_THUMBNAIL_BYTES) {
-    throw new Error(`Thumbnail must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
-  }
+  const ext = validateImageFile(file, 'Thumbnail');
   const relPath = `cover.${ext}`;
   if (githubGameUploadReady()) {
-    const publicPath = await uploadSingleGameRepoFile(
-      slug,
-      relPath,
-      file,
-      `chore(games): ${slug} cover image`,
-    );
-    // Legacy auto-discovery looks for index.png — mirror PNG/JPEG covers when possible.
+    const publicPath = await uploadGameImageToRepo(slug, relPath, file, 'cover image');
     if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') {
       try {
-        await uploadSingleGameRepoFile(slug, 'index.png', file, `chore(games): ${slug} index.png cover`);
+        await uploadGameImageToRepo(slug, 'index.png', file, 'index.png cover');
       } catch {
-        /* cover.* is enough; index.png is a nice extra for folder scans */
+        /* cover.* is enough */
       }
     }
     return publicPath;
@@ -591,21 +604,40 @@ export async function uploadGameThumbnail(gameSlug: string, file: File): Promise
   return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, `${slug}/cover.${ext}`, file, guessContentType(`x.${ext}`));
 }
 
+/** Gallery still / screenshot — stored under games/<slug>/media/. */
+export async function uploadGameScreenshot(gameSlug: string, file: File): Promise<string> {
+  const slug = sanitizeGameStorageSlug(gameSlug);
+  if (!slug) {
+    throw new Error('Invalid game slug for screenshot upload.');
+  }
+  const ext = validateImageFile(file, 'Screenshot');
+  const stamp = Date.now();
+  const relPath = `media/screenshot-${stamp}.${ext}`;
+  if (githubGameUploadReady()) {
+    return uploadGameImageToRepo(slug, relPath, file, 'screenshot');
+  }
+  if (!isFirebaseReady()) {
+    throw new Error(
+      'No GitHub token (Admin → System → GitHub sync) and Firebase Storage is not configured.',
+    );
+  }
+  return firebaseUploadPublicFile(
+    GAME_THUMBNAILS_BUCKET,
+    `${slug}/media/screenshot-${stamp}.${ext}`,
+    file,
+    guessContentType(`x.${ext}`),
+  );
+}
+
 export async function uploadGamePreviewVideo(gameSlug: string, file: File): Promise<string> {
   const slug = sanitizeGameStorageSlug(gameSlug);
   if (!slug) {
     throw new Error('Invalid game slug for video upload.');
   }
-  const ext = extFromFilename(file.name);
-  if (!VIDEO_EXT.has(ext)) {
-    throw new Error('Preview video must be MP4, WebM, or MOV.');
-  }
-  if (file.size > MAX_PREVIEW_VIDEO_BYTES) {
-    throw new Error(`Video must be ≤ ${MAX_PREVIEW_VIDEO_BYTES / 1024 / 1024} MB.`);
-  }
+  const ext = validateVideoFile(file, 'Preview video');
   const relPath = `preview.${ext}`;
   if (githubGameUploadReady()) {
-    return uploadSingleGameRepoFile(slug, relPath, file, `chore(games): ${slug} preview video`);
+    return uploadRepoBinaryFile(repoGamePath(slug, relPath), file, `chore(games): ${slug} preview video`);
   }
   if (!isFirebaseReady()) {
     throw new Error(
@@ -615,16 +647,12 @@ export async function uploadGamePreviewVideo(gameSlug: string, file: File): Prom
   return firebaseUploadPublicFile(GAME_VIDEOS_BUCKET, `${slug}/preview.${ext}`, file, guessContentType(`x.${ext}`));
 }
 
-/** Image block on a custom page or game detail page (≤ thumbnail bucket limit). */
 export async function uploadPageSectionImage(
   pageSlug: string,
   sectionId: string,
   file: File,
   options?: { folder?: string },
 ): Promise<string> {
-  if (!isFirebaseReady()) {
-    throw new Error('Firebase not configured');
-  }
   const pslug = sanitizeGameStorageSlug(pageSlug);
   if (!pslug) {
     throw new Error('Set a valid page slug before uploading.');
@@ -633,14 +661,15 @@ export async function uploadPageSectionImage(
   if (!sid) {
     throw new Error('Invalid block id.');
   }
-  const ext = extFromFilename(file.name);
-  if (!THUMB_EXT.has(ext)) {
-    throw new Error('Image must be PNG, JPG, GIF, WebP, or SVG.');
-  }
-  if (file.size > MAX_THUMBNAIL_BYTES) {
-    throw new Error(`Image must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
-  }
+  const ext = validateImageFile(file, 'Image');
   const folder = (options?.folder ?? 'pages').replace(/^\/+|\/+$/g, '');
+  const repoPath = `games/media/${folder}/${pslug}/${sid}.${ext}`;
+  if (githubGameUploadReady()) {
+    return uploadSiteMediaToRepo(repoPath, file, `${folder}/${pslug}/${sid}`);
+  }
+  if (!isFirebaseReady()) {
+    throw new Error('Add a GitHub token in System → GitHub sync, or sign in with Firebase.');
+  }
   const objectPath = `${folder}/${pslug}/${sid}.${ext}`;
   return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, objectPath, file, guessContentType(`x.${ext}`));
 }
@@ -652,9 +681,6 @@ export async function uploadPageSectionVideo(
   file: File,
   options?: { folder?: string },
 ): Promise<string> {
-  if (!isFirebaseReady()) {
-    throw new Error('Firebase not configured');
-  }
   const pslug = sanitizeGameStorageSlug(pageSlug);
   if (!pslug) {
     throw new Error('Set a valid page slug before uploading.');
@@ -663,14 +689,15 @@ export async function uploadPageSectionVideo(
   if (!sid) {
     throw new Error('Invalid block id.');
   }
-  const ext = extFromFilename(file.name);
-  if (!VIDEO_EXT.has(ext)) {
-    throw new Error('Video must be MP4, WebM, or MOV.');
-  }
-  if (file.size > MAX_PREVIEW_VIDEO_BYTES) {
-    throw new Error(`Video must be ≤ ${MAX_PREVIEW_VIDEO_BYTES / 1024 / 1024} MB.`);
-  }
+  const ext = validateVideoFile(file, 'Video');
   const folder = (options?.folder ?? 'pages').replace(/^\/+|\/+$/g, '');
+  const repoPath = `games/media/${folder}/${pslug}/${sid}.${ext}`;
+  if (githubGameUploadReady()) {
+    return uploadSiteMediaToRepo(repoPath, file, `${folder}/${pslug}/${sid}`);
+  }
+  if (!isFirebaseReady()) {
+    throw new Error('Add a GitHub token in System → GitHub sync, or sign in with Firebase.');
+  }
   const objectPath = `${folder}/${pslug}/${sid}.${ext}`;
   return firebaseUploadPublicFile(GAME_VIDEOS_BUCKET, objectPath, file, guessContentType(`x.${ext}`));
 }
@@ -691,10 +718,16 @@ export async function uploadStudioAsset(
   file: File,
   opts: { kind?: 'image' | 'audio' | 'video' | 'other' } = {},
 ): Promise<string> {
-  if (!isFirebaseReady()) throw new Error('Firebase not configured');
   const kind = opts.kind ?? 'image';
-  const bucket = kind === 'image' ? GAME_THUMBNAILS_BUCKET : GAME_VIDEOS_BUCKET;
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, '-').toLowerCase();
+  const repoPath = `games/media/studio/${Date.now()}-${safeName}`;
+  if (githubGameUploadReady()) {
+    return uploadSiteMediaToRepo(repoPath, file, `studio ${safeName}`);
+  }
+  if (!isFirebaseReady()) {
+    throw new Error('Add a GitHub token in System → GitHub sync, or sign in with Firebase.');
+  }
+  const bucket = kind === 'image' ? GAME_THUMBNAILS_BUCKET : GAME_VIDEOS_BUCKET;
   const objectPath = `${STUDIO_ASSET_PREFIX}/${Date.now()}-${safeName}`;
   return firebaseUploadPublicFile(
     bucket,

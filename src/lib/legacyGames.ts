@@ -63,6 +63,8 @@ type LegacyMeta = {
   donation_presets_cents?: number[];
   /** Same preset ids as Site Settings / Admin (ember, aurora, …). */
   visual_preset?: string;
+  /** Gallery images on the game detail page (repo paths or https URLs). */
+  screenshots?: string[];
 };
 
 /** Prefer `url`, fall back to `external_url`. */
@@ -292,7 +294,9 @@ async function buildGameFromFolder(
     tags: [],
     release_date: '',
     platforms: [],
-    screenshots: [],
+    screenshots: Array.isArray(metadata.screenshots)
+      ? metadata.screenshots.map(String).filter(Boolean)
+      : [],
     features: [],
     controls: [],
     credits: [],

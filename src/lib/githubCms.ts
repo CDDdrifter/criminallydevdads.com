@@ -20,15 +20,17 @@ export type GitHubWriteResult = {
 };
 
 export function getGitHubToken(): string {
-  return sessionStorage.getItem(GITHUB_PAT_KEY) ?? '';
+  return sessionStorage.getItem(GITHUB_PAT_KEY) ?? localStorage.getItem(GITHUB_PAT_KEY) ?? '';
 }
 
 export function setGitHubToken(token: string) {
   const trimmed = token.trim();
   if (trimmed) {
     sessionStorage.setItem(GITHUB_PAT_KEY, trimmed);
+    localStorage.setItem(GITHUB_PAT_KEY, trimmed);
   } else {
     sessionStorage.removeItem(GITHUB_PAT_KEY);
+    localStorage.removeItem(GITHUB_PAT_KEY);
   }
 }
 
