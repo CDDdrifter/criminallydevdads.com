@@ -731,6 +731,15 @@ export type ComponentsConfig = {
   };
 };
 
+export type StripeBuyButtonPlacements = {
+  /** Homepage “Support the Devs” block (bottom of hub). */
+  homepage_support: boolean;
+  /** Compact bar below the header nav on every SiteChrome page. */
+  site_top: boolean;
+  /** Compact bar above the footer nav / legal footer on every SiteChrome page. */
+  site_bottom: boolean;
+};
+
 export type BehaviorConfig = {
   /** Header strip (Brand studio logo + tagline above the nav row). */
   show_header_brand_strip: boolean;
@@ -786,6 +795,8 @@ export type BehaviorConfig = {
   /** Sound that plays when nav / play buttons are clicked (URL). Leave empty to disable. */
   click_sound_url: string;
   click_sound_volume: number;
+  /** Where the Stripe Buy Me a Coffee embed appears (requires buy button ID + publishable key in Site copy). */
+  stripe_buy_button_placements: StripeBuyButtonPlacements;
 };
 
 export type SeoConfig = {
@@ -1129,6 +1140,10 @@ export type SiteSettings = {
   support_page_href: string;
   /** Optional Stripe tip link (Payment Link URL). Legacy key: stripe_donation_url. */
   stripe_tip_url: string;
+  /** Stripe Buy Button embed — from Dashboard → Payment Links → Buy button. */
+  stripe_buy_button_id: string;
+  /** Stripe publishable key (pk_live_… or pk_test_…) for the buy button embed. */
+  stripe_publishable_key: string;
   /** Buttons shown in the support block at the bottom of the homepage. */
   support_buttons: SupportButton[];
   footer_text: string;
@@ -1328,6 +1343,8 @@ export const defaultSiteSettings: SiteSettings = {
     'Love our games? Help us keep creating by supporting our work. COMING SOON',
   support_page_href: '/p/support',
   stripe_tip_url: '',
+  stripe_buy_button_id: '',
+  stripe_publishable_key: '',
   support_buttons: [
     { id: 'tip', label: 'Tip the devs', href: '', external: true, variant: 'primary' },
     { id: 'merch', label: 'Merch Shop', href: '', external: true, variant: 'secondary' },

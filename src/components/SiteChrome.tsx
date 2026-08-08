@@ -10,6 +10,7 @@ import type { BehaviorConfig } from '../types';
 import { LegalFooter } from './LegalFooter';
 import { AdSlot } from './AdSlot';
 import { SiteSocialFollow } from './SiteSocialFollow';
+import { StripeBuyButtonSlot } from './StripeBuyButtonSlot';
 import { UserAuthNav } from './UserAuthNav';
 
 export type SiteNavLink = { label: string; href: string; external: boolean };
@@ -222,7 +223,11 @@ export function SiteChrome({
         </div>
       ) : null}
 
+      <StripeBuyButtonSlot placement="site_top" />
+
       <div id="main-content">{children}</div>
+
+      <StripeBuyButtonSlot placement="site_bottom" />
 
       {showNavFooter ? (
         <PrimaryNavRow

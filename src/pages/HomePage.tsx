@@ -9,6 +9,7 @@ import { useGames } from '../hooks/useGames';
 import { gameCatalogMode } from '../lib/gameCatalog';
 import { activePromoEvents } from '../lib/promoEvents';
 import { backendConfigured } from '../lib/backend';
+import { StripeBuyButtonSlot } from '../components/StripeBuyButtonSlot';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 export function HomePage() {
@@ -22,6 +23,9 @@ export function HomePage() {
   const showSupport = settings.behavior?.show_support_section !== false;
   const showFooter = settings.behavior?.show_footer !== false;
   const intro = settings.behavior?.homepage_intro;
+  const showHomepageBuyButton =
+    Boolean(settings.stripe_buy_button_id.trim() && settings.stripe_publishable_key.trim()) &&
+    settings.behavior?.stripe_buy_button_placements?.homepage_support !== false;
 
   const filtered =
     filter === 'all' ? games : games.filter((g) => g.type.toLowerCase() === filter);
@@ -29,15 +33,22 @@ export function HomePage() {
     () => activePromoEvents(settings.promo_events).filter((e) => e.title.trim()),
     [settings.promo_events],
   );
-  const supportButtons = settings.support_buttons.map((btn) => {
-    if ((btn.id === 'tip' || btn.id === 'donate') && settings.stripe_tip_url.trim()) {
-      return { ...btn, href: settings.stripe_tip_url.trim(), external: true };
-    }
-    if (btn.id === 'contact' && settings.support_page_href.trim()) {
-      return { ...btn, href: settings.support_page_href.trim(), external: false };
-    }
-    return btn;
-  });
+  const supportButtons = settings.support_buttons
+    .map((btn) => {
+      if ((btn.id === 'tip' || btn.id === 'donate') && settings.stripe_tip_url.trim()) {
+        return { ...btn, href: settings.stripe_tip_url.trim(), external: true };
+      }
+      if (btn.id === 'contact' && settings.support_page_href.trim()) {
+        return { ...btn, href: settings.support_page_href.trim(), external: false };
+      }
+      return btn;
+    })
+    .filter((btn) => {
+      if (!showHomepageBuyButton) {
+        return true;
+      }
+      return btn.id !== 'tip' && btn.id !== 'donate';
+    });
 
   // Admin-driven homepage sections (Studio → Homepage). `replace` mode lets
   // the admin own the entire page (no hero, no grid, no footer).
@@ -255,6 +266,7 @@ export function HomePage() {
             {settings.support_body}
           </p>
           <div className="support-buttons">
+            {showHomepageBuyButton ? <StripeBuyButtonSlot placement="homepage_support" /> : null}
             {supportButtons.map((btn) => {
               const href = btn.href.trim();
               if (!href) {

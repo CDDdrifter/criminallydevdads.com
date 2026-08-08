@@ -37,6 +37,7 @@ import type {
   SeoConfig,
   SharingConfig,
   SocialConfig,
+  StripeBuyButtonPlacements,
   ThemeBackgrounds,
   ThemeColors,
   ThemeConfig,
@@ -318,6 +319,17 @@ export function defaultComponentsConfig(): ComponentsConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Stripe buy button placements.
+// ---------------------------------------------------------------------------
+export function defaultStripeBuyButtonPlacements(): StripeBuyButtonPlacements {
+  return {
+    homepage_support: true,
+    site_top: true,
+    site_bottom: true,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Behavior.
 // ---------------------------------------------------------------------------
 export function defaultBehaviorConfig(): BehaviorConfig {
@@ -356,6 +368,7 @@ export function defaultBehaviorConfig(): BehaviorConfig {
     homepage_autoplay_previews: false,
     click_sound_url: '',
     click_sound_volume: 0.4,
+    stripe_buy_button_placements: defaultStripeBuyButtonPlacements(),
   };
 }
 

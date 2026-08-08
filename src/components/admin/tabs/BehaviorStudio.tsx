@@ -7,6 +7,7 @@
  */
 import type { CSSProperties } from 'react';
 import type { SiteSettings } from '../../../types';
+import { defaultStripeBuyButtonPlacements } from '../../../lib/themeDefaults';
 import {
   FieldGroup,
   NumberSliderField,
@@ -86,6 +87,7 @@ type Props = {
 
 export function BehaviorStudio({ settings, setSettings }: Props) {
   const b = settings.behavior;
+  const buyPlacements = { ...defaultStripeBuyButtonPlacements(), ...b.stripe_buy_button_placements };
   const set = (patch: Partial<typeof b>) => setSettings({ ...settings, behavior: { ...b, ...patch } });
 
   return (
@@ -284,6 +286,40 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
           checked={b.show_admin_link_in_nav}
           onChange={(show_admin_link_in_nav) => set({ show_admin_link_in_nav })}
           help="Independent of the VITE_SHOW_ADMIN_NAV build flag — set either to show the link."
+        />
+      </FieldGroup>
+
+      <FieldGroup
+        title="Stripe buy button placement"
+        description="Requires buy button ID + publishable key in Site copy. Applies on every public page wrapped in SiteChrome."
+      >
+        <ToggleField
+          label="Top of every page (below header nav)"
+          checked={buyPlacements.site_top}
+          onChange={(site_top) =>
+            set({
+              stripe_buy_button_placements: { ...buyPlacements, site_top },
+            })
+          }
+        />
+        <ToggleField
+          label="Bottom of every page (above footer nav)"
+          checked={buyPlacements.site_bottom}
+          onChange={(site_bottom) =>
+            set({
+              stripe_buy_button_placements: { ...buyPlacements, site_bottom },
+            })
+          }
+        />
+        <ToggleField
+          label="Homepage support section"
+          checked={buyPlacements.homepage_support}
+          onChange={(homepage_support) =>
+            set({
+              stripe_buy_button_placements: { ...buyPlacements, homepage_support },
+            })
+          }
+          help="The “Support the Devs” block at the bottom of the hub."
         />
       </FieldGroup>
 

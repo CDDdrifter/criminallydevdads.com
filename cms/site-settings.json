@@ -3,7 +3,7 @@
   "hero_title": "⚔️ CRIMINALLY DEV DADS ⚔️",
   "hero_subtitle": "EST. 2026 // GAME HUB // INDIE COLLECTIVE",
   "support_title": "Support the Devs",
-  "support_body": "Love our games? Help us keep creating by supporting our work. COMING SOON",
+  "support_body": "Love our games? Buy us a coffee and help us keep creating.",
   "footer_text": "© 2026 CRIMINALLY DEV DADS  // ALL RIGHTS RESERVED // STAY CRIMINAL",
   "site_visual_preset": "bloodline",
   "fx_scanlines": true,
@@ -13,11 +13,13 @@
   "fx_cursor_spotlight": true,
   "support_page_href": "/p/support",
   "stripe_tip_url": "",
+  "stripe_buy_button_id": "buy_btn_1U2IOJJxkuNkoONrPDwI26nW",
+  "stripe_publishable_key": "pk_live_51TqbkQJxkuNkoONrDKmpHRrXYdcpQZ1EJo7g0GPWe7XrRjJUPghT2Iak2Y1TlYimy5Qmj7I6YmxU7SMZYzHu9a0j00u3cdiG3I",
   "support_buttons": [
     {
-      "id": "75351e98-6be8-4bfa-8781-169d78acdd6c",
-      "href": "",
-      "label": "",
+      "id": "contact",
+      "href": "/p/support",
+      "label": "Contact / Support",
       "variant": "secondary",
       "external": false
     }
@@ -306,7 +308,12 @@
     "first_party_analytics_enabled": true,
     "player_google_sign_in_enabled": true,
     "ads_enabled": true,
-    "adsense_client_id": "ca-pub-7272083145787802"
+    "adsense_client_id": "ca-pub-7272083145787802",
+    "stripe_buy_button_placements": {
+      "homepage_support": true,
+      "site_top": true,
+      "site_bottom": true
+    }
   },
   "seo": {
     "favicon_url": "",
