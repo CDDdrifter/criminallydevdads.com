@@ -541,8 +541,14 @@ export async function uploadGameTabIcon(gameSlug: string, file: File): Promise<s
   if (file.size > MAX_THUMBNAIL_BYTES) {
     throw new Error(`Tab icon must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
   }
+  const relPath = `tab-icon.${ext}`;
+  if (githubGameUploadReady()) {
+    return uploadSingleGameRepoFile(slug, relPath, file, `chore(games): ${slug} tab icon`);
+  }
   if (!isFirebaseReady()) {
-    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+    throw new Error(
+      'No GitHub token (Admin → System → GitHub sync) and Firebase Storage is not configured.',
+    );
   }
   return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, `${slug}/tab-icon.${ext}`, file, guessContentType(`x.${ext}`));
 }
@@ -559,8 +565,28 @@ export async function uploadGameThumbnail(gameSlug: string, file: File): Promise
   if (file.size > MAX_THUMBNAIL_BYTES) {
     throw new Error(`Thumbnail must be ≤ ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB.`);
   }
+  const relPath = `cover.${ext}`;
+  if (githubGameUploadReady()) {
+    const publicPath = await uploadSingleGameRepoFile(
+      slug,
+      relPath,
+      file,
+      `chore(games): ${slug} cover image`,
+    );
+    // Legacy auto-discovery looks for index.png — mirror PNG/JPEG covers when possible.
+    if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') {
+      try {
+        await uploadSingleGameRepoFile(slug, 'index.png', file, `chore(games): ${slug} index.png cover`);
+      } catch {
+        /* cover.* is enough; index.png is a nice extra for folder scans */
+      }
+    }
+    return publicPath;
+  }
   if (!isFirebaseReady()) {
-    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+    throw new Error(
+      'No GitHub token (Admin → System → GitHub sync) and Firebase Storage is not configured. Add a GitHub PAT or sign in with Firebase.',
+    );
   }
   return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, `${slug}/cover.${ext}`, file, guessContentType(`x.${ext}`));
 }
@@ -577,8 +603,14 @@ export async function uploadGamePreviewVideo(gameSlug: string, file: File): Prom
   if (file.size > MAX_PREVIEW_VIDEO_BYTES) {
     throw new Error(`Video must be ≤ ${MAX_PREVIEW_VIDEO_BYTES / 1024 / 1024} MB.`);
   }
+  const relPath = `preview.${ext}`;
+  if (githubGameUploadReady()) {
+    return uploadSingleGameRepoFile(slug, relPath, file, `chore(games): ${slug} preview video`);
+  }
   if (!isFirebaseReady()) {
-    throw new Error('Firebase not configured. Sign in with your admin Google account at /admin.');
+    throw new Error(
+      'No GitHub token (Admin → System → GitHub sync) and Firebase Storage is not configured.',
+    );
   }
   return firebaseUploadPublicFile(GAME_VIDEOS_BUCKET, `${slug}/preview.${ext}`, file, guessContentType(`x.${ext}`));
 }

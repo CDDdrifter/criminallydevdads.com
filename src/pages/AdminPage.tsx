@@ -35,6 +35,8 @@ import {
   uploadGameZip,
   uploadGameDownloadFile,
 } from '../lib/gameStorageUpload';
+import { githubGameUploadReady } from '../lib/githubGameUpload';
+import { isFirebaseReady } from '../lib/firebase';
 import {
   invokeSyncAllCmsToGitHub,
   invokeSyncGamesJsonToGitHub,
@@ -2560,7 +2562,7 @@ export function AdminPage() {
                   }}
                 >
                   <img
-                    src={gameDraft.thumbnail_url}
+                    src={resolvePublicAssetUrl(gameDraft.thumbnail_url.trim())}
                     alt=""
                     style={{
                       maxWidth: '100%',
@@ -2585,30 +2587,41 @@ export function AdminPage() {
                   ) : null}
                 </div>
               ) : null}
-              <input
-                id="g_thumb_file"
-                ref={thumbFileRef}
-                type="file"
-                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg"
-                disabled={busy || !gameSlugEffective}
-                style={{ display: 'none' }}
-                aria-hidden
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) {
-                    void onUploadGameThumbnailFile(f);
-                  }
-                  e.target.value = '';
+              <label
+                htmlFor="g_thumb_file"
+                className="admin-row"
+                style={{
+                  gap: 8,
+                  alignItems: 'center',
+                  cursor: busy || !gameSlugEffective ? 'not-allowed' : 'pointer',
+                  opacity: busy || !gameSlugEffective ? 0.55 : 1,
+                  width: 'fit-content',
                 }}
-              />
-              <button
-                type="button"
-                id="g_thumb_add_file"
-                disabled={busy || !gameSlugEffective}
-                onClick={() => thumbFileRef.current?.click()}
               >
-                Add file
-              </button>
+                <input
+                  id="g_thumb_file"
+                  ref={thumbFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg"
+                  disabled={busy || !gameSlugEffective}
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      void onUploadGameThumbnailFile(f);
+                    }
+                    e.target.value = '';
+                  }}
+                />
+                <span className="btn-support" style={{ pointerEvents: 'none' }}>
+                  {busy ? 'Uploading cover…' : 'Add cover image'}
+                </span>
+              </label>
+              {!githubGameUploadReady() && !isFirebaseReady() ? (
+                <p className="admin-muted" style={{ margin: '8px 0 0', color: 'var(--warning)' }}>
+                  Add a GitHub token in <strong>System → GitHub sync</strong> to upload cover images (recommended).
+                </p>
+              ) : null}
               {!gameSlugEffective ? (
                 <p className="admin-muted" style={{ margin: '8px 0 0' }}>
                   Enter a <strong>title</strong> (or slug) first so media uploads know which game folder to use.

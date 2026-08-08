@@ -230,7 +230,7 @@ export function GamePage() {
                 style={{ marginBottom: 16 }}
               >
                 <img
-                  src={game.thumbnail}
+                  src={resolvePublicAssetUrl(game.thumbnail)}
                   alt=""
                   style={{
                     width: '100%',

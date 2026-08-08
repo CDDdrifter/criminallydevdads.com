@@ -231,6 +231,12 @@ async function buildGameFromFolder(
   const localLaunch = `games/${folderId}/${entryRel}`;
   const isLocalPlayable = await pathExists(localLaunch);
   const thumbnailCandidates = [
+    `games/${folderId}/cover.png`,
+    `games/${folderId}/cover.jpg`,
+    `games/${folderId}/cover.jpeg`,
+    `games/${folderId}/cover.webp`,
+    `games/${folderId}/cover.gif`,
+    `games/${folderId}/cover.svg`,
     `games/${folderId}/index.png`,
     `games/${folderId}/index.icon.png`,
     `games/${folderId}/icon.png`,

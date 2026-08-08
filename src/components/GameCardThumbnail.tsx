@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { GameView } from '../types';
 import { gameHasGumroadUrl } from '../lib/gamePricing';
+import { resolvePublicAssetUrl } from '../lib/paths';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 type Props = {
@@ -21,7 +22,10 @@ export function GameCardThumbnail({ game, imageAlt }: Props) {
   const showGumroadStar = gameHasGumroadUrl(game);
   const alt = imageAlt ?? game.title;
   const previewUrl = (game.preview_video ?? '').trim();
-  const autoplay = settings.behavior?.homepage_autoplay_previews && Boolean(previewUrl);
+  const previewSrc = previewUrl ? resolvePublicAssetUrl(previewUrl) : '';
+  const thumbRaw = (game.thumbnail ?? '').trim();
+  const thumbSrc = thumbRaw ? resolvePublicAssetUrl(thumbRaw) : '';
+  const autoplay = settings.behavior?.homepage_autoplay_previews && Boolean(previewSrc);
   const [showVideo, setShowVideo] = useState(false);
   const vidRef = useRef<HTMLVideoElement | null>(null);
   const play = useCallback(() => {
@@ -60,7 +64,7 @@ export function GameCardThumbnail({ game, imageAlt }: Props) {
       {showVideo && autoplay ? (
         <video
           ref={vidRef}
-          src={previewUrl}
+          src={previewSrc}
           muted
           loop
           playsInline
@@ -68,8 +72,8 @@ export function GameCardThumbnail({ game, imageAlt }: Props) {
           aria-label={`${game.title} preview`}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
-      ) : game.thumbnail ? (
-        <img src={game.thumbnail} alt={alt} />
+      ) : thumbSrc ? (
+        <img src={thumbSrc} alt={alt} />
       ) : (
         '🎮'
       )}
