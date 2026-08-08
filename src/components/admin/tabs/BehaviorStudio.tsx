@@ -290,8 +290,8 @@ export function BehaviorStudio({ settings, setSettings }: Props) {
       </FieldGroup>
 
       <FieldGroup
-        title="Stripe buy button placement"
-        description="Requires buy button ID + publishable key in Site copy. Applies on every public page wrapped in SiteChrome."
+        title="Support tip button placement"
+        description="Requires a tip link in Site copy. Built-in bars on every page + homepage support section."
       >
         <ToggleField
           label="Top of every page (below header nav)"

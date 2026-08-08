@@ -200,6 +200,7 @@ function siteSettingsFromRow(row: Record<string, unknown> | null | undefined): S
     support_body: r.support_body ?? defaultSiteSettings.support_body,
     support_page_href: String(raw.support_page_href ?? defaultSiteSettings.support_page_href),
     stripe_tip_url: String(raw.stripe_tip_url ?? raw.stripe_donation_url ?? ''),
+    support_tip_label: String(raw.support_tip_label ?? defaultSiteSettings.support_tip_label),
     stripe_buy_button_id: String(raw.stripe_buy_button_id ?? ''),
     stripe_publishable_key: String(raw.stripe_publishable_key ?? ''),
     support_buttons: normalizeSupportButtons(raw.support_buttons),
@@ -832,6 +833,9 @@ export async function fetchDevLogs(): Promise<DevLogPost[]> {
 }
 
 export async function fetchSiteSettings(): Promise<SiteSettings> {
+  const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
+  const fromStatic = siteSettingsFromRow(staticRow);
+
   try {
     if (await ensureFirestore()) {
       const data = await Promise.race([
@@ -842,20 +846,44 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
       ]);
       const fromFirestore = siteSettingsFromRow(data);
       if (fromFirestore) {
-        return fromFirestore;
+        return mergeTipSettingsFromStatic(fromFirestore, fromStatic);
       }
     }
   } catch (err) {
     console.warn('[cms] Firestore site settings unavailable, using static fallback', err);
   }
 
-  const staticRow = await fetchStaticJson<Record<string, unknown>>('cms/site-settings.json');
-  const fromStatic = siteSettingsFromRow(staticRow);
   if (fromStatic) {
     return fromStatic;
   }
 
   return defaultSiteSettings;
+}
+
+/** Firestore wins when set; bundled cms/site-settings.json fills empty tip fields. */
+function mergeTipSettingsFromStatic(
+  live: SiteSettings,
+  bundled: SiteSettings | null,
+): SiteSettings {
+  if (!bundled) {
+    return live;
+  }
+  const staticTip = bundled.stripe_tip_url.trim();
+  const staticLabel = bundled.support_tip_label.trim();
+  const staticPlacements = bundled.behavior?.stripe_buy_button_placements;
+  return {
+    ...live,
+    stripe_tip_url: live.stripe_tip_url.trim() || staticTip,
+    support_tip_label: live.support_tip_label.trim() || staticLabel || defaultSiteSettings.support_tip_label,
+    behavior: {
+      ...live.behavior,
+      stripe_buy_button_placements: {
+        ...defaultBehaviorConfig().stripe_buy_button_placements,
+        ...staticPlacements,
+        ...live.behavior?.stripe_buy_button_placements,
+      },
+    },
+  };
 }
 
 export async function saveSiteSettings(patch: Partial<SiteSettings>): Promise<SiteSettings> {

@@ -1677,7 +1677,7 @@ export function AdminPage() {
             />
           </div>
           <div className="admin-field">
-            <label htmlFor="stripe_tip_url">Stripe tip URL (optional)</label>
+            <label htmlFor="stripe_tip_url">Support / tip link (Stripe Payment Link)</label>
             <input
               id="stripe_tip_url"
               placeholder="https://buy.stripe.com/..."
@@ -1696,40 +1696,26 @@ export function AdminPage() {
               }}
             />
             <p className="admin-muted" style={{ marginTop: 8, fontSize: '0.82rem', lineHeight: 1.5 }}>
-              If set, the Tip the devs button automatically opens this URL. Use a Stripe Payment Link configured for
-              voluntary tips (not charitable donations).
-              customer-chosen amount.
+              Opens when visitors click <strong>Support the Devs</strong> buttons. Use a Stripe Payment Link for
+              voluntary tips. Place buttons anywhere with the <strong>☕ Support tip button</strong> page block, or set
+              any button URL to <code>@tip</code>.
             </p>
           </div>
           <div className="admin-field">
-            <label htmlFor="stripe_buy_button_id">Stripe buy button ID (optional)</label>
+            <label htmlFor="support_tip_label">Default tip button label</label>
             <input
-              id="stripe_buy_button_id"
-              placeholder="buy_btn_…"
-              value={settings.stripe_buy_button_id}
-              onChange={(e) => setSettings({ ...settings, stripe_buy_button_id: e.target.value })}
+              id="support_tip_label"
+              placeholder="Support the Devs"
+              value={settings.support_tip_label}
+              onChange={(e) => setSettings({ ...settings, support_tip_label: e.target.value })}
             />
-          </div>
-          <div className="admin-field">
-            <label htmlFor="stripe_publishable_key">Stripe publishable key (optional)</label>
-            <input
-              id="stripe_publishable_key"
-              placeholder="pk_live_…"
-              value={settings.stripe_publishable_key}
-              onChange={(e) => setSettings({ ...settings, stripe_publishable_key: e.target.value })}
-            />
-            <p className="admin-muted" style={{ marginTop: 8, fontSize: '0.82rem', lineHeight: 1.5 }}>
-              When both fields are set, the Stripe Buy Me a Coffee button can appear site-wide. Configure where it
-              shows in <strong>Behavior → Stripe buy button placement</strong> (top/bottom of every page, homepage
-              support section).
-            </p>
           </div>
           <div className="admin-panel" style={{ borderStyle: 'dashed' }}>
             <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
-              Buy button placement
+              Tip button placement
             </h3>
             <p className="admin-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: '0.82rem', lineHeight: 1.45 }}>
-              Same toggles as the Behavior tab — quick access while editing Stripe credentials.
+              Controls built-in tip bars. Custom page blocks ignore these toggles.
             </p>
             {(() => {
               const placements = {

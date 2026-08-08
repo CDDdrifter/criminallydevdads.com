@@ -73,6 +73,14 @@ export type PageSection =
   | { id: string; kind: 'download'; title: string; body: string; href: string; size?: string; format?: string; icon?: string }
   /** Row of buttons (linked or download). */
   | { id: string; kind: 'buttons'; buttons: { id: string; label: string; href: string; external?: boolean; variant?: 'primary' | 'secondary' | 'ghost' }[]; align?: 'left' | 'center' | 'right' }
+  /** Admin tip link button — href comes from Site copy → Stripe tip URL. */
+  | {
+      id: string;
+      kind: 'tip_button';
+      label?: string;
+      align?: 'left' | 'center' | 'right';
+      variant?: 'primary' | 'secondary';
+    }
   /** Branded FAQ — like accordion but rendered without the collapse animation. */
   | { id: string; kind: 'faq'; items: PageItem[]; intro?: string }
   /** Generic iframe — for tools, calculators, custom widgets. */
@@ -1138,8 +1146,10 @@ export type SiteSettings = {
   support_body: string;
   /** Optional internal page URL for support/contact, e.g. `/p/support`. */
   support_page_href: string;
-  /** Optional Stripe tip link (Payment Link URL). Legacy key: stripe_donation_url. */
+  /** Stripe Payment Link for tips — opened by Support the Devs buttons. Legacy: stripe_donation_url. */
   stripe_tip_url: string;
+  /** Default label for tip buttons when a block/button does not override it. */
+  support_tip_label: string;
   /** Stripe Buy Button embed — from Dashboard → Payment Links → Buy button. */
   stripe_buy_button_id: string;
   /** Stripe publishable key (pk_live_… or pk_test_…) for the buy button embed. */
@@ -1343,6 +1353,7 @@ export const defaultSiteSettings: SiteSettings = {
     'Love our games? Help us keep creating by supporting our work. COMING SOON',
   support_page_href: '/p/support',
   stripe_tip_url: '',
+  support_tip_label: 'Support the Devs',
   stripe_buy_button_id: '',
   stripe_publishable_key: '',
   support_buttons: [

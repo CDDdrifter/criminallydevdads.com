@@ -927,6 +927,28 @@ a.game-card--link {
   margin: 0;
 }
 
+.support-tip-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+
+.support-tip-bar--site_top {
+  margin: 0 0 16px;
+}
+
+.support-tip-bar--site_bottom {
+  margin: 20px 0 8px;
+}
+
+.page-section-tip-button {
+  margin: 12px 0;
+}
+
 .btn-support {
   padding: 15px 40px;
   font-size: 1rem;

@@ -323,6 +323,15 @@ export function normalizePageSections(raw: unknown): PageSection[] {
           align: asEnum(item.align, ['left', 'center', 'right'] as const, 'left'),
         });
         break;
+      case 'tip_button':
+        out.push({
+          id,
+          kind: 'tip_button',
+          label: strOpt(item.label),
+          align: asEnum(item.align, ['left', 'center', 'right'] as const, 'center'),
+          variant: asEnum(item.variant, ['primary', 'secondary'] as const, 'primary'),
+        });
+        break;
       case 'faq':
         out.push({
           id,
@@ -601,6 +610,14 @@ export function createEmptySection(kind: PageSection['kind']): PageSection {
           { id: newSectionId(), label: 'Devlog', href: '/devlog', variant: 'secondary', external: false },
         ],
         align: 'left',
+      };
+    case 'tip_button':
+      return {
+        id,
+        kind: 'tip_button',
+        label: '',
+        align: 'center',
+        variant: 'primary',
       };
     case 'faq':
       return {

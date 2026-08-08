@@ -17,8 +17,11 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CommentSection } from './CommentSection';
 import type { CommentTargetType } from '../lib/communityData';
+import { SupportTipButton } from './SupportTipButton';
 import type { PageSection } from '../types';
 import { useGames } from '../hooks/useGames';
+import { useSiteSettings } from '../hooks/useSiteSettings';
+import { resolveTipHref } from '../lib/tipLink';
 import { GameCardMetaChips } from './GameCardMetaChips';
 import { GameCardThumbnail } from './GameCardThumbnail';
 import { htmlAppSandbox } from './HtmlAppEmbed';
@@ -30,18 +33,22 @@ import { htmlAppSandbox } from './HtmlAppEmbed';
 function renderCtaButton(
   cta: { label: string; href: string; external?: boolean } | undefined,
   variant: 'primary' | 'secondary' = 'primary',
+  tipUrl = '',
 ) {
   if (!cta || !cta.label.trim()) return null;
+  const resolved = resolveTipHref(cta.href, tipUrl);
+  const href = resolved?.href ?? cta.href;
+  const external = resolved?.external ?? cta.external;
   const className = `page-section-cta page-section-cta--${variant}`;
-  if (cta.external) {
+  if (external) {
     return (
-      <a href={cta.href} target="_blank" rel="noreferrer" className={className}>
+      <a href={href} target="_blank" rel="noreferrer" className={className}>
         {cta.label}
       </a>
     );
   }
   return (
-    <Link to={cta.href || '/'} className={className}>
+    <Link to={href || '/'} className={className}>
       {cta.label}
     </Link>
   );
@@ -320,6 +327,9 @@ export function PageSectionsView({
   /** When false, comment blocks are hidden (e.g. policy pages). */
   commentsEnabled?: boolean;
 }) {
+  const { settings } = useSiteSettings();
+  const tipUrl = settings.stripe_tip_url.trim();
+
   if (sections.length === 0) {
     return null;
   }
@@ -540,8 +550,8 @@ export function PageSectionsView({
                 <h2 className="page-section-cta-title">{s.title}</h2>
                 {s.body ? <p className="page-section-cta-body">{s.body}</p> : null}
                 <div className="page-section-cta-buttons">
-                  {renderCtaButton(s.primary, 'primary')}
-                  {renderCtaButton(s.secondary, 'secondary')}
+                  {renderCtaButton(s.primary, 'primary', tipUrl)}
+                  {renderCtaButton(s.secondary, 'secondary', tipUrl)}
                 </div>
               </section>
             );
@@ -625,7 +635,7 @@ export function PageSectionsView({
                 <div className="page-section-block-hero-content">
                   <h1>{s.title}</h1>
                   {s.subtitle ? <p>{s.subtitle}</p> : null}
-                  {renderCtaButton(s.cta, 'primary')}
+                  {renderCtaButton(s.cta, 'primary', tipUrl)}
                 </div>
               </section>
             );
@@ -651,6 +661,22 @@ export function PageSectionsView({
                 </span>
               </a>
             );
+          case 'tip_button':
+            return (
+              <div
+                key={s.id}
+                className="page-section-buttons page-section-tip-button"
+                style={{
+                  justifyContent:
+                    s.align === 'center' ? 'center' : s.align === 'right' ? 'flex-end' : 'flex-start',
+                }}
+              >
+                <SupportTipButton
+                  label={s.label}
+                  className={s.variant === 'secondary' ? 'btn-support btn-support--secondary' : 'btn-support'}
+                />
+              </div>
+            );
           case 'buttons':
             return (
               <div
@@ -662,7 +688,11 @@ export function PageSectionsView({
                 }}
               >
                 {s.buttons.map((b) =>
-                  renderCtaButton({ label: b.label, href: b.href, external: b.external }, b.variant === 'secondary' || b.variant === 'ghost' ? 'secondary' : 'primary'),
+                  renderCtaButton(
+                    { label: b.label, href: b.href, external: b.external },
+                    b.variant === 'secondary' || b.variant === 'ghost' ? 'secondary' : 'primary',
+                    tipUrl,
+                  ),
                 )}
               </div>
             );
@@ -734,7 +764,7 @@ export function PageSectionsView({
                 <div className="page-section-image-text-body prose">
                   <h3>{s.title}</h3>
                   <div className="page-section-pre">{s.body}</div>
-                  {renderCtaButton(s.cta, 'primary')}
+                  {renderCtaButton(s.cta, 'primary', tipUrl)}
                 </div>
               </section>
             );
@@ -758,7 +788,7 @@ export function PageSectionsView({
                     <ul className="page-section-pricing-features">
                       {col.features.map((f, i) => <li key={i}>{f}</li>)}
                     </ul>
-                    {renderCtaButton(col.cta, col.featured ? 'primary' : 'secondary')}
+                    {renderCtaButton(col.cta, col.featured ? 'primary' : 'secondary', tipUrl)}
                   </div>
                 ))}
               </div>

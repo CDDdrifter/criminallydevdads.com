@@ -100,6 +100,7 @@ export const PAGE_BLOCK_LABELS: Record<string, string> = {
   hero: '🦸 Hero',
   cta: '📣 CTA',
   buttons: '🔘 Buttons',
+  tip_button: '☕ Support tip button',
   download: '⬇️ Download',
   image_text: '🖼️+📝 Image + text',
   columns: '▥ Columns',

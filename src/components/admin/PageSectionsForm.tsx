@@ -865,6 +865,41 @@ export function PageSectionsForm({
             </>
           )}
 
+          {sec.kind === 'tip_button' && (
+            <>
+              <p className="admin-muted" style={{ fontSize: '0.82rem', lineHeight: 1.45 }}>
+                Uses the tip link from <strong>Site copy → Support / tip link</strong>. Leave label blank for the site
+                default.
+              </p>
+              <div className="admin-field">
+                <label>Button label (optional)</label>
+                <input
+                  value={sec.label ?? ''}
+                  onChange={(e) => set(i)({ label: e.target.value })}
+                  placeholder="Support the Devs"
+                />
+              </div>
+              <div className="admin-field">
+                <label>Align</label>
+                <select value={sec.align ?? 'center'} onChange={(e) => set(i)({ align: e.target.value })}>
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+              <div className="admin-field">
+                <label>Style</label>
+                <select
+                  value={sec.variant ?? 'primary'}
+                  onChange={(e) => set(i)({ variant: e.target.value as 'primary' | 'secondary' })}
+                >
+                  <option value="primary">Primary (gradient)</option>
+                  <option value="secondary">Secondary</option>
+                </select>
+              </div>
+            </>
+          )}
+
           {sec.kind === 'buttons' && (
             <>
               <div className="admin-field">
@@ -905,6 +940,7 @@ export function PageSectionsForm({
                             buttons: sec.buttons.map((x) => (x.id === b.id ? { ...x, href: e.target.value } : x)),
                           })
                         }
+                        placeholder="https://… or @tip for support link"
                       />
                     </div>
                     <label className="admin-row" style={{ gap: 8 }}>
