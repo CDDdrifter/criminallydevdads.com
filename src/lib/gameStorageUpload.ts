@@ -12,7 +12,7 @@ import {
 import {
   firebaseUploadPublicFile,
 } from './firebaseStorageUpload';
-import { auth, initFirebase, isFirebaseReady } from './firebase';
+import { initFirebase, isFirebaseReady, waitForFirebaseUser } from './firebase';
 
 export const GAME_BUILDS_BUCKET = 'game-builds';
 
@@ -586,7 +586,8 @@ export async function uploadGameThumbnail(gameSlug: string, file: File): Promise
   const ext = validateImageFile(file, 'Thumbnail');
   await initFirebase();
 
-  if (isFirebaseReady() && auth?.currentUser) {
+  if (isFirebaseReady()) {
+    await waitForFirebaseUser();
     return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, `${slug}/cover.${ext}`, file, guessContentType(`x.${ext}`));
   }
 
@@ -603,11 +604,8 @@ export async function uploadGameThumbnail(gameSlug: string, file: File): Promise
     return publicPath;
   }
 
-  if (isFirebaseReady()) {
-    throw new Error('Sign in with Google at /admin first — then cover uploads go to Firebase Storage instantly.');
-  }
   throw new Error(
-    'Sign in at /admin with Google, or add a GitHub token under System → GitHub sync.',
+    'Firebase is not configured on this site. Sign in at /admin with Google — no GitHub token needed for covers.',
   );
 }
 

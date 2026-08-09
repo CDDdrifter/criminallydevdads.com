@@ -13,6 +13,7 @@ import {
   indexedDBLocalPersistence,
   initializeAuth,
   type Auth,
+  type User,
 } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
@@ -132,6 +133,32 @@ bootstrapFirebaseSync();
 /** Sync check — Auth (+ Firestore) initialized. */
 export function isFirebaseReady(): boolean {
   return configured && auth !== null && db !== null;
+}
+
+/** Wait until Firebase Auth has a user (after Google sign-in on /admin). */
+export async function waitForFirebaseUser(timeoutMs = 10_000): Promise<User> {
+  await initFirebase();
+  const authInstance = auth;
+  if (!authInstance) {
+    throw new Error('Firebase Auth is not configured.');
+  }
+  if (authInstance.currentUser) {
+    return authInstance.currentUser;
+  }
+  return new Promise<User>((resolve, reject) => {
+    let unsub = () => {};
+    const timer = setTimeout(() => {
+      unsub();
+      reject(new Error('Firebase sign-in timed out. Refresh /admin, sign in with Google, then try again.'));
+    }, timeoutMs);
+    unsub = authInstance.onAuthStateChanged((user) => {
+      if (user) {
+        clearTimeout(timer);
+        unsub();
+        resolve(user);
+      }
+    });
+  });
 }
 
 /** Sync check — Auth only (sign-in works without Firestore data). */

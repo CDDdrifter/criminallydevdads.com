@@ -4,9 +4,20 @@
  */
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { ensureFirestore } from './firestoreData';
-import { auth, initFirebase, storage } from './firebase';
+import { initFirebase, storage, waitForFirebaseUser } from './firebase';
 
 export const BRANDING_BUCKET_PREFIX = 'branding';
+
+const UPLOAD_TIMEOUT_MS = 45_000;
+
+async function withUploadTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${UPLOAD_TIMEOUT_MS / 1000}s. Try a smaller image.`)), UPLOAD_TIMEOUT_MS),
+    ),
+  ]);
+}
 
 export async function firebaseUploadPublicFile(
   folder: string,
@@ -18,22 +29,23 @@ export async function firebaseUploadPublicFile(
   if (!(await ensureFirestore()) || !storage) {
     throw new Error('Firebase Storage not configured. Fill in cms/firebase-config.json.');
   }
-  if (!auth?.currentUser) {
-    throw new Error('Sign in with Google at /admin first — Firebase Storage requires an admin session.');
-  }
+  await waitForFirebaseUser();
   const fullPath = `${folder}/${objectPath}`.replace(/\/+/g, '/');
   const fileRef = ref(storage, fullPath);
   try {
-    await uploadBytes(fileRef, file, {
-      contentType,
-      cacheControl: 'public,max-age=3600',
-    });
-    return getDownloadURL(fileRef);
+    await withUploadTimeout(
+      uploadBytes(fileRef, file, {
+        contentType,
+        cacheControl: 'public,max-age=3600',
+      }),
+      'Cover upload',
+    );
+    return await withUploadTimeout(getDownloadURL(fileRef), 'Cover upload');
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (/permission|unauthorized|denied/i.test(msg)) {
+    if (/permission|unauthorized|denied|403/i.test(msg)) {
       throw new Error(
-        'Firebase Storage denied the upload. Sign in with an @criminallydevdads.com Google account at /admin.',
+        'Firebase blocked the upload. Sign in at /admin with Google, then try again. If it keeps failing, deploy storage.rules from this repo (firebase deploy --only storage).',
       );
     }
     throw e;

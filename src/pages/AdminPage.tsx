@@ -935,8 +935,8 @@ export function AdminPage() {
       flash('Choose an image file.');
       return;
     }
-    if (!auth.isSignedIn && !githubGameUploadReady()) {
-      flash('Sign in with Google at /admin first — cover uploads save to Firebase Storage.', 12000);
+    if (!auth.isSignedIn) {
+      flash('Sign in with Google at the top of /admin first — no GitHub token needed for covers.', 12000);
       return;
     }
     const titleForRow = gameDraft.title.trim() || slug;
@@ -2637,6 +2637,37 @@ export function AdminPage() {
 
             <div className="admin-field">
               <label htmlFor="g_thumb_file">Thumbnail</label>
+              <div
+                className="admin-panel"
+                style={{
+                  marginBottom: 12,
+                  padding: 12,
+                  borderStyle: 'dashed',
+                  fontSize: '0.85rem',
+                  lineHeight: 1.55,
+                }}
+              >
+                <strong>Cover upload — no GitHub token needed</strong>
+                <ol style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+                  <li>
+                    Be signed in at the top of this page
+                    {auth.user?.email ? (
+                      <>
+                        {' '}
+                        (you are: <code>{auth.user.email}</code>)
+                      </>
+                    ) : (
+                      ' — use Continue with Google first'
+                    )}
+                  </li>
+                  <li>Enter a game <strong>title</strong> or slug above</li>
+                  <li>Click <strong>Add cover image</strong> and pick PNG/JPG (max 5 MB)</li>
+                </ol>
+                <p className="admin-muted" style={{ margin: '10px 0 0', fontSize: '0.8rem' }}>
+                  Covers save to <strong>Firebase Storage</strong> and show up immediately. A GitHub token is only for
+                  optional game ZIP uploads under <strong>System → GitHub sync</strong>.
+                </p>
+              </div>
               <p className="admin-muted" style={{ margin: '0 0 10px' }}>
                 Cover image for the hub card and game page. PNG, JPG, GIF, WebP, or SVG — max 5 MB.
               </p>
@@ -2650,7 +2681,11 @@ export function AdminPage() {
                   }}
                 >
                   <img
-                    src={resolvePublicAssetUrl(gameDraft.thumbnail_url.trim())}
+                    src={
+                      /^https?:\/\//i.test(gameDraft.thumbnail_url.trim())
+                        ? gameDraft.thumbnail_url.trim()
+                        : resolvePublicAssetUrl(gameDraft.thumbnail_url.trim())
+                    }
                     alt=""
                     style={{
                       maxWidth: '100%',
@@ -2705,10 +2740,9 @@ export function AdminPage() {
                   {busy ? 'Uploading cover…' : 'Add cover image'}
                 </span>
               </label>
-              {!auth.isSignedIn && !githubGameUploadReady() ? (
+              {!auth.isSignedIn ? (
                 <p className="admin-muted" style={{ margin: '8px 0 0', color: 'var(--warning)' }}>
-                  <strong>Sign in with Google</strong> at the top of /admin — cover uploads go to Firebase Storage and
-                  appear instantly.
+                  Sign in with <strong>Continue with Google</strong> at the top of /admin to upload covers.
                 </p>
               ) : null}
               {!gameSlugEffective ? (

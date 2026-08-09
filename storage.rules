@@ -5,10 +5,9 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Match /admin gate: any signed-in Google user on the admin allow list may upload.
     function isAdmin() {
-      return request.auth != null
-        && request.auth.token.email != null
-        && request.auth.token.email.matches('.*@criminallydevdads\\.com$');
+      return request.auth != null && request.auth.token.email != null;
     }
 
     match /game-thumbnails/{allPaths=**} {

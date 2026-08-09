@@ -652,6 +652,9 @@ async function persistGamesJson(games: GameRecord[]): Promise<void> {
   let saved = false;
 
   if (await ensureFirestore()) {
+    if (!auth?.currentUser) {
+      throw new Error('Sign in with Google at /admin before saving game changes.');
+    }
     await firestoreSaveGamesCatalog(json);
     saved = true;
   }

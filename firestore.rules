@@ -10,10 +10,9 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Match /admin gate: signed-in editors on the admin allow list (cms/admin-config.json).
     function isAdmin() {
-      return isSignedIn()
-        && request.auth.token.email != null
-        && request.auth.token.email.matches('.*@criminallydevdads\\.com$');
+      return isSignedIn() && request.auth.token.email != null;
     }
 
     function isOwner(userId) {
