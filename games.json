@@ -23,7 +23,7 @@
     "type": "game",
     "description": "Fort Fury — physics castle vs. AI. Web export lives in games/fortfury/ (Godot HTML5).",
     "details": "Playable in the hub via games/fortfury/index.html. Godot source and Web export live under games/fortfury/ (.godot not in git).",
-    "thumbnail": "",
+    "thumbnail": "games/fortfury/cover.png",
     "filename": "fortfury.zip"
   },
   {
@@ -32,7 +32,7 @@
     "type": "game",
     "description": "Navigate through an endless orbital maze with gravity-defying mechanics.",
     "details": "A challenging arcade game where you control a ship orbiting through procedurally generated obstacles. Test your reflexes in this minimalist space adventure.",
-    "thumbnail": "https://img.itch.zone/aW1hZ2UvMTEzNTkyMzUvNTMzOTIzMjYucG5n/315x250%23c/cCuTQy.png",
+    "thumbnail": "games/infinit-orbit/cover.png",
     "filename": "infinit-orbit.zip"
   },
   {
@@ -41,6 +41,7 @@
     "type": "game",
     "description": "Hack through hostile grids in this fast-paced tactical challenge.",
     "details": "A high-intensity action strategy game where timing and positioning matter. Survive waves, outmaneuver threats, and push deeper into the breach.",
+    "thumbnail": "games/gridbreach/cover.png",
     "filename": "gridbreach.zip"
   },
   {
@@ -57,6 +58,7 @@
     "type": "game",
     "description": "A frantic explosive arcade game with quick rounds and big plays.",
     "details": "Dodge danger, chain reactions, and outlast the chaos in this fast-paced arcade experience.",
+    "thumbnail": "games/bomb-blitz/cover.png",
     "filename": "bomb-blitz.zip"
   },
   {
@@ -65,7 +67,16 @@
     "type": "game",
     "description": "Drop onto a procedural island, loot chests, and outlast the storm in this neon battle royale.",
     "details": "A 2D platformer battle royale: drop from the sky with 99 fighters, loot weapons and upgrades, fight monsters, build cover, and survive the shrinking zone. Quick 3–6 minute runs with permanent progression between matches.",
-    "thumbnail": "games/novadrop/index.png",
+    "thumbnail": "games/novadrop/cover.png",
     "filename": "novadrop.zip"
+  },
+  {
+    "id": "SkyBattle",
+    "title": "SkyDrop",
+    "type": "game",
+    "description": "Drop from the plane, loot, and be the last one standing in this 2D battle royale.",
+    "details": "SkyDrop (SkyBattle): parachute onto a procedural island, grab weapons, survive the zone, and outlast the lobby.",
+    "thumbnail": "games/SkyBattle/cover.png",
+    "filename": "SkyBattle.zip"
   }
 ]
