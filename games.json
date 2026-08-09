@@ -3,9 +3,9 @@
     "id": "terracraft",
     "title": "Terracraft",
     "type": "game",
-    "description": "A 2D sandbox where you build, explore, and survive in infinite worlds.",
-    "details": "Dig, build, craft, and survive in this infinite 2D sandbox. Gather resources, fight enemies, build structures, and explore procedurally generated worlds.",
-    "thumbnail": "https://img.itch.zone/aW1hZ2UvMjY0NjE3Mi8xMjYwNDg4Ni5wbmc=/315x250%23c/d8L%2Buz.png",
+    "description": "A 2D side-scrolling survival adventure — dig, build, craft, and survive.",
+    "details": "Dig, build, craft, and survive in procedurally generated worlds. Gather resources, fight enemies, explore caves, and build your base in this browser-playable sandbox.",
+    "thumbnail": "games/terracraft/cover.png",
     "filename": "terracraft.zip"
   },
   {
