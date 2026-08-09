@@ -140,7 +140,7 @@ export function SystemStudio({ settings, setSettings }: Props) {
       <FieldGroup
         title="GitHub sync (optional backup)"
         tone="accent"
-        description="CMS edits save to Firebase when you are signed in as admin. A GitHub token is required for cover images, clips, screenshots, and game ZIP uploads — files land in games/ on this repo."
+        description="CMS saves to Firebase when you are signed in at /admin. Covers and clips upload to Firebase Storage — no GitHub token needed. GitHub sync is optional for game ZIP builds and repo backup only."
       >
         <div className="admin-field">
           <label htmlFor="gh_pat">GitHub Personal Access Token</label>
@@ -155,8 +155,8 @@ export function SystemStudio({ settings, setSettings }: Props) {
           <p className="admin-muted" style={{ marginTop: 6, fontSize: '0.82rem' }}>
             Status:{' '}
             {githubCmsConfigured()
-              ? '✓ Token saved (this browser) — used for covers, clips, screenshots, ZIP builds'
-              : 'Required for media uploads — paste a classic PAT with repo scope'}
+              ? '✓ Token saved (this browser) — optional: game ZIP uploads + repo backup'
+              : 'Optional — only needed for game ZIP uploads to the repo'}
           </p>
         </div>
         <div className="admin-field">
@@ -170,8 +170,8 @@ export function SystemStudio({ settings, setSettings }: Props) {
         </div>
         <p className="admin-muted" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
           Create token: GitHub → Settings → Developer settings → Personal access tokens → Generate (classic) → check{' '}
-          <strong>repo</strong> scope. Used for cover images, preview clips, screenshots, page media, and game ZIP uploads
-          into <code>games/</code> on this site.
+          <strong>repo</strong> scope. Optional — for uploading game ZIP builds to <code>games/</code> on this repo. Cover
+          images use Firebase when you are signed in at /admin.
         </p>
       </FieldGroup>
     </div>
