@@ -1,4 +1,5 @@
-import type { SitePage, SiteSettings } from '../types';
+import type { SitePage, SiteSettings, SupportButton } from '../types';
+import { resolveButtonHref } from './tipLink';
 
 export type SettingsFieldErrors = Record<string, string>;
 
@@ -12,6 +13,20 @@ function slugFromInternalPageHref(href: string): string | null {
   return slug || null;
 }
 
+function supportButtonEffective(
+  btn: SupportButton,
+  stripe: string,
+  supportPath: string,
+): { href: string; external: boolean } {
+  if (btn.id === 'contact' && supportPath) {
+    return { href: supportPath, external: false };
+  }
+  if ((btn.id === 'tip' || btn.id === 'donate') && stripe) {
+    return { href: stripe, external: true };
+  }
+  return resolveButtonHref(btn.href, stripe, btn.external);
+}
+
 /**
  * Blocks save — broken routing (e.g. `/p/shop` with "external" checked).
  * Missing CMS pages are hints only (see `softSiteSettingsLinkHints`) so you can save first, then add the page.
@@ -22,14 +37,9 @@ export function blockingSiteSettingsIssues(settings: SiteSettings): SettingsFiel
   settings.support_buttons.forEach((btn, i) => {
     const stripe = settings.stripe_tip_url.trim();
     const supportPath = settings.support_page_href.trim();
-    const effectiveHref =
-      (btn.id === 'tip' || btn.id === 'donate') && stripe
-        ? stripe
-        : btn.id === 'contact' && supportPath
-          ? supportPath
-          : btn.href;
+    const { href: effectiveHref, external } = supportButtonEffective(btn, stripe, supportPath);
 
-    if (btn.external && effectiveHref.trim().startsWith('/')) {
+    if (external && effectiveHref.trim().startsWith('/')) {
       errors[`support_btn_${i}`] =
         'Internal paths like /p/… must stay in the site shell. Uncheck “Open in new tab (external)”, or use a full https:// URL for an outside shop.';
     }
@@ -67,16 +77,11 @@ export function softSiteSettingsLinkHints(settings: SiteSettings, pages: SitePag
   settings.support_buttons.forEach((btn, i) => {
     const stripe = settings.stripe_tip_url.trim();
     const supportPath = settings.support_page_href.trim();
-    const effectiveHref =
-      (btn.id === 'tip' || btn.id === 'donate') && stripe
-        ? stripe
-        : btn.id === 'contact' && supportPath
-          ? supportPath
-          : btn.href;
-    if (btn.external && effectiveHref.trim().startsWith('/')) {
+    const { href: effectiveHref, external } = supportButtonEffective(btn, stripe, supportPath);
+    if (external && effectiveHref.trim().startsWith('/')) {
       return;
     }
-    if (!btn.external || ((btn.id === 'tip' || btn.id === 'donate') && stripe) || (btn.id === 'contact' && supportPath)) {
+    if (!external || btn.id === 'contact') {
       hintMissing(effectiveHref, `support_btn_${i}`);
     }
   });

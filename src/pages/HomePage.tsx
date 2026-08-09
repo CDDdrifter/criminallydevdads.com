@@ -11,6 +11,7 @@ import { activePromoEvents } from '../lib/promoEvents';
 import { backendConfigured } from '../lib/backend';
 import { SupportTipButton } from '../components/SupportTipButton';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { resolveButtonHref } from '../lib/tipLink';
 
 export function HomePage() {
   const { games, loading, error } = useGames();
@@ -38,9 +39,18 @@ export function HomePage() {
       if (btn.id === 'contact' && settings.support_page_href.trim()) {
         return { ...btn, href: settings.support_page_href.trim(), external: false };
       }
-      return btn;
+      if ((btn.id === 'tip' || btn.id === 'donate') && tipUrl) {
+        return { ...btn, href: tipUrl, external: true };
+      }
+      const resolved = resolveButtonHref(btn.href, tipUrl, btn.external);
+      return { ...btn, href: resolved.href, external: resolved.external };
     })
-    .filter((btn) => btn.id !== 'tip' && btn.id !== 'donate');
+    .filter((btn) => {
+      if (btn.id === 'tip' || btn.id === 'donate') {
+        return !showHomepageTipButton;
+      }
+      return Boolean(btn.href.trim()) || Boolean(btn.label.trim());
+    });
 
   // Admin-driven homepage sections (Studio → Homepage). `replace` mode lets
   // the admin own the entire page (no hero, no grid, no footer).
@@ -262,15 +272,11 @@ export function HomePage() {
             {supportButtons.map((btn) => {
               const href = btn.href.trim();
               if (!href) {
-                return (
-                  <button key={btn.id} type="button" className="btn-support" disabled style={{ opacity: 0.5 }}>
-                    {btn.label}
-                  </button>
-                );
+                return null;
               }
               if (btn.external) {
                 return (
-                  <a key={btn.id} href={href} target="_blank" rel="noreferrer" className="btn-support">
+                  <a key={btn.id} href={href} target="_blank" rel="noopener noreferrer" className="btn-support">
                     {btn.label}
                   </a>
                 );

@@ -22,6 +22,7 @@ import {
   uploadPageSectionVideo,
   uploadStudioAsset,
 } from '../../lib/gameStorageUpload';
+import { TIP_LINK_ALIAS } from '../../lib/tipLink';
 
 // ===========================================================================
 // State helpers.
@@ -902,6 +903,10 @@ export function PageSectionsForm({
 
           {sec.kind === 'buttons' && (
             <>
+              <p className="admin-muted" style={{ fontSize: '0.82rem', lineHeight: 1.45 }}>
+                Add any label + URL. Use <code>{TIP_LINK_ALIAS}</code> (or paste your Stripe link) to open the support /
+                tip checkout — no need to copy the long URL again after you set it in Site copy.
+              </p>
               <div className="admin-field">
                 <label>Align</label>
                 <select value={sec.align ?? 'left'} onChange={(e) => set(i)({ align: e.target.value })}>
@@ -940,8 +945,21 @@ export function PageSectionsForm({
                             buttons: sec.buttons.map((x) => (x.id === b.id ? { ...x, href: e.target.value } : x)),
                           })
                         }
-                        placeholder="https://… or @tip for support link"
+                        placeholder={`https://… or ${TIP_LINK_ALIAS} for support link`}
                       />
+                      <button
+                        type="button"
+                        style={{ marginTop: 6, fontSize: '0.78rem' }}
+                        onClick={() =>
+                          set(i)({
+                            buttons: sec.buttons.map((x) =>
+                              x.id === b.id ? { ...x, href: TIP_LINK_ALIAS, external: true } : x,
+                            ),
+                          })
+                        }
+                      >
+                        Use support link ({TIP_LINK_ALIAS})
+                      </button>
                     </div>
                     <label className="admin-row" style={{ gap: 8 }}>
                       <input
@@ -1693,7 +1711,15 @@ function CtaEditor({
       </div>
       <div className="admin-field">
         <label>URL</label>
-        <input value={v.href} onChange={(e) => update({ href: e.target.value })} placeholder="/p/about or https://…" />
+        <input
+          value={v.href}
+          onChange={(e) => update({ href: e.target.value })}
+          placeholder={`/p/about, https://…, or ${TIP_LINK_ALIAS} for support link`}
+        />
+        <p className="admin-muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
+          Paste <code>{TIP_LINK_ALIAS}</code> to open your Stripe tip link from Site copy — or paste the full{' '}
+          <code>https://buy.stripe.com/…</code> URL directly.
+        </p>
       </div>
       <label className="admin-row" style={{ gap: 8 }}>
         <input

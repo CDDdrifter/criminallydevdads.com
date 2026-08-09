@@ -46,6 +46,7 @@ import {
 } from '../lib/syncRepoGitHub';
 import { githubCmsConfigured } from '../lib/githubCms';
 import { resolvePublicAssetUrl } from '../lib/paths';
+import { isTipLinkAlias, TIP_LINK_ALIAS } from '../lib/tipLink';
 import { blockingSiteSettingsIssues, softSiteSettingsLinkHints } from '../lib/adminSettingsValidate';
 import { donationPresetsFromUnknown } from '../lib/gamePricing';
 import { describeAdminWriteFailure, formatAdminWriteError } from '../lib/adminWriteError';
@@ -1745,8 +1746,8 @@ export function AdminPage() {
             />
             <p className="admin-muted" style={{ marginTop: 8, fontSize: '0.82rem', lineHeight: 1.5 }}>
               Opens when visitors click <strong>Support the Devs</strong> buttons. Use a Stripe Payment Link for
-              voluntary tips. Place buttons anywhere with the <strong>☕ Support tip button</strong> page block, or set
-              any button URL to <code>@tip</code>.
+              voluntary tips. Use the <strong>Buttons</strong> page block, homepage support buttons below, or set any
+              button URL to <code>{TIP_LINK_ALIAS}</code> (opens your Stripe link without pasting the long URL again).
             </p>
           </div>
           <div className="admin-field">
@@ -1819,8 +1820,8 @@ export function AdminPage() {
             <p className="admin-muted" style={{ marginBottom: 12, fontSize: '0.82rem', lineHeight: 1.5 }}>
               <strong>How href works:</strong> This site uses a <strong>hash router</strong>. Store internal paths like{' '}
               <code>/p/shop</code> or <code>/game/slug</code> — no <code>#</code>, no full domain. That only works if{' '}
-              <em>Open in new tab (external)</em> is <strong>off</strong>. For a hosted store (Shopify, etc.), paste the
-              full <code>https://…</code> URL and leave <em>external</em> on. The slug after <code>/p/</code> must match a
+              <em>Open in new tab (external)</em> is <strong>off</strong>. For Stripe tips, paste <code>{TIP_LINK_ALIAS}</code>{' '}
+              or the full <code>https://buy.stripe.com/…</code> URL (external on). The slug after <code>/p/</code> must match a
               page in the <strong>Pages</strong> tab (e.g. slug <code>shop</code> → link <code>/p/shop</code>).
             </p>
             <div className="admin-grid" style={{ gap: 10 }}>
@@ -1892,12 +1893,16 @@ export function AdminPage() {
                     <label>Href</label>
                     <input
                       value={btn.href}
+                      placeholder={`/p/shop, https://…, or ${TIP_LINK_ALIAS}`}
                       onChange={(e) => {
                         clearSettingsFieldError(`support_btn_${i}`);
+                        const href = e.target.value;
+                        const external =
+                          btn.external || isTipLinkAlias(href) || /^https?:\/\//i.test(href.trim());
                         setSettings({
                           ...settings,
                           support_buttons: settings.support_buttons.map((b, idx) =>
-                            idx === i ? { ...b, href: e.target.value } : b,
+                            idx === i ? { ...b, href, external } : b,
                           ),
                         });
                       }}
@@ -1908,10 +1913,12 @@ export function AdminPage() {
                       disabled={busy}
                       onPick={(href) => {
                         clearSettingsFieldError(`support_btn_${i}`);
+                        const external =
+                          btn.external || isTipLinkAlias(href) || /^https?:\/\//i.test(href.trim());
                         setSettings({
                           ...settings,
                           support_buttons: settings.support_buttons.map((b, idx) =>
-                            idx === i ? { ...b, href } : b,
+                            idx === i ? { ...b, href, external } : b,
                           ),
                         });
                       }}
@@ -1954,7 +1961,8 @@ export function AdminPage() {
                         background: 'rgba(115, 248, 255, 0.06)',
                       }}
                     >
-                      <strong>Homepage uses</strong> the Stripe tip URL field for Tip, not this href.
+                      <strong>Tip:</strong> This button opens your Stripe link automatically. You can also use{' '}
+                      <code>{TIP_LINK_ALIAS}</code> on any custom button label.
                     </p>
                   ) : null}
                   <label className="admin-row" style={{ gap: 8 }}>

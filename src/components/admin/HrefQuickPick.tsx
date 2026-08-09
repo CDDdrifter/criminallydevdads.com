@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { TIP_LINK_ALIAS } from '../../lib/tipLink';
 
 export type HrefPickOption = { value: string; label: string };
 
@@ -15,6 +16,7 @@ const CORE_LINKS: HrefPickOption[] = [
   { value: '/devlog', label: 'Dev log list' },
   { value: '/purchase/terms', label: 'Purchase terms' },
   { value: '/admin', label: 'Admin' },
+  { value: TIP_LINK_ALIAS, label: 'Support / tip link (@tip)' },
 ];
 
 export function HrefQuickPick({ pages, games, onPick, disabled }: Props) {

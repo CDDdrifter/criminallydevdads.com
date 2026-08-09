@@ -21,7 +21,7 @@ import { SupportTipButton } from './SupportTipButton';
 import type { PageSection } from '../types';
 import { useGames } from '../hooks/useGames';
 import { useSiteSettings } from '../hooks/useSiteSettings';
-import { resolveTipHref } from '../lib/tipLink';
+import { isTipLinkAlias, resolveButtonHref } from '../lib/tipLink';
 import { GameCardMetaChips } from './GameCardMetaChips';
 import { GameCardThumbnail } from './GameCardThumbnail';
 import { htmlAppSandbox } from './HtmlAppEmbed';
@@ -36,19 +36,19 @@ function renderCtaButton(
   tipUrl = '',
 ) {
   if (!cta || !cta.label.trim()) return null;
-  const resolved = resolveTipHref(cta.href, tipUrl);
-  const href = resolved?.href ?? cta.href;
-  const external = resolved?.external ?? cta.external;
-  const className = `page-section-cta page-section-cta--${variant}`;
+  const { href, external } = resolveButtonHref(cta.href, tipUrl, cta.external);
+  if (!href) return null;
+  const tipStyle = isTipLinkAlias(cta.href) || Boolean(tipUrl && href === tipUrl.trim());
+  const className = tipStyle ? 'btn-support' : `page-section-cta page-section-cta--${variant}`;
   if (external) {
     return (
-      <a href={href} target="_blank" rel="noreferrer" className={className}>
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
         {cta.label}
       </a>
     );
   }
   return (
-    <Link to={href || '/'} className={className}>
+    <Link to={href} className={className}>
       {cta.label}
     </Link>
   );
