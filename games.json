@@ -69,14 +69,5 @@
     "details": "A 2D platformer battle royale: drop from the sky with 99 fighters, loot weapons and upgrades, fight monsters, build cover, and survive the shrinking zone. Quick 3–6 minute runs with permanent progression between matches.",
     "thumbnail": "games/novadrop/cover.png",
     "filename": "novadrop.zip"
-  },
-  {
-    "id": "SkyBattle",
-    "title": "SkyDrop",
-    "type": "game",
-    "description": "Drop from the plane, loot, and be the last one standing in this 2D battle royale.",
-    "details": "SkyDrop (SkyBattle): parachute onto a procedural island, grab weapons, survive the zone, and outlast the lobby.",
-    "thumbnail": "games/SkyBattle/cover.png",
-    "filename": "SkyBattle.zip"
   }
 ]
