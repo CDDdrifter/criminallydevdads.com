@@ -85,7 +85,7 @@ import { auth } from './firebase';
 import { githubCmsConfigured, syncGamesJsonToGitHub } from './githubCms';
 import { fetchStaticJson } from './staticCms';
 import { normalizePromoEvents } from './promoEvents';
-import { normalizeRouteFxOverride } from './routeFx';
+import { defaultRouteFxOverride, normalizeRouteFxOverride } from './routeFx';
 import { normalizeVisualPresetInput } from './visualPresets';
 
 // ---------------------------------------------------------------------------
@@ -568,10 +568,83 @@ function gameRecordToLegacyJson(g: GameRecord): Record<string, unknown> {
   return row;
 }
 
+function legacyCatalogRowToGameRecord(raw: Record<string, unknown>, sortOrder: number): GameRecord {
+  const slug = String(raw.id ?? raw.slug ?? '').trim();
+  const priceCents = Math.max(0, Math.round(Number(raw.price_cents ?? 0)));
+  return {
+    id: slug,
+    slug,
+    title: String(raw.title ?? slug),
+    type: (raw.type as GameRecord['type']) ?? 'game',
+    description: String(raw.description ?? ''),
+    details: raw.details ? String(raw.details) : null,
+    thumbnail_url: raw.thumbnail ? String(raw.thumbnail) : null,
+    tab_icon_url: null,
+    preview_video_url: raw.preview_video ? String(raw.preview_video) : null,
+    external_url: raw.url ? String(raw.url) : raw.external_url ? String(raw.external_url) : null,
+    local_folder: slug,
+    storage_slug: null,
+    storage_entry_in_zip: raw.storage_entry_in_zip ? String(raw.storage_entry_in_zip) : null,
+    download_url: raw.download_url ? String(raw.download_url) : null,
+    sections: [],
+    visual_preset: raw.visual_preset ? String(raw.visual_preset) : null,
+    price_cents: priceCents,
+    purchase_url: raw.purchase_url ? String(raw.purchase_url) : null,
+    gumroad_url: raw.gumroad_url ? String(raw.gumroad_url) : null,
+    stripe_price_id: raw.stripe_price_id ? String(raw.stripe_price_id) : null,
+    pricing_model: gamePricingModelFromRecord(raw.pricing_model, priceCents),
+    pwyw_min_cents: Math.max(0, Math.round(Number(raw.pwyw_min_cents ?? 0))),
+    pwyw_suggested_cents: Math.max(0, Math.round(Number(raw.pwyw_suggested_cents ?? 0))),
+    donation_presets_cents: donationPresetsFromUnknown(raw.donation_presets_cents),
+    sort_order: sortOrder,
+    published: true,
+    in_vault: false,
+    immersive_layout: false,
+    custom_mood_css: '',
+    route_fx: defaultRouteFxOverride(),
+    tags: Array.isArray(raw.tags) ? (raw.tags as unknown[]).map(String).filter(Boolean) : [],
+    release_date: String(raw.release_date ?? ''),
+    platforms: Array.isArray(raw.platforms) ? (raw.platforms as unknown[]).map(String).filter(Boolean) : [],
+    screenshots: Array.isArray(raw.screenshots) ? (raw.screenshots as unknown[]).map(String).filter(Boolean) : [],
+    features: [],
+    controls: [],
+    credits: [],
+    changelog: [],
+    system_requirements: [],
+  };
+}
+
+/** Fast catalog read — Firestore or games.json only (no games/ folder probing). */
+async function loadGamesCatalogRecords(): Promise<GameRecord[]> {
+  try {
+    const fromFirestore = await firestoreGetGamesCatalog();
+    if (Array.isArray(fromFirestore) && fromFirestore.length > 0) {
+      return fromFirestore.map((row, i) =>
+        legacyCatalogRowToGameRecord(row as Record<string, unknown>, i),
+      );
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const data = await fetchStaticJson<unknown[]>('games.json');
+    if (Array.isArray(data) && data.length > 0) {
+      return data.map((row, i) =>
+        legacyCatalogRowToGameRecord(row as Record<string, unknown>, i),
+      );
+    }
+  } catch {
+    /* fall through */
+  }
+  return [];
+}
+
 async function loadAllGamesForAdmin(): Promise<GameRecord[]> {
   const legacy = await loadLegacyGames();
   return legacy.map((g, i) => gameViewToRecord(g, i));
 }
+
+const GITHUB_SYNC_TIMEOUT_MS = 12_000;
 
 async function persistGamesJson(games: GameRecord[]): Promise<void> {
   const sorted = [...games].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
@@ -584,14 +657,26 @@ async function persistGamesJson(games: GameRecord[]): Promise<void> {
   }
 
   if (githubCmsConfigured()) {
-    const result = await syncGamesJsonToGitHub(json);
-    if (result.error) {
-      if (!saved) {
-        throw new Error(result.error);
+    try {
+      const result = await Promise.race([
+        syncGamesJsonToGitHub(json),
+        new Promise<{ error: string }>((resolve) =>
+          setTimeout(() => resolve({ error: 'GitHub games.json sync timed out' }), GITHUB_SYNC_TIMEOUT_MS),
+        ),
+      ]);
+      if (result.error) {
+        if (!saved) {
+          throw new Error(result.error);
+        }
+        console.warn('[cms] GitHub games.json sync failed (Firestore saved):', result.error);
+      } else {
+        saved = true;
       }
-      console.warn('[cms] GitHub games.json sync failed (Firestore saved):', result.error);
-    } else {
-      saved = true;
+    } catch (e) {
+      if (!saved) {
+        throw e;
+      }
+      console.warn('[cms] GitHub games.json sync failed (Firestore saved):', e);
     }
   }
 
@@ -733,8 +818,11 @@ export async function fetchAllGamesAdmin(): Promise<GameRecord[]> {
   return loadAllGamesForAdmin();
 }
 
-export async function upsertGame(row: Partial<GameRecord> & { slug: string; title: string }) {
-  const games = await loadAllGamesForAdmin();
+export async function upsertGame(
+  row: Partial<GameRecord> & { slug: string; title: string },
+  existingGames?: GameRecord[],
+) {
+  const games = existingGames ? [...existingGames] : await loadGamesCatalogRecords();
   const idx = games.findIndex((g) => g.slug === row.slug.trim());
   const base: GameRecord =
     idx >= 0
@@ -761,8 +849,8 @@ export async function upsertGame(row: Partial<GameRecord> & { slug: string; titl
   await persistGamesJson(games);
 }
 
-export async function deleteGameBySlug(slug: string) {
-  const games = await loadAllGamesForAdmin();
+export async function deleteGameBySlug(slug: string, existingGames?: GameRecord[]) {
+  const games = existingGames ? [...existingGames] : await loadGamesCatalogRecords();
   const filtered = games.filter((g) => g.slug !== slug);
   await persistGamesJson(filtered);
 }

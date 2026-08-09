@@ -935,18 +935,19 @@ export function AdminPage() {
       flash('Choose an image file.');
       return;
     }
-    if (!githubGameUploadReady() && !isFirebaseReady()) {
-      flash('Add a GitHub token in System → GitHub sync (recommended), or sign in with Firebase.', 12000);
+    if (!auth.isSignedIn && !githubGameUploadReady()) {
+      flash('Sign in with Google at /admin first — cover uploads save to Firebase Storage.', 12000);
       return;
     }
     const titleForRow = gameDraft.title.trim() || slug;
     setBusy(true);
     try {
       const url = await uploadGameThumbnail(slug, file);
-      await upsertGame({
+      const payload = {
         ...gameUpsertPayload({ ...gameDraft, slug, title: titleForRow }),
         thumbnail_url: url,
-      });
+      };
+      await upsertGame(payload, games);
       resetLegacyGamesCache();
       setGameDraft((prev) => ({
         ...prev,
@@ -954,14 +955,22 @@ export function AdminPage() {
         thumbnail_url: url,
         title: prev.title?.trim() ? prev.title : titleForRow,
       }));
+      setGames((prev) => {
+        const idx = prev.findIndex((g) => g.slug === slug);
+        if (idx < 0) {
+          return [...prev, { ...payload, id: slug } as GameRecord];
+        }
+        const next = [...prev];
+        next[idx] = { ...next[idx]!, ...payload, thumbnail_url: url };
+        return next;
+      });
       if (thumbFileRef.current) {
         thumbFileRef.current.value = '';
       }
-      await reload();
       flash(
-        githubGameUploadReady()
-          ? 'Cover uploaded to games/' + slug + '/ — live after the site redeploys (metadata saved now).'
-          : 'Cover uploaded and saved.',
+        /^https?:\/\//i.test(url)
+          ? 'Cover uploaded to Firebase — live now.'
+          : 'Cover uploaded to games/' + slug + '/ — image live after site redeploys.',
       );
     } catch (e) {
       console.error(e);
@@ -2696,9 +2705,10 @@ export function AdminPage() {
                   {busy ? 'Uploading cover…' : 'Add cover image'}
                 </span>
               </label>
-              {!githubGameUploadReady() && !isFirebaseReady() ? (
+              {!auth.isSignedIn && !githubGameUploadReady() ? (
                 <p className="admin-muted" style={{ margin: '8px 0 0', color: 'var(--warning)' }}>
-                  Add a GitHub token in <strong>System → GitHub sync</strong> to upload cover images (recommended).
+                  <strong>Sign in with Google</strong> at the top of /admin — cover uploads go to Firebase Storage and
+                  appear instantly.
                 </p>
               ) : null}
               {!gameSlugEffective ? (

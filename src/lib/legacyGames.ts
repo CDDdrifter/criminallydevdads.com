@@ -118,7 +118,7 @@ function deriveId(meta: LegacyMeta): string {
 export async function pathExists(path: string): Promise<boolean> {
   const url = /^https?:\/\//i.test(path) ? path : resolvePublicAssetUrl(path);
   try {
-    const response = await fetch(url, { cache: 'no-store' });
+    const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(4000) });
     if (!response.ok) {
       return false;
     }
@@ -244,11 +244,14 @@ async function buildGameFromFolder(
     `games/${folderId}/icon.png`,
     `games/${folderId}/icon.svg`,
   ];
-  let resolvedThumbnail = '';
-  for (const candidate of thumbnailCandidates) {
-    if (await pathExists(candidate)) {
-      resolvedThumbnail = candidate;
-      break;
+  const metadataThumb = String(metadata.thumbnail ?? '').trim();
+  let resolvedThumbnail = metadataThumb;
+  if (!resolvedThumbnail) {
+    for (const candidate of thumbnailCandidates) {
+      if (await pathExists(candidate)) {
+        resolvedThumbnail = candidate;
+        break;
+      }
     }
   }
   if (!resolvedThumbnail && isLocalPlayable) {
@@ -266,7 +269,7 @@ async function buildGameFromFolder(
     details:
       metadata.details ??
       'This game was auto-added because a web build was detected in the games directory.',
-    thumbnail: resolvedThumbnail || metadata.thumbnail || '',
+    thumbnail: resolvedThumbnail,
     tab_icon: '',
     preview_video: previewRaw ? resolvePublicAssetUrl(previewRaw) : '',
     external_url: external,

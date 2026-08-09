@@ -94,6 +94,12 @@ function lfsPointer(oid: string, size: number): string {
   return `version https://git-lfs.github.com/spec/v1\noid sha256:${oid}\nsize ${size}\n`;
 }
 
+const FETCH_TIMEOUT_MS = 20_000;
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+}
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -394,7 +400,12 @@ export async function uploadRepoBinaryFile(
   };
 
   const getUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encodeURIComponent(cleanPath)}?ref=${encodeURIComponent(branch)}`;
-  const getRes = await fetch(getUrl, { headers: ghHeaders });
+  let getRes: Response;
+  try {
+    getRes = await fetchWithTimeout(getUrl, { headers: ghHeaders });
+  } catch {
+    throw new Error(`GitHub timed out reading ${cleanPath}. Check your connection and token.`);
+  }
   let sha: string | undefined;
   if (getRes.ok) {
     const meta = (await getRes.json()) as { sha?: string };
@@ -404,19 +415,24 @@ export async function uploadRepoBinaryFile(
     throw new Error(`GitHub read ${cleanPath}: ${getRes.status} ${t.slice(0, 300)}`);
   }
 
-  const putRes = await fetch(
-    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encodeURIComponent(cleanPath)}`,
-    {
-      method: 'PUT',
-      headers: { ...ghHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: commitMessage ?? `chore(media): update ${cleanPath}`,
-        content,
-        sha,
-        branch,
-      }),
-    },
-  );
+  let putRes: Response;
+  try {
+    putRes = await fetchWithTimeout(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encodeURIComponent(cleanPath)}`,
+      {
+        method: 'PUT',
+        headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: commitMessage ?? `chore(media): update ${cleanPath}`,
+          content,
+          sha,
+          branch,
+        }),
+      },
+    );
+  } catch {
+    throw new Error(`GitHub timed out uploading ${cleanPath}. Try again or sign in and use Firebase Storage.`);
+  }
   if (!putRes.ok) {
     const t = await putRes.text();
     throw new Error(`GitHub upload ${cleanPath}: ${putRes.status} ${t.slice(0, 400)}`);

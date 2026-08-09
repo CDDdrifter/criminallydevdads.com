@@ -12,7 +12,7 @@ import {
 import {
   firebaseUploadPublicFile,
 } from './firebaseStorageUpload';
-import { isFirebaseReady } from './firebase';
+import { auth, initFirebase, isFirebaseReady } from './firebase';
 
 export const GAME_BUILDS_BUCKET = 'game-builds';
 
@@ -584,6 +584,12 @@ export async function uploadGameThumbnail(gameSlug: string, file: File): Promise
     throw new Error('Invalid game slug for thumbnail upload.');
   }
   const ext = validateImageFile(file, 'Thumbnail');
+  await initFirebase();
+
+  if (isFirebaseReady() && auth?.currentUser) {
+    return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, `${slug}/cover.${ext}`, file, guessContentType(`x.${ext}`));
+  }
+
   const relPath = `cover.${ext}`;
   if (githubGameUploadReady()) {
     const publicPath = await uploadGameImageToRepo(slug, relPath, file, 'cover image');
@@ -596,12 +602,13 @@ export async function uploadGameThumbnail(gameSlug: string, file: File): Promise
     }
     return publicPath;
   }
-  if (!isFirebaseReady()) {
-    throw new Error(
-      'No GitHub token (Admin → System → GitHub sync) and Firebase Storage is not configured. Add a GitHub PAT or sign in with Firebase.',
-    );
+
+  if (isFirebaseReady()) {
+    throw new Error('Sign in with Google at /admin first — then cover uploads go to Firebase Storage instantly.');
   }
-  return firebaseUploadPublicFile(GAME_THUMBNAILS_BUCKET, `${slug}/cover.${ext}`, file, guessContentType(`x.${ext}`));
+  throw new Error(
+    'Sign in at /admin with Google, or add a GitHub token under System → GitHub sync.',
+  );
 }
 
 /** Gallery still / screenshot — stored under games/<slug>/media/. */
