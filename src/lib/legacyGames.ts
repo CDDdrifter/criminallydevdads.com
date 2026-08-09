@@ -245,13 +245,19 @@ async function buildGameFromFolder(
     `games/${folderId}/icon.svg`,
   ];
   const metadataThumb = String(metadata.thumbnail ?? '').trim();
-  let resolvedThumbnail = metadataThumb;
-  if (!resolvedThumbnail) {
-    for (const candidate of thumbnailCandidates) {
-      if (await pathExists(candidate)) {
-        resolvedThumbnail = candidate;
-        break;
-      }
+  let resolvedThumbnail = '';
+  // Prefer repo-local cover art when deployed — Firestore/games.json may still point at stale itch.io URLs.
+  for (const candidate of thumbnailCandidates) {
+    if (await pathExists(candidate)) {
+      resolvedThumbnail = candidate;
+      break;
+    }
+  }
+  if (!resolvedThumbnail && metadataThumb) {
+    if (/^https?:\/\//i.test(metadataThumb)) {
+      resolvedThumbnail = metadataThumb;
+    } else if (await pathExists(metadataThumb)) {
+      resolvedThumbnail = metadataThumb;
     }
   }
   if (!resolvedThumbnail && isLocalPlayable) {
