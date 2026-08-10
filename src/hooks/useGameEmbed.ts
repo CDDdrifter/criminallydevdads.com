@@ -4,6 +4,11 @@ import { probeGamePlayUrl } from '../lib/playUrlProbe';
 import { resolveGameUrl } from '../lib/paths';
 import { isSecureBrowsingContext, secureContextGameMessage } from '../lib/secureContext';
 
+function isLocalRepoGamePath(launchPath: string): boolean {
+  const p = launchPath.trim();
+  return p.startsWith('games/') && !/^https?:\/\//i.test(p);
+}
+
 export function useGameEmbed(game: GameView | undefined) {
   const [probeState, setProbeState] = useState<'idle' | 'checking' | 'ready' | 'failed'>('idle');
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
@@ -29,6 +34,16 @@ export function useGameEmbed(game: GameView | undefined) {
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = null;
+    }
+
+    // Repo-hosted Godot builds: skip preflight fetch — show iframe immediately.
+    if (isLocalRepoGamePath(game.launchPath)) {
+      setIframeSrc(url);
+      setProbeState('ready');
+      setProbeError(null);
+      return () => {
+        cancelled = true;
+      };
     }
 
     setProbeState('checking');

@@ -93,7 +93,10 @@ body {
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 
-	</head>
+	<link rel="preload" href="index.js" as="script">
+<link rel="preload" href="index.wasm" as="fetch" type="application/wasm" crossorigin="anonymous">
+<link rel="preload" href="index.pck" as="fetch" crossorigin="anonymous">
+</head>
 	<body>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.

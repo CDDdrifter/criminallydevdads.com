@@ -222,16 +222,15 @@ async function discoverGameFolders(): Promise<string[]> {
   }
 }
 
-async function buildGameFromFolder(
+async function resolveLocalThumbnail(
   folderId: string,
-  metadataById: Record<string, LegacyMeta>,
-): Promise<GameView> {
-  const metadata = metadataById[folderId] ?? {};
-  const external = playUrl(metadata);
-  const entryRel = (metadata.storage_entry_in_zip ?? 'index.html').trim() || 'index.html';
-  const downloadUrl = (metadata.download_url ?? '').trim();
-  const localLaunch = `games/${folderId}/${entryRel}`;
-  const isLocalPlayable = await pathExists(localLaunch);
+  metadataThumb: string,
+  isLocalPlayable: boolean,
+  localLaunch: string,
+): Promise<string> {
+  if (metadataThumb.startsWith(`games/${folderId}/`)) {
+    return metadataThumb;
+  }
   const thumbnailCandidates = [
     `games/${folderId}/cover.png`,
     `games/${folderId}/cover.jpg`,
@@ -244,25 +243,44 @@ async function buildGameFromFolder(
     `games/${folderId}/icon.png`,
     `games/${folderId}/icon.svg`,
   ];
-  const metadataThumb = String(metadata.thumbnail ?? '').trim();
-  let resolvedThumbnail = '';
-  // Prefer repo-local cover art when deployed — Firestore/games.json may still point at stale itch.io URLs.
-  for (const candidate of thumbnailCandidates) {
-    if (await pathExists(candidate)) {
-      resolvedThumbnail = candidate;
-      break;
-    }
+  const checks = await Promise.all(
+    thumbnailCandidates.map(async (candidate) => ((await pathExists(candidate)) ? candidate : '')),
+  );
+  const resolved = checks.find(Boolean) ?? '';
+  if (resolved) {
+    return resolved;
   }
-  if (!resolvedThumbnail && metadataThumb) {
+  if (metadataThumb) {
     if (/^https?:\/\//i.test(metadataThumb)) {
-      resolvedThumbnail = metadataThumb;
-    } else if (await pathExists(metadataThumb)) {
-      resolvedThumbnail = metadataThumb;
+      return metadataThumb;
+    }
+    if (await pathExists(metadataThumb)) {
+      return metadataThumb;
     }
   }
-  if (!resolvedThumbnail && isLocalPlayable) {
-    resolvedThumbnail = await resolveThumbnailFromIndexHtml(localLaunch, folderId);
+  if (isLocalPlayable) {
+    return resolveThumbnailFromIndexHtml(localLaunch, folderId);
   }
+  return '';
+}
+
+async function buildGameFromFolder(
+  folderId: string,
+  metadataById: Record<string, LegacyMeta>,
+): Promise<GameView> {
+  const metadata = metadataById[folderId] ?? {};
+  const external = playUrl(metadata);
+  const entryRel = (metadata.storage_entry_in_zip ?? 'index.html').trim() || 'index.html';
+  const downloadUrl = (metadata.download_url ?? '').trim();
+  const localLaunch = `games/${folderId}/${entryRel}`;
+  const isLocalPlayable = await pathExists(localLaunch);
+  const metadataThumb = String(metadata.thumbnail ?? '').trim();
+  const resolvedThumbnail = await resolveLocalThumbnail(
+    folderId,
+    metadataThumb,
+    isLocalPlayable,
+    localLaunch,
+  );
   const id = metadata.id ?? folderId;
   const previewRaw = (metadata.preview_video ?? '').trim();
   const priceCents = Math.max(0, Math.round(Number(metadata.price_cents ?? 0)));
@@ -316,24 +334,33 @@ async function buildGameFromFolder(
 
 /** Shared in-memory cache — avoids re-probing every game asset on each route. */
 let legacyGamesPromise: Promise<GameView[]> | null = null;
+let legacyGamesCache: GameView[] | null = null;
 
 export function resetLegacyGamesCache(): void {
   legacyGamesPromise = null;
+  legacyGamesCache = null;
 }
 
 export async function loadLegacyGames(): Promise<GameView[]> {
+  if (legacyGamesCache) {
+    return legacyGamesCache;
+  }
   if (!legacyGamesPromise) {
-    legacyGamesPromise = loadLegacyGamesUncached().catch((err) => {
-      legacyGamesPromise = null;
-      throw err;
-    });
+    legacyGamesPromise = loadLegacyGamesUncached()
+      .then((games) => {
+        legacyGamesCache = games;
+        return games;
+      })
+      .catch((err) => {
+        legacyGamesPromise = null;
+        throw err;
+      });
   }
   return legacyGamesPromise;
 }
 
-async function loadLegacyGamesUncached(): Promise<GameView[]> {
-  const metadataList = await loadOptionalMetadata();
-  const metadataById = metadataList.reduce<Record<string, LegacyMeta>>((acc, raw) => {
+function metadataByIdFromList(metadataList: LegacyMeta[]): Record<string, LegacyMeta> {
+  return metadataList.reduce<Record<string, LegacyMeta>>((acc, raw) => {
     const merged: LegacyMeta = { ...raw, url: playUrl(raw) || undefined };
     const id = deriveId(merged);
     if (id) {
@@ -341,6 +368,38 @@ async function loadLegacyGamesUncached(): Promise<GameView[]> {
     }
     return acc;
   }, {});
+}
+
+/** Fast single-game load for /play and /game routes — never waits for full catalog probes. */
+export async function loadGameBySlug(slug: string): Promise<GameView | null> {
+  const trimmed = slug.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (legacyGamesCache) {
+    const hit = legacyGamesCache.find((g) => g.slug === trimmed || g.id === trimmed);
+    if (hit) {
+      return hit;
+    }
+  }
+
+  const metadataList = await loadOptionalMetadata();
+  const metadataById = metadataByIdFromList(metadataList);
+  if (metadataById[trimmed]) {
+    return buildGameFromFolder(trimmed, metadataById);
+  }
+
+  const folderIds = await discoverGameFolders();
+  if (!folderIds.includes(trimmed)) {
+    return null;
+  }
+  return buildGameFromFolder(trimmed, metadataById);
+}
+
+async function loadLegacyGamesUncached(): Promise<GameView[]> {
+  const metadataList = await loadOptionalMetadata();
+  const metadataById = metadataByIdFromList(metadataList);
 
   const folderIds = await discoverGameFolders();
   const folderSet = new Set(folderIds);

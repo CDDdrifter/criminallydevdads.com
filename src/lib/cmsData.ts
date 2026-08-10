@@ -80,7 +80,7 @@ import {
   firestoreUpsertPage,
 } from './firestoreData';
 import { normalizePageSections } from './pageSections';
-import { loadLegacyGames, resetLegacyGamesCache } from './legacyGames';
+import { loadLegacyGames, loadGameBySlug, resetLegacyGamesCache } from './legacyGames';
 import { auth } from './firebase';
 import { githubCmsConfigured, syncGamesJsonToGitHub } from './githubCms';
 import { fetchStaticJson } from './staticCms';
@@ -480,18 +480,7 @@ export async function fetchVaultGames(): Promise<GameView[]> {
 
 /** Single game for detail/play routes — reads games.json + games/ folder (no Supabase required). */
 export async function fetchGameViewBySlug(slug: string): Promise<GameView | null> {
-  const trimmed = slug.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const legacy = await loadLegacyGames();
-  const hit = legacy.find((g) => g.slug === trimmed || g.id === trimmed);
-  if (hit) {
-    return hit;
-  }
-
-  return null;
+  return loadGameBySlug(slug);
 }
 
 function gameViewToRecord(g: GameView, sortOrder: number): GameRecord {

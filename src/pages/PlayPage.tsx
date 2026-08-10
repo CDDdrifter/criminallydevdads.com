@@ -11,7 +11,6 @@ import { useSiteSettings } from '../hooks/useSiteSettings';
 import { useAuth } from '../context/AuthContext';
 import { applyVisualPresetToDocument, resolveVisualPreset } from '../lib/routeFx';
 import { trackGamePlay } from '../lib/analytics';
-import { verifyGamePlayability } from '../lib/verifyGamePlayability';
 import type { GameView } from '../types';
 
 export function PlayPage() {
@@ -40,9 +39,8 @@ export function PlayPage() {
         setLoadError('Game not found, or it is a draft.');
         return;
       }
-      const [verified] = await verifyGamePlayability([row]);
       if (!cancelled) {
-        setGame(verified ?? row);
+        setGame(row);
       }
     })();
     return () => {
