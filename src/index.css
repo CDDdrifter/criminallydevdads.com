@@ -1300,6 +1300,8 @@ body.scrolling .container {
 /* GamePlayerEmbed: iframe only — no overlay fullscreen/exit control. */
 .game-embed-shell {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-height: 75vh;
 }
@@ -1362,6 +1364,14 @@ html[data-game-embed-fs='on'] body {
   display: block;
 }
 
+.game-embed-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 70vh;
+}
+
 .game-embed-toolbar {
   flex: 0 0 auto;
   display: flex;
@@ -1372,6 +1382,33 @@ html[data-game-embed-fs='on'] body {
   background: linear-gradient(180deg, rgba(10, 14, 24, 0.94), rgba(5, 8, 14, 0.98));
   border-top: 1px solid rgba(115, 248, 255, 0.38);
   z-index: 30;
+}
+
+.game-embed-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+a.game-embed-install-btn {
+  text-decoration: none;
+  color: var(--text, #eaf0ff);
+}
+
+.game-offline-install {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(115, 248, 255, 0.28);
+  background: rgba(8, 12, 22, 0.72);
+}
+
+.game-offline-install p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted, #9aa3bc);
 }
 
 .game-embed-toolbar__hint {

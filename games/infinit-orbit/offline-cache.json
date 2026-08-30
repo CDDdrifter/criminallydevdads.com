@@ -1,0 +1,35 @@
+{
+  "cacheName": "cdd-offline-infinit-orbit-58f9aa9a65",
+  "title": "Infinite Orbit",
+  "assets": [
+    "index.html",
+    "index.js",
+    "index.wasm",
+    "index.pck",
+    "index.png",
+    "index.icon.png",
+    "index.apple-touch-icon.png",
+    "index.audio.worklet.js",
+    "index.audio.position.worklet.js",
+    "cover.png",
+    "manifest.json",
+    "pwa-boot.js",
+    "offline-cache.json"
+  ],
+  "sizes": {
+    "index.pck": 245976,
+    "index.wasm": 35739700,
+    "index.html": 6157,
+    "index.js": 279925,
+    "index.png": 31927,
+    "index.icon.png": 7526,
+    "index.apple-touch-icon.png": 15353,
+    "index.audio.worklet.js": 7298,
+    "index.audio.position.worklet.js": 2973,
+    "cover.png": 51801,
+    "manifest.json": 474,
+    "pwa-boot.js": 9552,
+    "offline-cache.json": 814
+  },
+  "bytes": 36399476
+}

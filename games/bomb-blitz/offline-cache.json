@@ -1,0 +1,35 @@
+{
+  "cacheName": "cdd-offline-bomb-blitz-8ddfa6c988",
+  "title": "BombBlitz",
+  "assets": [
+    "index.html",
+    "index.js",
+    "index.wasm",
+    "index.pck",
+    "index.png",
+    "index.icon.png",
+    "index.apple-touch-icon.png",
+    "index.audio.worklet.js",
+    "index.audio.position.worklet.js",
+    "cover.png",
+    "manifest.json",
+    "pwa-boot.js",
+    "offline-cache.json"
+  ],
+  "sizes": {
+    "index.pck": 183268,
+    "index.wasm": 35739700,
+    "index.html": 6149,
+    "index.js": 279925,
+    "index.png": 33593,
+    "index.icon.png": 11677,
+    "index.apple-touch-icon.png": 9224,
+    "index.audio.worklet.js": 7298,
+    "index.audio.position.worklet.js": 2973,
+    "cover.png": 33593,
+    "manifest.json": 458,
+    "pwa-boot.js": 9552,
+    "offline-cache.json": 810
+  },
+  "bytes": 36318220
+}

@@ -1,7 +1,8 @@
 /**
  * GamePlayerEmbed — game iframe + docked player toolbar (fullscreen always reachable).
+ * Play / fullscreen never navigate away or change the iframe src.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   anyGamepadButtonPressed,
   focusGameIframe,
@@ -15,6 +16,12 @@ import {
 type Props = {
   title: string;
   src: string;
+  /** Standalone Godot page used for iPhone Add to Home Screen + offline save. */
+  installHref?: string;
+};
+
+export type GamePlayerHandle = {
+  enterFullscreen: () => void;
 };
 
 type FullscreenDocument = Document & {
@@ -29,22 +36,6 @@ type FullscreenElement = HTMLDivElement & {
 function getFullscreenElement(): Element | null {
   const doc = document as FullscreenDocument;
   return document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
-}
-
-function tryNativeEnter(el: FullscreenElement): boolean {
-  try {
-    if (typeof el.requestFullscreen === 'function') {
-      void el.requestFullscreen();
-      return true;
-    }
-    if (typeof el.webkitRequestFullscreen === 'function') {
-      void el.webkitRequestFullscreen();
-      return true;
-    }
-  } catch {
-    /* gesture / policy */
-  }
-  return false;
 }
 
 function tryNativeExit(): void {
@@ -69,7 +60,10 @@ function isIPhone(): boolean {
   return /iPhone|iPod/.test(navigator.userAgent || '');
 }
 
-export function GamePlayerEmbed({ title, src }: Props) {
+export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function GamePlayerEmbed(
+  { title, src, installHref },
+  ref,
+) {
   const shellRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [fs, setFs] = useState(false);
@@ -215,10 +209,32 @@ export function GamePlayerEmbed({ title, src }: Props) {
       return;
     }
     engage();
-    if (isIPhone() || !tryNativeEnter(el)) {
+    if (isIPhone()) {
       setPseudoFs(true);
+      return;
     }
+    try {
+      const req = el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.();
+      if (req && typeof (req as Promise<void>).then === 'function') {
+        void Promise.resolve(req).catch(() => setPseudoFs(true));
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    setPseudoFs(true);
   }, [engage]);
+
+  const exitFullscreen = useCallback(() => {
+    if (pseudoFs) {
+      setPseudoFs(false);
+    }
+    if (getFullscreenElement()) {
+      tryNativeExit();
+    }
+  }, [pseudoFs]);
+
+  useImperativeHandle(ref, () => ({ enterFullscreen }), [enterFullscreen]);
 
   const onShellPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -252,29 +268,55 @@ export function GamePlayerEmbed({ title, src }: Props) {
         />
         {!engaged ? (
           <button type="button" className="game-embed-play-gate" onClick={engage}>
-            <span className="game-embed-play-gate__title">🎮 Click to play</span>
+            <span className="game-embed-play-gate__title">Tap to play</span>
             <span className="game-embed-play-gate__hint">
-              Focuses keyboard &amp; controller here. Use the toolbar below for fullscreen.
+              Starts this game here. It will not open a new page or reload.
             </span>
           </button>
         ) : null}
       </div>
 
-      {!isFullscreen ? (
-        <div className="game-embed-toolbar" role="toolbar" aria-label="Game player">
-          <span className="game-embed-toolbar__hint">
-            {engaged ? 'Playing — scroll down for game info' : 'Click the game area to start'}
-          </span>
-          <button
-            type="button"
-            className="game-embed-fs-btn"
-            onClick={enterFullscreen}
-            aria-label="Enter fullscreen"
-          >
-            ⛶ Fullscreen
-          </button>
+      <div className="game-embed-toolbar" role="toolbar" aria-label="Game player">
+        <span className="game-embed-toolbar__hint">
+          {isFullscreen
+            ? 'Fullscreen — game stays on this page'
+            : engaged
+              ? 'Playing — scroll down for game info'
+              : 'Tap the game to start. Fullscreen stays on this page.'}
+        </span>
+        <div className="game-embed-toolbar__actions">
+          {installHref && !isFullscreen ? (
+            <a
+              className="game-embed-fs-btn game-embed-install-btn"
+              href={installHref}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Save to iPhone
+            </a>
+          ) : null}
+          {isFullscreen ? (
+            <button
+              type="button"
+              className="game-embed-fs-btn"
+              onClick={exitFullscreen}
+              aria-label="Exit fullscreen"
+            >
+              Exit
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="game-embed-fs-btn"
+              onClick={enterFullscreen}
+              aria-label="Enter fullscreen"
+            >
+              Fullscreen
+            </button>
+          )}
         </div>
-      ) : null}
+      </div>
     </div>
   );
-}
+});
+

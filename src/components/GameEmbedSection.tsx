@@ -1,15 +1,21 @@
+import { forwardRef } from 'react';
 import type { GameView } from '../types';
 import { useGameEmbed } from '../hooks/useGameEmbed';
-import { GamePlayerEmbed } from './GamePlayerEmbed';
+import { GamePlayerEmbed, type GamePlayerHandle } from './GamePlayerEmbed';
+import { isLocalRepoGamePath } from '../lib/localGamePath';
 
 type Props = {
   game: GameView;
-  /** When false, omit the “Playing: … / open in tab” helper row (game detail page). */
+  /** When false, omit the “Playing: …” helper row (game detail page). */
   showPlayingLabel?: boolean;
 };
 
-export function GameEmbedSection({ game, showPlayingLabel = true }: Props) {
+export const GameEmbedSection = forwardRef<GamePlayerHandle, Props>(function GameEmbedSection(
+  { game, showPlayingLabel = true },
+  ref,
+) {
   const { probeState, iframeSrc, probeError, resolvedUrl } = useGameEmbed(game);
+  const canInstallOffline = isLocalRepoGamePath(game.launchPath);
 
   if (!game.isPlayable) {
     return null;
@@ -20,10 +26,6 @@ export function GameEmbedSection({ game, showPlayingLabel = true }: Props) {
       {showPlayingLabel ? (
         <div className="admin-muted" style={{ marginBottom: 12 }}>
           Playing: <strong>{game.title}</strong>
-          {' · '}
-          <a href={resolvedUrl} target="_blank" rel="noreferrer">
-            Open play URL in new tab
-          </a>
         </div>
       ) : null}
 
@@ -47,10 +49,25 @@ export function GameEmbedSection({ game, showPlayingLabel = true }: Props) {
       ) : null}
 
       {probeState === 'ready' && iframeSrc ? (
-        <div className="game-embed-wrap">
-          <GamePlayerEmbed title={game.title} src={iframeSrc} />
+        <div className="game-embed-wrap" id="game-player">
+          <GamePlayerEmbed
+            ref={ref}
+            title={game.title}
+            src={iframeSrc}
+            installHref={canInstallOffline ? resolvedUrl : undefined}
+          />
+        </div>
+      ) : null}
+
+      {canInstallOffline ? (
+        <div className="game-offline-install">
+          <p>
+            <strong>iPhone / no signal:</strong> tap <em>Save to iPhone</em>. Wait until that page says the
+            game is saved. Then tap Share → Add to Home Screen. After that it opens with no cell service.
+            Use Safari. This does not restart the game you are already playing.
+          </p>
         </div>
       ) : null}
     </>
   );
-}
+});

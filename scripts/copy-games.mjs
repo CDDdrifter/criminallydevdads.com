@@ -2,6 +2,7 @@ import { cp } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { injectGamePwa } from './inject-game-pwa.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -20,6 +21,8 @@ if (!existsSync(gamesSrc)) {
 
 await cp(gamesSrc, distGames, { recursive: true });
 console.log('copy-games: copied games/ → dist/games/');
+const injected = await injectGamePwa(distGames);
+console.log('copy-games: offline install ready for', injected.join(', ') || '(none)');
 
 const gamesJson = path.join(root, 'games.json');
 if (existsSync(gamesJson)) {

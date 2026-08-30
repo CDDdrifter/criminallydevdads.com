@@ -1,0 +1,35 @@
+{
+  "cacheName": "cdd-offline-terracraft-776c313486",
+  "title": "TerraCraft",
+  "assets": [
+    "index.html",
+    "index.js",
+    "index.wasm",
+    "index.pck",
+    "index.png",
+    "index.icon.png",
+    "index.apple-touch-icon.png",
+    "index.audio.worklet.js",
+    "index.audio.position.worklet.js",
+    "cover.png",
+    "manifest.json",
+    "pwa-boot.js",
+    "offline-cache.json"
+  ],
+  "sizes": {
+    "index.pck": 704692,
+    "index.wasm": 35739700,
+    "index.html": 6151,
+    "index.js": 279925,
+    "index.png": 21443,
+    "index.icon.png": 3792,
+    "index.apple-touch-icon.png": 7079,
+    "index.audio.worklet.js": 7298,
+    "index.audio.position.worklet.js": 2973,
+    "cover.png": 60592,
+    "manifest.json": 461,
+    "pwa-boot.js": 9552,
+    "offline-cache.json": 806
+  },
+  "bytes": 36844464
+}

@@ -1,0 +1,35 @@
+{
+  "cacheName": "cdd-offline-virtual-garden-7bf7e191c4",
+  "title": "Virtual Garden",
+  "assets": [
+    "index.html",
+    "VirtualGarden.js",
+    "VirtualGarden.wasm",
+    "VirtualGarden.pck",
+    "VirtualGarden.png",
+    "VirtualGarden.icon.png",
+    "VirtualGarden.apple-touch-icon.png",
+    "VirtualGarden.audio.worklet.js",
+    "VirtualGarden.audio.position.worklet.js",
+    "cover.png",
+    "manifest.json",
+    "pwa-boot.js",
+    "offline-cache.json"
+  ],
+  "sizes": {
+    "VirtualGarden.pck": 161220,
+    "VirtualGarden.wasm": 35739700,
+    "index.html": 5993,
+    "VirtualGarden.js": 279925,
+    "VirtualGarden.png": 21443,
+    "VirtualGarden.icon.png": 1916,
+    "VirtualGarden.apple-touch-icon.png": 11792,
+    "VirtualGarden.audio.worklet.js": 7298,
+    "VirtualGarden.audio.position.worklet.js": 2973,
+    "cover.png": 48544,
+    "manifest.json": 483,
+    "pwa-boot.js": 9552,
+    "offline-cache.json": 943
+  },
+  "bytes": 36291782
+}

@@ -3,11 +3,7 @@ import type { GameView } from '../types';
 import { probeGamePlayUrl } from '../lib/playUrlProbe';
 import { resolveGameUrl } from '../lib/paths';
 import { isSecureBrowsingContext, secureContextGameMessage } from '../lib/secureContext';
-
-function isLocalRepoGamePath(launchPath: string): boolean {
-  const p = launchPath.trim();
-  return p.startsWith('games/') && !/^https?:\/\//i.test(p);
-}
+import { isLocalRepoGamePath } from '../lib/localGamePath';
 
 export function useGameEmbed(game: GameView | undefined) {
   const [probeState, setProbeState] = useState<'idle' | 'checking' | 'ready' | 'failed'>('idle');

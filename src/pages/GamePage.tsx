@@ -1,6 +1,7 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { GameEmbedSection } from '../components/GameEmbedSection';
+import type { GamePlayerHandle } from '../components/GamePlayerEmbed';
 import { GamePurchaseBlock } from '../components/GamePurchaseBlock';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
@@ -26,6 +27,7 @@ export function GamePage() {
   const [game, setGame] = useState<GameView | null | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [screenshotLightbox, setScreenshotLightbox] = useState<number | null>(null);
+  const playerRef = useRef<GamePlayerHandle>(null);
 
   useEffect(() => {
     if (!slug?.trim()) {
@@ -175,7 +177,7 @@ export function GamePage() {
           <strong>Draft — hidden from the public.</strong> Toggle <em>Published</em> in Admin → Games to release.
         </div>
       ) : null}
-      <GameEmbedSection game={game} showPlayingLabel={false} />
+      <GameEmbedSection ref={playerRef} game={game} showPlayingLabel={false} />
 
       {game.isPlayable ? (
         <p className="admin-muted game-embed-scroll-hint">
@@ -390,9 +392,17 @@ export function GamePage() {
 
         <div className="game-actions" style={{ maxWidth: 480, marginTop: 24, flexWrap: 'wrap' }}>
           {game.isPlayable ? (
-            <Link to={`/play/${game.slug}`} className="btn-download" style={{ textAlign: 'center' }}>
-              {game.download_url && !game.launchPath.startsWith('http') ? 'Try in browser' : 'Full-screen player'}
-            </Link>
+            <button
+              type="button"
+              className="btn-download"
+              style={{ textAlign: 'center' }}
+              onClick={() => {
+                document.getElementById('game-player')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                playerRef.current?.enterFullscreen();
+              }}
+            >
+              Play fullscreen
+            </button>
           ) : null}
           {game.download_url ? (
             <a

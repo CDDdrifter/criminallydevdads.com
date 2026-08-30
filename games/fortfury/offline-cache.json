@@ -1,0 +1,35 @@
+{
+  "cacheName": "cdd-offline-fortfury-f02adbeb03",
+  "title": "Fort Fury",
+  "assets": [
+    "index.html",
+    "index.js",
+    "index.wasm",
+    "index.pck",
+    "index.png",
+    "index.icon.png",
+    "index.apple-touch-icon.png",
+    "index.audio.worklet.js",
+    "index.audio.position.worklet.js",
+    "cover.png",
+    "manifest.json",
+    "pwa-boot.js",
+    "offline-cache.json"
+  ],
+  "sizes": {
+    "index.pck": 178428,
+    "index.wasm": 35739700,
+    "index.html": 6369,
+    "index.js": 280834,
+    "index.png": 45395,
+    "index.icon.png": 9224,
+    "index.apple-touch-icon.png": 9224,
+    "index.audio.worklet.js": 7511,
+    "index.audio.position.worklet.js": 3039,
+    "cover.png": 45395,
+    "manifest.json": 456,
+    "pwa-boot.js": 9552,
+    "offline-cache.json": 803
+  },
+  "bytes": 36335930
+}

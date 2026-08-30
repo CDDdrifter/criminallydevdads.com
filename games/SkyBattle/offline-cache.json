@@ -1,0 +1,35 @@
+{
+  "cacheName": "cdd-offline-SkyBattle-096ed4246e",
+  "title": "SkyBattle",
+  "assets": [
+    "index.html",
+    "index.js",
+    "index.wasm",
+    "index.pck",
+    "index.png",
+    "index.icon.png",
+    "index.apple-touch-icon.png",
+    "index.audio.worklet.js",
+    "index.audio.position.worklet.js",
+    "cover.png",
+    "manifest.json",
+    "pwa-boot.js",
+    "offline-cache.json"
+  ],
+  "sizes": {
+    "index.pck": 116700,
+    "index.wasm": 35739700,
+    "index.html": 6149,
+    "index.js": 279925,
+    "index.png": 45404,
+    "index.icon.png": 1778,
+    "index.apple-touch-icon.png": 3816,
+    "index.audio.worklet.js": 7298,
+    "index.audio.position.worklet.js": 2973,
+    "cover.png": 45404,
+    "manifest.json": 457,
+    "pwa-boot.js": 9552,
+    "offline-cache.json": 804
+  },
+  "bytes": 36259960
+}

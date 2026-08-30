@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
 		<title>SkyBattle</title>
 		<style>
 html, body, #canvas {
@@ -96,6 +96,14 @@ body {
 	<link rel="preload" href="index.js" as="script">
 <link rel="preload" href="index.wasm" as="fetch" type="application/wasm" crossorigin="anonymous">
 <link rel="preload" href="index.pck" as="fetch" crossorigin="anonymous">
+<!-- CDD-PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="SkyBattle" />
+<meta name="theme-color" content="#0d111a" />
+<!-- /CDD-PWA -->
 </head>
 	<body>
 		<canvas id="canvas">
@@ -218,6 +226,9 @@ const engine = new Engine(GODOT_CONFIG);
 	}
 }());
 		</script>
-	</body>
+	<!-- CDD-PWA-BOOT -->
+<script src="pwa-boot.js" defer></script>
+<!-- /CDD-PWA-BOOT -->
+</body>
 </html>
 
