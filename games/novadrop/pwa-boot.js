@@ -13,27 +13,6 @@
   var CACHE_JSON = 'offline-cache.json';
   var SW_FILE = 'offline-sw.js';
 
-  // Keep Safari from turning extra fingers into pinch-zoom / page-scroll.
-  // Godot still receives the same touch events (preventDefault only blocks the browser).
-  function lockBrowserGestures() {
-    function prevent(e) {
-      e.preventDefault();
-    }
-    document.addEventListener('gesturestart', prevent, { passive: false });
-    document.addEventListener('gesturechange', prevent, { passive: false });
-    document.addEventListener('gestureend', prevent, { passive: false });
-    document.addEventListener(
-      'touchmove',
-      function (e) {
-        if (e.touches && e.touches.length > 0) {
-          e.preventDefault();
-        }
-      },
-      { passive: false, capture: true },
-    );
-  }
-  lockBrowserGestures();
-
   function inIframe() {
     try {
       return window.self !== window.top;

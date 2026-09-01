@@ -5,14 +5,12 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   anyGamepadButtonPressed,
-  attachGameEmbedTouchGuard,
   focusGameIframe,
   GAME_EMBED_ALLOW,
   isGameControlKey,
   isTypingTarget,
   setGameEmbedActiveDocument,
   setGameEmbedFullscreenDocument,
-  setHubViewportForGame,
 } from '../lib/gameEmbedInput';
 
 type Props = {
@@ -67,7 +65,6 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
   ref,
 ) {
   const shellRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [fs, setFs] = useState(false);
   const [pseudoFs, setPseudoFs] = useState(false);
@@ -89,20 +86,8 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
 
   useEffect(() => {
     setGameEmbedActiveDocument(engaged);
-    setHubViewportForGame(engaged);
-    return () => {
-      setGameEmbedActiveDocument(false);
-      setHubViewportForGame(false);
-    };
+    return () => setGameEmbedActiveDocument(false);
   }, [engaged]);
-
-  useEffect(() => {
-    return attachGameEmbedTouchGuard({
-      getStage: () => stageRef.current,
-      isActive: () => engaged,
-      isFullscreen: () => isFullscreen,
-    });
-  }, [engaged, isFullscreen]);
 
   useEffect(() => {
     setGameEmbedFullscreenDocument(isFullscreen);
@@ -258,11 +243,6 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
       }
       if (!engaged) {
         engage();
-        return;
-      }
-      const iframe = iframeRef.current;
-      if (iframe && document.activeElement !== iframe) {
-        focusGameIframe(iframe);
       }
     },
     [engaged, engage],
@@ -274,7 +254,7 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
       ref={shellRef}
       onPointerDown={onShellPointerDown}
     >
-      <div className="game-embed-stage" ref={stageRef}>
+      <div className="game-embed-stage">
         <iframe
           ref={iframeRef}
           title={title}
