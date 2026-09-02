@@ -1456,8 +1456,8 @@ a.game-embed-install-btn {
   width: 100vw;
   height: 100dvh;
   margin: 0;
-  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
-    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0
+    env(safe-area-inset-left, 0px);
 }
 
 .game-embed-shell:fullscreen .game-embed-stage,
@@ -1475,14 +1475,20 @@ a.game-embed-install-btn {
 
 .game-embed-shell:fullscreen .game-embed-toolbar,
 .game-embed-shell--pseudo-fs .game-embed-toolbar {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   flex-wrap: nowrap;
   justify-content: flex-end;
+  align-items: center;
   gap: 0;
-  padding: 1px 6px max(1px, env(safe-area-inset-bottom, 0px));
-  background: rgba(0, 0, 0, 0.45);
-  border-top: 0;
-  min-height: 0;
+  width: 100%;
+  height: 16px;
+  min-height: 16px;
+  max-height: 16px;
+  padding: 0 8px;
+  margin: 0;
+  background: #000;
+  border: 0;
+  line-height: 16px;
 }
 
 .game-embed-shell:fullscreen .game-embed-toolbar__hint,
@@ -1490,16 +1496,30 @@ a.game-embed-install-btn {
   display: none;
 }
 
+.game-embed-shell:fullscreen .game-embed-toolbar__actions,
+.game-embed-shell--pseudo-fs .game-embed-toolbar__actions {
+  gap: 0;
+  height: 16px;
+  min-height: 0;
+}
+
 .game-embed-shell:fullscreen .game-embed-fs-btn,
 .game-embed-shell--pseudo-fs .game-embed-fs-btn {
-  padding: 1px 5px;
-  font-size: 0.62rem;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0 6px;
+  margin: 0;
+  height: 16px;
+  min-height: 0;
+  min-width: 0;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
-  line-height: 1.15;
-  border-radius: 3px;
+  line-height: 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
-  min-height: 0;
 }
 
 .game-embed-fs-btn {
