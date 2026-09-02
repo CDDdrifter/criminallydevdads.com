@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { GameEmbedSection } from '../components/GameEmbedSection';
 import type { GamePlayerHandle } from '../components/GamePlayerEmbed';
-import { GamePurchaseBlock } from '../components/GamePurchaseBlock';
+import { AdminGameFilesDownload } from '../components/AdminGameFilesDownload';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
 import { CommentSection } from '../components/CommentSection';
@@ -414,6 +414,13 @@ export function GamePage() {
             >
               Download game
             </a>
+          ) : null}
+          {isAdmin && (game.local_folder || game.launchPath.startsWith('games/')) ? (
+            <AdminGameFilesDownload
+              localFolder={game.local_folder}
+              launchPath={game.launchPath}
+              title={game.title}
+            />
           ) : null}
           {game.external_url && !game.local_folder ? (
             <a className="btn-download" href={game.external_url} target="_blank" rel="noreferrer">

@@ -60,7 +60,7 @@ import { MailingListStudio } from '../components/admin/tabs/MailingListStudio';
 import { ServicesAdminTab } from '../components/admin/tabs/ServicesAdminTab';
 import { PrebuiltPagesStudio } from '../components/admin/tabs/PrebuiltPagesStudio';
 import { LegalStudio } from '../components/admin/tabs/LegalStudio';
-import { AdminAiAssistant } from '../components/admin/AdminAiAssistant';
+import { AdminGameFilesDownload } from '../components/AdminGameFilesDownload';
 import { FloatingSettingsSaveBar } from '../components/admin/FloatingSettingsSaveBar';
 import { ADMIN_AI_PAGE_DRAFT_KEY } from '../lib/adminAi/types';
 import { fetchAllServicesAdmin } from '../lib/servicesData';
@@ -3081,6 +3081,14 @@ export function AdminPage() {
                     Save the game so <code>games.json</code> lists this title alongside your other games.
                   </span>
                 </p>
+              ) : null}
+              {gameDraft.local_folder?.trim() || gameDraft.slug?.trim() ? (
+                <div style={{ marginBottom: 12 }}>
+                  <AdminGameFilesDownload
+                    localFolder={gameDraft.local_folder || gameDraft.slug}
+                    title={gameDraft.title}
+                  />
+                </div>
               ) : null}
               {zipRepoConfirmed ? (
                 <div className="admin-cloud-build-ok" role="status" aria-live="polite">
