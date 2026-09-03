@@ -1,13 +1,20 @@
-# CMS snapshots (optional static bundle)
+# CMS snapshots (`cms/*.json`)
 
-After you run **Admin → Overview → Push pages/layout snapshot** (or **Push everything**), this folder is populated in Git with JSON exports from Supabase:
+These JSON files ship with GitHub Pages (`scripts/copy-cms.mjs` copies `cms/` → `dist/cms/`). The live site reads them on first paint.
 
-- `site-settings.json`
-- `site-pages.json`
-- `site-nav.json`
-- `site-devlogs.json`
-- `site-content.snapshot.json` (combined)
+| File | What it is |
+|------|------------|
+| `site-settings.json` | Theme, hero, footer, studio settings |
+| `site-pages.json` | Custom pages (`/p/<slug>`) |
+| `site-nav.json` | Extra header links |
+| `site-devlogs.json` | Dev log posts |
+| `admin-config.json` | Who can open `/admin` (`admin_emails` / `admin_domains`) |
+| `firebase-config.json` | Google sign-in keys (public web config) |
 
-The production build copies `cms/` → `dist/cms/`. The site loads these files **first** when present, so hero text, pages, and nav appear with the initial paint instead of “popping in” after Supabase responds.
+**Edit from Admin:** sign in at `/admin`, change Pages / studio, then **Overview → Push pages/layout snapshot** (needs GitHub token). That commits these files to `main`.
 
-If this folder is empty, the site falls back to live Supabase reads (when configured).
+**Edit on GitHub:** open the file → pencil → commit to `main` → wait for deploy.
+
+**Add an admin:** put the exact Google email in `admin-config.json` `admin_emails`, commit, wait for Pages.
+
+Day-to-day: [`docs/HOW_TO_UPDATE.md`](../docs/HOW_TO_UPDATE.md).

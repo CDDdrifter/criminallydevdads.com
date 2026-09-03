@@ -2,51 +2,44 @@
 
 ## Site v2 (React hub)
 
-The main site is a **Vite + React** app with the same neon / terminal look.
+The main site is a **Vite + React** app. Games are files in this repo. Sign-in is **Firebase**. Admin saves can write GitHub.
 
 ### How to change things (read this first)
 
-**→ [`docs/ADMIN_LOGIN_ONE_PAGE.md`](docs/ADMIN_LOGIN_ONE_PAGE.md)** — **checklist** · [`docs/SIMPLE_ADMIN_LOGIN.md`](docs/SIMPLE_ADMIN_LOGIN.md) — **`/#/admin`** with email (edit the site). Optional: **[`docs/SYNC_CMS_TO_GITHUB.md`](docs/SYNC_CMS_TO_GITHUB.md)** — push **`games.json`** from the CMS to the repo (Edge Function + GitHub token).  
-**→ [`docs/SITE_MANUAL.md`](docs/SITE_MANUAL.md)** — games, **§12 updating a build** (e.g. Fort Fury: overwrite `games/fortfury/` → `git add` / `commit` / `push`), pages, nav, troubleshooting, **§13** (hub login vs in-game saves).
+**→ [`docs/HOW_TO_UPDATE.md`](docs/HOW_TO_UPDATE.md)** — **add games, replace builds, add pages, GitHub token, wait for Pages.** This is the playbook for doing it yourself.
 
-**→ [`docs/SUPABASE_BEGINNER_GUIDE.md`](docs/SUPABASE_BEGINNER_GUIDE.md)** — **start here if Supabase is confusing** (migrations, SQL tabs, secrets vs DB, optional Stripe).
+**→ [`docs/ADMIN_LOGIN_ONE_PAGE.md`](docs/ADMIN_LOGIN_ONE_PAGE.md)** — Google sign-in at **`/admin`** (not `/#/admin`).
 
-**→ [`docs/STRIPE_CHECKOUT.md`](docs/STRIPE_CHECKOUT.md)** — **Stripe Checkout** (fixed / PWYW / donation): Edge Function secrets, **`SITE_URL` vs `VITE_SUPABASE_URL`**, hash routes, Supabase **dashboard UI** pitfalls (same alignment as **`docs/SUPABASE_COPY_THESE_TWO_VALUES.md`**).
+**→ [`docs/FIREBASE_SETUP.md`](docs/FIREBASE_SETUP.md)** — Google login + authorized domains.
 
-**→ [`docs/WEBSITE_WORKFLOW.md`](docs/WEBSITE_WORKFLOW.md)** — two paths:
+**→ [`docs/WEBSITE_WORKFLOW.md`](docs/WEBSITE_WORKFLOW.md)** — GitHub files vs browser admin.
 
-- **Path A (default, no setup):** Edit **`games.json`**, put builds in **`games/<slug>/`**, change layout in **`src/`**, push. **Supabase is not required.** Omit `VITE_SUPABASE_*` GitHub secrets for a purely file-based deploy.
-- **Path B (optional):** Browser admin at **`/#/admin`** after Supabase + secrets — **[`docs/SUPABASE_FIRST_TIME_SETUP.md`](docs/SUPABASE_FIRST_TIME_SETUP.md)**, **[`docs/SUPABASE_COPY_THESE_TWO_VALUES.md`](docs/SUPABASE_COPY_THESE_TWO_VALUES.md)**, **[`docs/GITHUB_ACTIONS_SUPABASE_SECRETS.md`](docs/GITHUB_ACTIONS_SUPABASE_SECRETS.md)** (Secrets **not** Variables on GitHub).
+**→ [`docs/SITE_MANUAL.md`](docs/SITE_MANUAL.md)** — extra detail (Git size limits, itch.io `url`, coded routes).
 
-**Catalog:** With **`VITE_GAME_CATALOG=auto`** (default), the hub uses the **database only if `site_games` has published rows**; otherwise it uses **`games.json`**. So a half-finished Supabase setup no longer hides your games. Use **`VITE_GAME_CATALOG=cms`** only when you want the DB exclusively.
+Stripe Payment Links: **[`docs/STRIPE_SETUP.md`](docs/STRIPE_SETUP.md)**. Older **Supabase** docs are leftover; this site does not need Supabase to run.
 
 ### Deploy
 
-**Settings → Pages → Source: GitHub Actions.** Workflow: **[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)** on push to **`main`** or **`fixing.fortfury`**.
+**Settings → Pages → Source: GitHub Actions.** Workflow: **[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)** on push to **`main`** (or **`fixing.fortfury`**).
 
 ### Local dev
 
-- Copy `.env.example` → `.env.local` with the same `VITE_*` keys.
+- Copy `.env.example` → `.env.local` if you need extra `VITE_*` keys (Firebase already ships in `cms/firebase-config.json`).
 - `npm run dev`
-
-### Legacy mode (no Supabase)
-
-If the site is built **without** Supabase env vars, the hub falls back to **GitHub API + `games.json` + `games/`** (old workflow).
 
 ### Features
 
-- **Routing**: hash routes (e.g. `/#/admin`, `/#/play/my-game`).
-- **Play**: **Fullscreen** control (bottom-right of the player) on every game — see **`docs/SITE_MANUAL.md`** §10.
-- **Games (files)**: **`games.json`** + **`games/<slug>/`** — no cloud required.
-- **Games (optional CMS)**: **`/#/admin`** with Supabase — ZIP storage, external URLs, same allowlist as RLS.
-- **Admin link**: hidden from the header by default; open **`/#/admin`** or set **`VITE_SHOW_ADMIN_NAV=true`** (see **`docs/SITE_MANUAL.md`** §11).
-- **Pages & panels**: Custom pages from code, or from Admin when Supabase is on.
+- **Routing**: real paths (`/admin`, `/play/my-game`, `/p/about`).
+- **Play**: **Fullscreen** on the player — **`docs/SITE_MANUAL.md`** §10.
+- **Games**: **`games.json`** + **`games/<slug>/`**, or an external **`url`**. Upload ZIPs from **`/admin`** with a GitHub token.
+- **Admin**: **`/admin`** (bookmark it). Hidden from the public header unless **`VITE_SHOW_ADMIN_NAV=true`**.
+- **Pages**: Admin → Pages (`/p/<slug>`), or a React file in **`src/pages/`**.
 
 ---
 
 ## Quick Start (content)
 
-Your website is now a fully functional game distribution platform. Here's how to manage it:
+Prefer **[`docs/HOW_TO_UPDATE.md`](docs/HOW_TO_UPDATE.md)** and **`/admin`**. The GitHub.com upload steps below still work if you edit files in the repo by hand.
 
 ---
 

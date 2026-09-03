@@ -61,6 +61,7 @@ import { ServicesAdminTab } from '../components/admin/tabs/ServicesAdminTab';
 import { PrebuiltPagesStudio } from '../components/admin/tabs/PrebuiltPagesStudio';
 import { LegalStudio } from '../components/admin/tabs/LegalStudio';
 import { AdminGameFilesDownload } from '../components/AdminGameFilesDownload';
+import { AdminPublishGuide } from '../components/admin/AdminPublishGuide';
 import { FloatingSettingsSaveBar } from '../components/admin/FloatingSettingsSaveBar';
 import { ADMIN_AI_PAGE_DRAFT_KEY } from '../lib/adminAi/types';
 import { fetchAllServicesAdmin } from '../lib/servicesData';
@@ -1097,8 +1098,8 @@ export function AdminPage() {
     setPageSaveSummary(null);
     if (!pageDraft.slug.trim()) {
       setPageSaveStatus('error');
-      setPageFieldErrors({ slug: '✗ Slug is required — public URL is /#/p/{slug}.' });
-      setPageSaveDetail('✗ Slug is required — public URL is /#/p/{slug}.');
+      setPageFieldErrors({ slug: '✗ Slug is required — public URL is /p/{slug}.' });
+      setPageSaveDetail('✗ Slug is required — public URL is /p/{slug}.');
       flash('Page slug required.');
       return;
     }
@@ -1492,6 +1493,7 @@ export function AdminPage() {
 
       {tab === 'overview' && (
         <>
+        <AdminPublishGuide onOpenTab={(id) => setTab(id as Tab)} />
         <div className="admin-panel" style={{ marginBottom: 20, borderColor: 'rgba(115, 248, 255, 0.35)' }}>
           <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>🏠 Homepage builder</h2>
           <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55, fontSize: '0.88rem' }}>
@@ -1542,7 +1544,7 @@ export function AdminPage() {
           <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>💰 Monetization (no new API keys)</h2>
           <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55, fontSize: '0.88rem' }}>
             <strong>Services tab:</strong> tips, demos, website/app/game gigs, merch — Stripe + email requests at{' '}
-            <code>/#/services</code>. <strong>Games tab:</strong> sell playable builds. <strong>Site copy:</strong>{' '}
+            <code>/services</code>. <strong>Games tab:</strong> sell playable builds. <strong>Site copy:</strong>{' '}
             Tip link. Stripe Payment Links work today; built-in Checkout needs a Cloud Function when you are ready.
           </p>
           <div className="admin-row" style={{ gap: 8, flexWrap: 'wrap' }}>
@@ -1556,12 +1558,12 @@ export function AdminPage() {
         </div>
         <div className="admin-panel" style={{ marginTop: 20, borderColor: 'rgba(115, 248, 255, 0.25)' }}>
           <h2 style={{ fontSize: '1rem', margin: '0 0 8px', color: 'var(--accent)' }}>
-            Push repo backups to GitHub (optional)
+            Push cms/*.json to GitHub (so the next Pages build matches Admin)
           </h2>
           <p className="admin-muted" style={{ marginTop: 0, lineHeight: 1.55 }}>
-            CMS edits save to <strong>Firebase Firestore</strong> live. Use these buttons to snapshot{' '}
-            <code>games.json</code> or <code>cms/*.json</code> into GitHub for backup or deploy bundling. Game builds
-            live in <code>games/&lt;slug&gt;/</code> (upload via Games tab + GitHub token).
+            Pages, theme, and nav save to <strong>Firebase</strong> immediately. GitHub Pages still ships whatever is in{' '}
+            <code>cms/*.json</code> and <code>games.json</code>. After big CMS edits, push a snapshot (needs the token in
+            System). Game <strong>builds</strong> are separate: Games tab ZIP → <code>games/&lt;slug&gt;/</code>.
           </p>
           <div className="admin-row" style={{ marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
             <button
@@ -2264,13 +2266,15 @@ export function AdminPage() {
               Add or update game
             </h2>
             <p className="admin-muted" style={{ lineHeight: 1.55 }}>
-              Enter a <strong>title</strong> and save — game metadata goes to <strong>Firebase</strong> (live immediately) when you are signed in as admin.
-              To upload a Godot Web <strong>.zip</strong> into <code>games/&lt;slug&gt;/</code>, paste a GitHub token in <strong>System → GitHub sync</strong>,
-              or paste an external play URL instead.
+              <strong>Title</strong> is required. To put a Godot Web build on the site, upload a <strong>.zip</strong> of
+              the export (needs a GitHub token in <strong>System</strong>) — files land in <code>games/&lt;slug&gt;/</code>.
+              Or paste an <strong>external play URL</strong> (itch.io / Netlify) and skip the zip. After ZIP save, wait for
+              GitHub Actions, then hard-refresh.
             </p>
             {!githubCmsConfigured() ? (
-              <p className="admin-muted" style={{ color: 'var(--muted)', lineHeight: 1.55, marginTop: 0 }}>
-                GitHub token not set — metadata saves still work. Token is only needed for ZIP uploads to the repo.
+              <p className="admin-muted" style={{ color: '#ffbf5f', lineHeight: 1.55, marginTop: 0 }}>
+                GitHub token not set — ZIP uploads will fail. Open <strong>System → GitHub sync</strong> and paste a{' '}
+                <code>repo</code> token.
               </p>
             ) : null}
             <div className="admin-field">
@@ -3363,7 +3367,7 @@ export function AdminPage() {
             </strong>
             <ul className="admin-muted" style={{ paddingLeft: 18, lineHeight: 1.6, fontSize: '0.85rem', margin: 0 }}>
               <li>
-                <strong>Page</strong> = a route at <code>/#/p/&lt;slug&gt;</code>. Use <strong>Block composer</strong> for
+                <strong>Page</strong> = a route at <code>/p/&lt;slug&gt;</code>. Use <strong>Block composer</strong> for
                 headings, panels, and images, or <strong>HTML app</strong> to paste a full exported document (Gemini / Claude)
                 into a sandboxed iframe. Toggle <em>Show in top nav</em> for a header button; turn on <em>Unlisted</em> to ask
                 search engines not to index (the URL still works for anyone who has it).
@@ -3401,11 +3405,11 @@ export function AdminPage() {
                 New: Hire Us page
               </button>
               <span className="admin-muted" style={{ fontSize: '0.82rem' }}>
-                Creates <code>/#/p/hire-us</code> with hero + CTA blocks.
+                Creates <code>/p/hire-us</code> with hero + CTA blocks.
               </span>
             </div>
             <p className="admin-muted">
-              Public URL: <code>/#/p/&lt;slug&gt;</code>. Pick <strong>Block composer</strong> for structured content, or{' '}
+              Public URL: <code>/p/&lt;slug&gt;</code>. Pick <strong>Block composer</strong> for structured content, or{' '}
               <strong>HTML app</strong> for a single-file export. Turn off <strong>Show in top nav</strong> for a vault-style
               link-only page. Use <strong>Unlisted</strong> for <code>noindex</code> (does not password-protect). HTML apps can
               appear on <Link to="/apps">/apps</Link> when enabled below. Central hub: Behavior → show “Apps lab” link.
@@ -3451,7 +3455,7 @@ export function AdminPage() {
               >
                 <strong style={{ display: 'block', marginBottom: 8 }}>Public link</strong>
                 <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                  <code>/#/p/{pageDraft.slug.trim()}</code>
+                  <code>/p/{pageDraft.slug.trim()}</code>
                   <button
                     type="button"
                     onClick={() => {

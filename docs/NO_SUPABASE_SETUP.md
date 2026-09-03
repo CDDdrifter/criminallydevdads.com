@@ -103,7 +103,9 @@ The token stays in your browser session only (not in the repo).
 | Nav | `cms/site-nav.json` | ~2–3 min |
 | Dev logs | `cms/site-devlogs.json` | ~2–3 min |
 
-**Game files** (`games/<slug>/`) are **not** uploaded through admin — add them via git (small games) or host externally and set `url` in JSON (large games).
+**Game files** (`games/<slug>/`) **can** be uploaded from Admin → Games (ZIP) if you pasted a GitHub PAT in System. You can also add them with git, or host externally and set `url` in JSON.
+
+See **[`HOW_TO_UPDATE.md`](HOW_TO_UPDATE.md)** for the full playbook.
 
 **Images:** use image URLs in page blocks and game thumbnails, or upload via Admin (uses Firebase Storage — optional). External URLs (imgur, itch, your CDN) work without Storage.
 

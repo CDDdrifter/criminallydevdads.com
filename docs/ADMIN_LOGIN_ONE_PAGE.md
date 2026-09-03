@@ -1,44 +1,40 @@
-# Log in and edit the site (one page)
+# Log in to `/admin` (current setup)
 
-Do these **in order**. Skip Google until email works.
+This site uses **Firebase Google sign-in**, not Supabase. Do these in order.
 
-1. **Live build has Supabase keys**  
-   GitHub repo → **Settings** → **Secrets and variables** → **Actions** → tab **Secrets** (not Variables):  
-   `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` → then **Actions** → re-run **Deploy to GitHub Pages**.
+1. **Firebase is already in the repo**  
+   `cms/firebase-config.json` has the web keys. If sign-in is broken, refill that file — see [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 
-2. **Database functions exist**  
-   Supabase → **SQL Editor** → paste the **entire** `supabase/schema.sql` from this repo → **Run** (no red errors).
+2. **Open the real admin URL**  
+   **https://criminallydevdads.com/admin**  
+   (Not `/#/admin`. Allow popups for this domain.)
 
-3. **Magic link allowed**  
-   Supabase → **Authentication** → **Providers** → **Email** → **Enable**.  
-   (Optional while testing: turn **Confirm email** OFF for fewer steps.)
+3. **Sign in with Google**
 
-4. **Redirect URL matches your real address**  
-   Open the site the **public** uses (custom domain or `https://YOU.github.io/REPO/`). Go to **`/#/admin`**.  
-   Copy the URL from the **green box** on that page.  
-   Supabase → **Authentication** → **URL Configuration**: set **Site URL** and add that same string under **Redirect URLs**.  
-   If the box is wrong (you use a custom domain but opened `github.io` once), add optional GitHub secret **`VITE_AUTH_REDIRECT_URL`** = your canonical site root, e.g. `https://criminallydevdads.com/` — redeploy.
+4. **You must be allow-listed**  
+   - Google address ending in **`@criminallydevdads.com`**, or  
+   - Exact email in **`cms/admin-config.json`** → `admin_emails`
 
-5. **Your email is allowlisted**  
-   `schema.sql` already allows **`@criminallydevdads.com`**.  
-   For Gmail / another domain, run in SQL Editor:
+   Example commit on GitHub:
 
-   ```sql
-   insert into site_admin_emails (email) values ('you@example.com')
-   on conflict (email) do nothing;
+   ```json
+   {
+     "admin_emails": ["you@gmail.com"],
+     "admin_domains": ["criminallydevdads.com"]
+   }
    ```
 
-6. **Sign in**  
-   **`/#/admin`** → type email → **Send login link** → inbox → click link → open **`/#/admin`** again if you land on the home page. You should see **Site admin** tabs.
+5. **To upload game ZIPs into `games/`**  
+   Admin → **System** → paste a GitHub Personal Access Token with **`repo`** scope. Full steps: [`HOW_TO_UPDATE.md`](HOW_TO_UPDATE.md).
 
 ---
 
 | What you see | What it means |
 |--------------|----------------|
-| “doesn’t include Supabase keys” | Deploy didn’t get the two GitHub **Secrets**; re-run deploy after fixing. |
-| “not on the editor allow list” | Step 5 — add your **exact** email (or domain) in SQL. |
-| “Can’t verify editor access” + technical error | Step 2 — run full `schema.sql` again; or wrong Supabase project. |
-| Magic link doesn’t arrive | Spam folder; or Supabase **Email** provider / project mail limits. |
-| Error when clicking link | **Redirect URLs** (step 4) must include the **exact** URL your app sends as `emailRedirectTo` (green box on `/#/admin`). Add **both** `https://yoursite.com/` and `https://www.yoursite.com/` if you use both. Optional: set GitHub secret `VITE_AUTH_REDIRECT_URL` to your one true public URL and redeploy. Open the link in a **normal browser tab** (not only the Gmail in-app browser), ideally the **same browser** where you clicked “Send login link”. If the error page is on **supabase.co**, read the message — often “redirect URL not allowed”. |
+| Access denied / not on allow list | Step 4 — add your **exact** Google email, wait for Pages deploy |
+| Sign-in button missing | `cms/firebase-config.json` empty or not deployed |
+| Domain not authorized | Firebase → Authentication → Settings → Authorized domains → add `criminallydevdads.com` |
+| Popup closes, still signed out | Allow popups; try again |
+| ZIP upload asks for a token | Step 5 |
 
-Google sign-in is optional and needs extra OAuth setup — use email first.
+**Day-to-day publishing:** [`HOW_TO_UPDATE.md`](HOW_TO_UPDATE.md).

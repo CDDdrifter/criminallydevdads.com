@@ -1,6 +1,8 @@
 # Site manual — add games, pages, and links without guesswork
 
-This hub is a **React (Vite)** app. You can ship it **without Supabase**. Supabase only adds a browser admin (`/#/admin`); it is optional.
+This hub is a **React (Vite)** app. **You can update games and pages yourself** — start with **[`HOW_TO_UPDATE.md`](HOW_TO_UPDATE.md)**.
+
+Supabase is **not** required. Google login is Firebase. Game files live in GitHub (`games/` + `games.json`).
 
 ### If this feels like too much
 
@@ -199,12 +201,12 @@ On **`/#/play/<slug>`**, each game shows a **Fullscreen** control at the **botto
 
 By default the **top nav does not show** “Team login” or “Admin”, so visitors don’t see operator links.
 
-- **Open the admin UI anytime:** go to **`/#/admin`** (bookmark it).
+- **Open the admin UI anytime:** go to **`/admin`** (bookmark it).
 - **Show the link in the header** (local or CI build): set  
   **`VITE_SHOW_ADMIN_NAV=true`**  
-  in `.env.local` or add it as a variable to your GitHub Actions workflow `env` next to the other `VITE_*` keys.
+  in `.env.local` or GitHub Actions env.
 
-Supabase setup for signing in is still described in **`docs/SUPABASE_FIRST_TIME_SETUP.md`**.
+Sign-in steps: **[`ADMIN_LOGIN_ONE_PAGE.md`](ADMIN_LOGIN_ONE_PAGE.md)**. Publishing: **[`HOW_TO_UPDATE.md`](HOW_TO_UPDATE.md)**.
 
 ---
 
@@ -254,9 +256,15 @@ You do **not** need another person or an AI to do that — those three Git lines
 2. If the **play URL stayed the same**, you’re done — no repo change.
 3. If the URL **changed**, edit **`games.json`** for that `id`, update **`url`**, commit and push.
 
-### C) You use Supabase Admin + ZIP (optional)
+### C) Admin ZIP (same slug)
 
-If **`/#/admin`** and ZIP upload work for you, upload a new ZIP there for the same slug. That path is optional and separate from the folder-in-Git workflow.
+If **`/admin`** works and you pasted a GitHub token in **System**:
+
+1. Games tab → select the existing game (or same title/slug).
+2. Upload a new Web export **.zip**.
+3. Save → wait for **Deploy to GitHub Pages** → hard-refresh.
+
+See **[`HOW_TO_UPDATE.md`](HOW_TO_UPDATE.md)**.
 
 ---
 

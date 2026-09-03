@@ -138,9 +138,9 @@ export function SystemStudio({ settings, setSettings }: Props) {
       </FieldGroup>
 
       <FieldGroup
-        title="GitHub sync (optional backup)"
+        title="GitHub sync (required for game ZIP uploads)"
         tone="accent"
-        description="CMS saves to Firebase when you are signed in at /admin. Covers and clips upload to Firebase Storage — no GitHub token needed. GitHub sync is optional for game ZIP builds and repo backup only."
+        description="Paste a token so Admin can commit HTML5 builds into games/<slug>/ on this repo. Covers still use Firebase Storage without a token. After a ZIP save, wait for GitHub Actions → Deploy to GitHub Pages."
       >
         <div className="admin-field">
           <label htmlFor="gh_pat">GitHub Personal Access Token</label>
@@ -155,8 +155,8 @@ export function SystemStudio({ settings, setSettings }: Props) {
           <p className="admin-muted" style={{ marginTop: 6, fontSize: '0.82rem' }}>
             Status:{' '}
             {githubCmsConfigured()
-              ? '✓ Token saved (this browser) — optional: game ZIP uploads + repo backup'
-              : 'Optional — only needed for game ZIP uploads to the repo'}
+              ? '✓ Token saved in this browser — ZIP uploads and games.json commits can run'
+              : '✗ No token — Games tab ZIP upload will fail until you paste one'}
           </p>
         </div>
         <div className="admin-field">
@@ -168,11 +168,21 @@ export function SystemStudio({ settings, setSettings }: Props) {
             onChange={(e) => setGitHubBranch(e.target.value)}
           />
         </div>
-        <p className="admin-muted" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
-          Create token: GitHub → Settings → Developer settings → Personal access tokens → Generate (classic) → check{' '}
-          <strong>repo</strong> scope. Optional — for uploading game ZIP builds to <code>games/</code> on this repo. Cover
-          images use Firebase when you are signed in at /admin.
-        </p>
+        <ol className="admin-muted" style={{ fontSize: '0.82rem', lineHeight: 1.55, paddingLeft: 18, margin: '8px 0 0' }}>
+          <li>GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)</li>
+          <li>Generate new token (classic) → enable <strong>repo</strong> → generate → copy <code>ghp_…</code></li>
+          <li>Paste it above. Branch must be <code>main</code> for the live site.</li>
+          <li>
+            Full playbook (add games, replace builds, new pages):{' '}
+            <a
+              href="https://github.com/CDDdrifter/criminallydevdads.com/blob/main/docs/HOW_TO_UPDATE.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              docs/HOW_TO_UPDATE.md
+            </a>
+          </li>
+        </ol>
       </FieldGroup>
     </div>
   );

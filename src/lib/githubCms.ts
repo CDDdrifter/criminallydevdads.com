@@ -1,9 +1,6 @@
 /**
  * Write CMS JSON files to GitHub via the Contents API.
- * Admin saves go directly to the repo — no Supabase Edge Functions needed.
- *
- * Requires a GitHub Personal Access Token (classic) with `repo` scope,
- * entered once per browser session in /admin → System → GitHub sync.
+ * How-to: docs/HOW_TO_UPDATE.md — Admin → System → GitHub PAT (classic, repo scope).
  */
 const GITHUB_PAT_KEY = 'cdd_github_pat';
 const GITHUB_BRANCH_KEY = 'cdd_github_branch';

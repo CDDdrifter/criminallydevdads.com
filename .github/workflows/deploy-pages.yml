@@ -1,10 +1,10 @@
 # Builds the React hub and deploys dist/ to GitHub Pages.
 #
-# Required secrets: VITE_FIREBASE_* (see docs/NO_SUPABASE_SETUP.md)
-# Games: games.json + games/ folder (no cloud storage)
-# Optional: VITE_SHOW_ADMIN_NAV, VITE_AUTH_REDIRECT_URL
-#
-# Repo: Settings → Pages → Source: GitHub Actions
+# How to add games / pages yourself: docs/HOW_TO_UPDATE.md
+# Pages source: repo Settings → Pages → GitHub Actions
+# Firebase web config: cms/firebase-config.json (optional VITE_FIREBASE_* secrets)
+# Games: games.json + games/ folder
+
 
 name: Deploy to GitHub Pages
 
