@@ -1,0 +1,20 @@
+{
+  "id": "./novadropv2",
+  "name": "NovaDropV2",
+  "short_name": "NovaDropV2",
+  "description": "NovaDropV2 — play offline from your Home Screen.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#0d111a",
+  "icons": [
+    {
+      "src": "index.apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -70,5 +70,14 @@
     "details": "A 2D platformer battle royale: drop from the sky with 99 fighters, loot weapons and upgrades, fight monsters, build cover, and survive the shrinking zone. Quick 3–6 minute runs with permanent progression between matches.",
     "thumbnail": "games/novadrop/cover.png",
     "filename": "novadrop.zip"
+  },
+  {
+    "id": "novadropv2",
+    "title": "NovaDrop V2",
+    "type": "game",
+    "description": "NovaDrop rebuilt — drop, loot, and outlast the storm.",
+    "details": "Web export of the NovaDropV2 Godot project. Same neon battle-royale loop: drop onto a procedural island, loot, fight, and survive the zone.",
+    "thumbnail": "games/novadropv2/cover.png",
+    "filename": "novadropv2.zip"
   }
 ]
