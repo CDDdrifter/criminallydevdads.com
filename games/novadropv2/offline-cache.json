@@ -1,5 +1,5 @@
 {
-  "cacheName": "cdd-offline-novadropv2-d1e1242726",
+  "cacheName": "cdd-offline-novadropv2-0ba158a622",
   "title": "NovaDropV2",
   "assets": [
     "index.html",
@@ -12,24 +12,24 @@
     "index.audio.worklet.js",
     "index.audio.position.worklet.js",
     "cover.png",
-    "pwa-boot.js",
     "manifest.json",
+    "pwa-boot.js",
     "offline-cache.json"
   ],
   "sizes": {
-    "index.pck": 508612,
-    "index.wasm": 37685705,
+    "index.pck": 510500,
+    "index.wasm": 35739700,
     "index.html": 5440,
-    "index.js": 315759,
+    "index.js": 279925,
     "index.png": 21443,
     "index.icon.png": 3550,
     "index.apple-touch-icon.png": 8319,
     "index.audio.worklet.js": 7298,
     "index.audio.position.worklet.js": 2973,
     "cover.png": 21443,
+    "manifest.json": 461,
     "pwa-boot.js": 9552,
-    "manifest.json": 0,
-    "offline-cache.json": 0
+    "offline-cache.json": 806
   },
-  "bytes": 38590094
+  "bytes": 36611410
 }
