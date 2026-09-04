@@ -62,6 +62,7 @@ import { PrebuiltPagesStudio } from '../components/admin/tabs/PrebuiltPagesStudi
 import { LegalStudio } from '../components/admin/tabs/LegalStudio';
 import { AdminGameFilesDownload } from '../components/AdminGameFilesDownload';
 import { AdminPublishGuide } from '../components/admin/AdminPublishGuide';
+import { AdminAiAssistant } from '../components/admin/AdminAiAssistant';
 import { FloatingSettingsSaveBar } from '../components/admin/FloatingSettingsSaveBar';
 import { ADMIN_AI_PAGE_DRAFT_KEY } from '../lib/adminAi/types';
 import { fetchAllServicesAdmin } from '../lib/servicesData';

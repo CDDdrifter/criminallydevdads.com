@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { GameEmbedSection } from '../components/GameEmbedSection';
 import type { GamePlayerHandle } from '../components/GamePlayerEmbed';
 import { AdminGameFilesDownload } from '../components/AdminGameFilesDownload';
+import { GamePurchaseBlock } from '../components/GamePurchaseBlock';
 import { PageSectionsView } from '../components/PageSectionsView';
 import { RouteScopedCss } from '../components/RouteScopedCss';
 import { CommentSection } from '../components/CommentSection';
