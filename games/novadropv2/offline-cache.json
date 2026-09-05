@@ -1,5 +1,5 @@
 {
-  "cacheName": "cdd-offline-novadropv2-0ba158a622",
+  "cacheName": "cdd-offline-novadropv2-7a4c1b8ffb",
   "title": "NovaDropV2",
   "assets": [
     "index.html",
@@ -17,7 +17,7 @@
     "offline-cache.json"
   ],
   "sizes": {
-    "index.pck": 510500,
+    "index.pck": 534740,
     "index.wasm": 35739700,
     "index.html": 5440,
     "index.js": 279925,
@@ -29,7 +29,7 @@
     "cover.png": 21443,
     "manifest.json": 461,
     "pwa-boot.js": 9552,
-    "offline-cache.json": 806
+    "offline-cache.json": 810
   },
-  "bytes": 36611410
+  "bytes": 36635654
 }
