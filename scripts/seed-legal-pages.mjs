@@ -48,19 +48,19 @@ const seeds = [
   legalPage(
     'terms',
     'Terms of Service',
-    'By accessing Criminally Dev Dads (the "Site") or purchasing products or services, you agree to these Terms. If you do not agree, do not use the Site. We may update these Terms at any time; continued use means acceptance. Eligibility: you must be the age of majority in your jurisdiction. Accounts: you are responsible for activity under your account. Purchases are governed by our Refund Policy. We provide the Site "as is" and disclaim warranties to the fullest extent permitted by law. Our liability is limited to the amount you paid in the prior 12 months. Contact: support@criminallydevdads.com.',
+    'By accessing Criminally Dev Dads (the "Site") or purchasing products or services, you agree to these Terms. If you do not agree, do not use the Site. We may update these Terms at any time; continued use means acceptance. Eligibility: you must be the age of majority in your jurisdiction. Accounts: you are responsible for activity under your account. Purchases are governed by our Refund Policy. We provide the Site "as is" and disclaim warranties to the fullest extent permitted by law. Our liability is limited to the amount you paid in the prior 12 months. Contact: cddhelpemail@gmail.com.',
     900,
   ),
   legalPage(
     'privacy',
     'Privacy Policy',
-    'This Policy explains how Criminally Dev Dads collects and uses information. We collect: account details (email), order/payment metadata (processed by Stripe — we do not store card numbers), mailing-list opt-ins, and basic analytics. We use this to provide services, process orders, send updates you opt into, and improve the Site. We share data only with processors (e.g. Stripe, hosting/email providers) as needed. You may request access or deletion at support@criminallydevdads.com. See our Cookie Policy for cookies and local storage.',
+    'This Policy explains how Criminally Dev Dads collects and uses information. We collect: account details (email), order/payment metadata (processed by Stripe — we do not store card numbers), mailing-list opt-ins, and basic analytics. We use this to provide services, process orders, send updates you opt into, and improve the Site. We share data only with processors (e.g. Stripe, hosting/email providers) as needed. You may request access or deletion at cddhelpemail@gmail.com. See our Cookie Policy for cookies and local storage.',
     901,
   ),
   legalPage(
     'refund',
     'Refund Policy',
-    'All sales are final for digital products (downloads, keys, game access) and commissioned/custom work once delivered or once work has begun. By completing checkout you waive any right of withdrawal for digital goods supplied immediately, where permitted by law. Physical products may be returned only if they arrive damaged or defective — contact support@criminallydevdads.com within 14 days with photos. Chargebacks filed without first contacting us may result in account suspension. Where local law grants non-waivable refund rights, those rights still apply.',
+    'All sales are final for digital products (downloads, keys, game access) and commissioned/custom work once delivered or once work has begun. By completing checkout you waive any right of withdrawal for digital goods supplied immediately, where permitted by law. Physical products may be returned only if they arrive damaged or defective — contact cddhelpemail@gmail.com within 14 days with photos. Chargebacks filed without first contacting us may result in account suspension. Where local law grants non-waivable refund rights, those rights still apply.',
     902,
   ),
   legalPage(
@@ -72,7 +72,7 @@ const seeds = [
   legalPage(
     'dmca',
     'DMCA / Copyright',
-    'If you believe content on our Site infringes your copyright, email support@criminallydevdads.com with: your contact info, identification of the copyrighted work, the URL of the infringing material, and a statement of good faith. We respond to valid notices and may remove or disable access to allegedly infringing material.',
+    'If you believe content on our Site infringes your copyright, email cddhelpemail@gmail.com with: your contact info, identification of the copyrighted work, the URL of the infringing material, and a statement of good faith. We respond to valid notices and may remove or disable access to allegedly infringing material.',
     904,
   ),
   legalPage(

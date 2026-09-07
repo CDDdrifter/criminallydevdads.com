@@ -959,7 +959,7 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
   return defaultSiteSettings;
 }
 
-/** Firestore wins when set; bundled cms/site-settings.json fills empty tip fields. */
+/** Shipped cms/site-settings.json is the tip-link source of truth so an empty URL can kill a stale Stripe link. */
 function mergeTipSettingsFromStatic(
   live: SiteSettings,
   bundled: SiteSettings | null,
@@ -972,7 +972,7 @@ function mergeTipSettingsFromStatic(
   const staticPlacements = bundled.behavior?.stripe_buy_button_placements;
   return {
     ...live,
-    stripe_tip_url: live.stripe_tip_url.trim() || staticTip,
+    stripe_tip_url: staticTip,
     support_tip_label: live.support_tip_label.trim() || staticLabel || defaultSiteSettings.support_tip_label,
     behavior: {
       ...live.behavior,

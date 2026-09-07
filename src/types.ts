@@ -1301,7 +1301,7 @@ export type LegalConfig = {
 
 export const defaultLegalConfig = (): LegalConfig => ({
   business_name: 'Criminally Dev Dads',
-  contact_email: 'support@criminallydevdads.com',
+  contact_email: 'cddhelpemail@gmail.com',
   show_footer: true,
   links: [
     { id: 'terms', label: 'Terms of Service', href: '/p/terms' },

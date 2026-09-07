@@ -34,7 +34,7 @@ const LEGAL_CONTENT = {
       section('panel', {
         title: 'Contact',
         variant: 'default',
-        body: 'Questions about these Terms: support@criminallydevdads.com',
+        body: 'Questions about these Terms: cddhelpemail@gmail.com',
       }),
     ],
   },
@@ -60,7 +60,7 @@ const LEGAL_CONTENT = {
       section('panel', {
         title: 'Your rights & contact',
         variant: 'default',
-        body: 'You may request access, correction, or deletion of your personal data by emailing support@criminallydevdads.com. See our Cookie Policy for cookies and local storage.',
+        body: 'You may request access, correction, or deletion of your personal data by emailing cddhelpemail@gmail.com. See our Cookie Policy for cookies and local storage.',
       }),
     ],
   },
@@ -82,7 +82,7 @@ const LEGAL_CONTENT = {
       section('panel', {
         title: 'Physical goods',
         variant: 'default',
-        body: 'If we sell physical merchandise, items may be returned only if they arrive damaged or defective. Contact support@criminallydevdads.com within 14 days with your order details and photos.',
+        body: 'If we sell physical merchandise, items may be returned only if they arrive damaged or defective. Contact cddhelpemail@gmail.com within 14 days with your order details and photos.',
       }),
       section('panel', {
         title: 'Chargebacks',
@@ -124,7 +124,7 @@ const LEGAL_CONTENT = {
       section('panel', {
         title: 'Copyright notices',
         variant: 'default',
-        body: 'If you believe content on the Site infringes your copyright, email support@criminallydevdads.com with: (1) your contact information, (2) identification of the copyrighted work, (3) the URL of the material in question, and (4) a statement of good-faith belief that use is not authorized. We will respond to valid notices and may remove or disable access to allegedly infringing material.',
+        body: 'If you believe content on the Site infringes your copyright, email cddhelpemail@gmail.com with: (1) your contact information, (2) identification of the copyrighted work, (3) the URL of the material in question, and (4) a statement of good-faith belief that use is not authorized. We will respond to valid notices and may remove or disable access to allegedly infringing material.',
       }),
     ],
   },

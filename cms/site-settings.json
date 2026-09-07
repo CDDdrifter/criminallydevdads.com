@@ -12,7 +12,7 @@
   "fx_hue_shift": true,
   "fx_cursor_spotlight": true,
   "support_page_href": "/p/support",
-  "stripe_tip_url": "https://buy.stripe.com/8x23cwgclbfGd569LjaIM00",
+  "stripe_tip_url": "",
   "support_tip_label": "☕ Support the Devs",
   "stripe_buy_button_id": "",
   "stripe_publishable_key": "",
@@ -331,7 +331,7 @@
   "theme_presets": [],
   "legal": {
     "business_name": "Criminally Dev Dads",
-    "contact_email": "support@criminallydevdads.com",
+    "contact_email": "cddhelpemail@gmail.com",
     "show_footer": true,
     "links": [
       { "id": "legal-terms", "label": "Terms of Service", "href": "/p/terms" },
