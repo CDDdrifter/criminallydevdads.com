@@ -1,6 +1,6 @@
 {
-  "cacheName": "cdd-offline-novadropv2-a3ae14c242",
-  "title": "NovaDropV2",
+  "cacheName": "cdd-offline-mirrorshift-a0ed80a5b9",
+  "title": "Mirror Shift",
   "assets": [
     "index.html",
     "index.js",
@@ -12,24 +12,24 @@
     "index.audio.worklet.js",
     "index.audio.position.worklet.js",
     "cover.png",
-    "manifest.json",
     "pwa-boot.js",
+    "manifest.json",
     "offline-cache.json"
   ],
   "sizes": {
-    "index.pck": 580636,
+    "index.pck": 473960,
     "index.wasm": 35739700,
-    "index.html": 5440,
+    "index.html": 5443,
     "index.js": 279925,
     "index.png": 21443,
-    "index.icon.png": 3550,
-    "index.apple-touch-icon.png": 8319,
+    "index.icon.png": 3414,
+    "index.apple-touch-icon.png": 8769,
     "index.audio.worklet.js": 7298,
     "index.audio.position.worklet.js": 2973,
     "cover.png": 21443,
-    "manifest.json": 461,
     "pwa-boot.js": 9552,
-    "offline-cache.json": 810
+    "manifest.json": 0,
+    "offline-cache.json": 0
   },
-  "bytes": 36681550
+  "bytes": 36573920
 }

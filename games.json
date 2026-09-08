@@ -79,5 +79,14 @@
     "details": "Web export of the NovaDropV2 Godot project. Same neon battle-royale loop: drop onto a procedural island, loot, fight, and survive the zone.",
     "thumbnail": "games/novadropv2/cover.png",
     "filename": "novadropv2.zip"
+  },
+  {
+    "id": "mirrorshift",
+    "title": "MirrorShift",
+    "type": "game",
+    "description": "An endless laser-routing puzzle — rotate optics until the beam hits every target.",
+    "details": "Procedural Godot puzzle for phones and tablets. Tap to turn mirrors, splitters, and wormholes a quarter-turn. Every level is guaranteed solvable. Worlds, unlocks, daily challenge, and offline play.",
+    "thumbnail": "games/mirrorshift/cover.png",
+    "filename": "mirrorshift.zip"
   }
 ]
