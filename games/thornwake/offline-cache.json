@@ -1,0 +1,35 @@
+{
+  "cacheName": "cdd-offline-thornwake-3d7806c920",
+  "title": "Thornwake",
+  "assets": [
+    "index.html",
+    "index.js",
+    "index.wasm",
+    "index.pck",
+    "index.png",
+    "index.icon.png",
+    "index.apple-touch-icon.png",
+    "index.audio.worklet.js",
+    "index.audio.position.worklet.js",
+    "cover.png",
+    "pwa-boot.js",
+    "manifest.json",
+    "offline-cache.json"
+  ],
+  "sizes": {
+    "index.pck": 353532,
+    "index.wasm": 35739700,
+    "index.html": 5439,
+    "index.js": 279925,
+    "index.png": 21443,
+    "index.icon.png": 2973,
+    "index.apple-touch-icon.png": 5977,
+    "index.audio.worklet.js": 7298,
+    "index.audio.position.worklet.js": 2973,
+    "cover.png": 21443,
+    "pwa-boot.js": 9552,
+    "manifest.json": 0,
+    "offline-cache.json": 0
+  },
+  "bytes": 36450255
+}

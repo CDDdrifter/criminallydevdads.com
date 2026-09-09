@@ -88,5 +88,14 @@
     "details": "Procedural Godot puzzle for phones and tablets. Tap to turn mirrors, splitters, and wormholes a quarter-turn. Every level is guaranteed solvable. Worlds, unlocks, daily challenge, and offline play.",
     "thumbnail": "games/mirrorshift/cover.png",
     "filename": "mirrorshift.zip"
+  },
+  {
+    "id": "thornwake",
+    "title": "Thornwake",
+    "type": "game",
+    "description": "A top-down roguelite of blade, breath, and the wild reclaimed.",
+    "details": "Play as the last Warden of the Deepwood. Parry bolts, dash, and spend Verdance on Gale, Tether, Rootgrasp, and more as you fight the Pale Concord through branching rooms, shrines, and act bosses.",
+    "thumbnail": "games/thornwake/cover.png",
+    "filename": "thornwake.zip"
   }
 ]
