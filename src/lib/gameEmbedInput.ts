@@ -14,6 +14,9 @@ export const GAME_EMBED_ALLOW =
 /** Posted into the game frame so Godot can grab canvas focus after hub fullscreen. */
 export const GAME_FOCUS_MESSAGE = 'cdd-game-focus';
 
+/** Posted so the game can re-read pads after the hub sees a controller. */
+export const GAMEPAD_SYNC_MESSAGE = 'cdd-gamepad-sync';
+
 const AXIS_DEADZONE = 0.24;
 
 const GAME_KEY_CODES = new Set([
@@ -105,6 +108,15 @@ export function focusGameIframe(iframe: HTMLIFrameElement | null | undefined): v
   }
 }
 
+function padListHasDevice(pads: ArrayLike<Gamepad | null>): boolean {
+  for (let i = 0; i < pads.length; i += 1) {
+    if (pads[i]) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function listGamepads(): (Gamepad | null)[] {
   const getPads = navigator.getGamepads?.bind(navigator);
   if (!getPads) {
@@ -140,7 +152,10 @@ export function anyGamepadButtonPressed(): boolean {
   return anyGamepadActivity();
 }
 
-/** Same-origin: let Godot read pads from the parent when fullscreen hid them from the iframe. */
+/**
+ * Same-origin: Godot polls the iframe's navigator.getGamepads(). Chrome often
+ * keeps live pads on the parent (user gesture / fullscreen), so prefer those.
+ */
 export function installIframeGamepadBridge(iframe: HTMLIFrameElement | null | undefined): void {
   if (!iframe) {
     return;
@@ -153,17 +168,31 @@ export function installIframeGamepadBridge(iframe: HTMLIFrameElement | null | un
     const localGet = win.navigator.getGamepads.bind(win.navigator);
     const parentGet = navigator.getGamepads?.bind(navigator);
     win.navigator.getGamepads = function patchedGetGamepads() {
-      const local = localGet();
-      for (let i = 0; i < local.length; i += 1) {
-        if (local[i]) {
-          return local;
-        }
+      let parentPads: ReturnType<Navigator['getGamepads']> | null = null;
+      try {
+        parentPads = parentGet ? parentGet() : null;
+      } catch {
+        parentPads = null;
       }
-      return parentGet ? parentGet() : local;
+      if (parentPads && padListHasDevice(parentPads)) {
+        return parentPads;
+      }
+      return localGet();
     };
     win.__cddGamepadBridge = true;
   } catch {
     /* cross-origin */
+  }
+}
+
+/** Patch getGamepads, focus the canvas, and tell Godot to (re)scan controllers. */
+export function syncIframeGamepads(iframe: HTMLIFrameElement | null | undefined): void {
+  installIframeGamepadBridge(iframe);
+  focusGameIframe(iframe);
+  try {
+    iframe?.contentWindow?.postMessage({ type: GAMEPAD_SYNC_MESSAGE }, '*');
+  } catch {
+    /* ignore */
   }
 }
 

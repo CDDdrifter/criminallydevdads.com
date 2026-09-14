@@ -51,7 +51,7 @@ function upsertBlock(html, start, end, inner) {
   return html;
 }
 
-/** Early inline script so Godot sees parent gamepads after hub fullscreen. */
+/** Early inline script so Godot sees parent gamepads in windowed and fullscreen play. */
 export function gamepadFocusSnippet() {
   return `<script>
 (function () {
@@ -75,29 +75,88 @@ export function gamepadFocusSnippet() {
       window.focus();
     } catch (err) {}
   }
+  function hasPad(pads) {
+    for (var i = 0; i < pads.length; i++) {
+      if (pads[i]) {
+        return true;
+      }
+    }
+    return false;
+  }
   try {
     if (window.parent && window.parent !== window && window.parent.navigator && window.parent.navigator.getGamepads && navigator.getGamepads) {
       var localGet = navigator.getGamepads.bind(navigator);
       var parentGet = window.parent.navigator.getGamepads.bind(window.parent.navigator);
       navigator.getGamepads = function () {
-        var pads = localGet();
-        for (var i = 0; i < pads.length; i++) {
-          if (pads[i]) {
-            return pads;
-          }
+        var parentPads = null;
+        try {
+          parentPads = parentGet();
+        } catch (err) {}
+        if (parentPads && hasPad(parentPads)) {
+          return parentPads;
         }
-        return parentGet();
+        return localGet();
       };
     }
   } catch (err) {}
-  window.addEventListener('message', function (event) {
-    if (event && event.data && event.data.type === 'cdd-game-focus') {
+  var lastPadKey = '';
+  function announceConnectedPads(force) {
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var ids = [];
+    for (var i = 0; i < pads.length; i++) {
+      if (pads[i]) {
+        ids.push(String(pads[i].index) + ':' + pads[i].id);
+      }
+    }
+    var key = ids.join(',');
+    if (!force && key === lastPadKey) {
+      return;
+    }
+    lastPadKey = key;
+    for (var j = 0; j < pads.length; j++) {
+      var pad = pads[j];
+      if (!pad) {
+        continue;
+      }
+      try {
+        window.dispatchEvent(new GamepadEvent('gamepadconnected', { gamepad: pad }));
+      } catch (err) {}
+    }
+    if (key) {
       focusCanvas();
     }
+  }
+  window.addEventListener('message', function (event) {
+    if (!event || !event.data) {
+      return;
+    }
+    if (event.data.type === 'cdd-game-focus') {
+      focusCanvas();
+    }
+    if (event.data.type === 'cdd-gamepad-sync') {
+      focusCanvas();
+      announceConnectedPads(true);
+    }
   });
-  document.addEventListener('fullscreenchange', focusCanvas);
-  document.addEventListener('webkitfullscreenchange', focusCanvas);
-  window.addEventListener('gamepadconnected', focusCanvas);
+  document.addEventListener('fullscreenchange', function () {
+    focusCanvas();
+    announceConnectedPads(true);
+  });
+  document.addEventListener('webkitfullscreenchange', function () {
+    focusCanvas();
+    announceConnectedPads(true);
+  });
+  window.addEventListener('gamepadconnected', function () {
+    focusCanvas();
+  });
+  var tries = 0;
+  var bootTimer = setInterval(function () {
+    announceConnectedPads(true);
+    tries += 1;
+    if (tries > 40) {
+      clearInterval(bootTimer);
+    }
+  }, 400);
 })();
 </script>`;
 }

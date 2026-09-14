@@ -31,6 +31,8 @@ test('gamepad focus snippet bridges parent pads and listens for hub focus', () =
   const snippet = gamepadFocusSnippet();
   assert.match(snippet, /navigator\.getGamepads/);
   assert.match(snippet, /cdd-game-focus/);
+  assert.match(snippet, /cdd-gamepad-sync/);
   assert.match(snippet, /gamepadconnected/);
   assert.match(snippet, /__CDD_GAMEPAD_FOCUS__/);
+  assert.match(snippet, /parentGet\(\)/);
 });

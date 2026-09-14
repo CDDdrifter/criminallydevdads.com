@@ -1,5 +1,5 @@
 {
-  "cacheName": "cdd-offline-thornwake-7c574b69b4",
+  "cacheName": "cdd-offline-thornwake-f77b0b0359",
   "title": "Thornwake",
   "assets": [
     "index.html",
@@ -17,9 +17,9 @@
     "offline-cache.json"
   ],
   "sizes": {
-    "index.pck": 384796,
+    "index.pck": 384924,
     "index.wasm": 35739700,
-    "index.html": 5929,
+    "index.html": 5439,
     "index.js": 279925,
     "index.png": 21443,
     "index.icon.png": 2973,
@@ -28,8 +28,8 @@
     "index.audio.position.worklet.js": 2973,
     "cover.png": 21443,
     "manifest.json": 457,
-    "pwa-boot.js": 10359,
-    "offline-cache.json": 808
+    "pwa-boot.js": 10434,
+    "offline-cache.json": 809
   },
-  "bytes": 36484081
+  "bytes": 36483795
 }

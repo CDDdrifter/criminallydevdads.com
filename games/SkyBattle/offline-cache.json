@@ -19,7 +19,7 @@
   "sizes": {
     "index.pck": 116700,
     "index.wasm": 35739700,
-    "index.html": 6149,
+    "index.html": 7642,
     "index.js": 279925,
     "index.png": 45404,
     "index.icon.png": 1778,
@@ -28,8 +28,8 @@
     "index.audio.position.worklet.js": 2973,
     "cover.png": 45404,
     "manifest.json": 457,
-    "pwa-boot.js": 10359,
-    "offline-cache.json": 808
+    "pwa-boot.js": 10434,
+    "offline-cache.json": 809
   },
-  "bytes": 36260771
+  "bytes": 36262340
 }

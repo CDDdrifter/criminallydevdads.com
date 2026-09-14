@@ -28,7 +28,10 @@
   }
 
   window.addEventListener('message', function (event) {
-    if (event && event.data && event.data.type === 'cdd-game-focus') {
+    if (!event || !event.data) {
+      return;
+    }
+    if (event.data.type === 'cdd-game-focus' || event.data.type === 'cdd-gamepad-sync') {
       focusGameCanvas();
     }
   });

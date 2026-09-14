@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
 		<title>Thornwake</title>
 		<style>
 html, body, #canvas {
@@ -93,65 +93,8 @@ body {
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 
-	<!-- CDD-PWA -->
-<link rel="manifest" href="manifest.json" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Thornwake" />
-<meta name="theme-color" content="#0d111a" />
-<!-- /CDD-PWA -->
-</head>
+	</head>
 	<body>
-<!-- CDD-GAMEPAD -->
-<script>
-(function () {
-  if (window.__CDD_GAMEPAD_FOCUS__) {
-    return;
-  }
-  window.__CDD_GAMEPAD_FOCUS__ = true;
-  function focusCanvas() {
-    var canvas = document.getElementById('canvas') || document.querySelector('canvas');
-    if (canvas) {
-      if (!canvas.hasAttribute('tabindex')) {
-        canvas.setAttribute('tabindex', '0');
-      }
-      try {
-        canvas.focus({ preventScroll: true });
-      } catch (err) {
-        canvas.focus();
-      }
-    }
-    try {
-      window.focus();
-    } catch (err) {}
-  }
-  try {
-    if (window.parent && window.parent !== window && window.parent.navigator && window.parent.navigator.getGamepads && navigator.getGamepads) {
-      var localGet = navigator.getGamepads.bind(navigator);
-      var parentGet = window.parent.navigator.getGamepads.bind(window.parent.navigator);
-      navigator.getGamepads = function () {
-        var pads = localGet();
-        for (var i = 0; i < pads.length; i++) {
-          if (pads[i]) {
-            return pads;
-          }
-        }
-        return parentGet();
-      };
-    }
-  } catch (err) {}
-  window.addEventListener('message', function (event) {
-    if (event && event.data && event.data.type === 'cdd-game-focus') {
-      focusCanvas();
-    }
-  });
-  document.addEventListener('fullscreenchange', focusCanvas);
-  document.addEventListener('webkitfullscreenchange', focusCanvas);
-  window.addEventListener('gamepadconnected', focusCanvas);
-})();
-</script>
-<!-- /CDD-GAMEPAD -->
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -168,7 +111,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":384796,"index.wasm":35739700},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":384924,"index.wasm":35739700},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -272,9 +215,6 @@ const engine = new Engine(GODOT_CONFIG);
 	}
 }());
 		</script>
-	<!-- CDD-PWA-BOOT -->
-<script src="pwa-boot.js" defer></script>
-<!-- /CDD-PWA-BOOT -->
-</body>
+	</body>
 </html>
 

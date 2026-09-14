@@ -13,6 +13,7 @@ import {
   isTypingTarget,
   setGameEmbedActiveDocument,
   setGameEmbedFullscreenDocument,
+  syncIframeGamepads,
 } from '../lib/gameEmbedInput';
 
 type Props = {
@@ -71,13 +72,13 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
   const [fs, setFs] = useState(false);
   const [pseudoFs, setPseudoFs] = useState(false);
   const [engaged, setEngaged] = useState(false);
+  const [padConnected, setPadConnected] = useState(false);
+  const padSeenRef = useRef(false);
 
   const isFullscreen = fs || pseudoFs;
 
   const nudgeGameInput = useCallback(() => {
-    const iframe = iframeRef.current;
-    installIframeGamepadBridge(iframe);
-    focusGameIframe(iframe);
+    syncIframeGamepads(iframeRef.current);
   }, []);
 
   const engage = useCallback(() => {
@@ -194,14 +195,14 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
     }
     let raf = 0;
     const tick = () => {
-      if (anyGamepadActivity() || (isFullscreen && hasConnectedGamepad())) {
+      if (anyGamepadActivity() || hasConnectedGamepad()) {
         engage();
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [engaged, engage, isFullscreen]);
+  }, [engaged, engage]);
 
   useEffect(() => {
     if (!engaged) {
@@ -210,15 +211,17 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
     let raf = 0;
     const tick = () => {
       const iframe = iframeRef.current;
+      const padNow = hasConnectedGamepad() || anyGamepadActivity();
+      if (padNow !== padSeenRef.current) {
+        padSeenRef.current = padNow;
+        setPadConnected(padNow);
+      }
       if (!iframe) {
         raf = requestAnimationFrame(tick);
         return;
       }
-      const toolbarActive = document.activeElement?.closest('.game-embed-toolbar');
-      const shouldHold =
-        isFullscreen && hasConnectedGamepad()
-          ? !toolbarActive
-          : anyGamepadActivity();
+      const toolbarActive = Boolean(document.activeElement?.closest('.game-embed-toolbar'));
+      const shouldHold = padNow ? !toolbarActive : anyGamepadActivity();
       if (document.activeElement !== iframe && shouldHold) {
         nudgeGameInput();
       }
@@ -226,18 +229,35 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [engaged, isFullscreen, nudgeGameInput]);
+  }, [engaged, nudgeGameInput]);
 
   useEffect(() => {
     const onPad = () => {
-      if (isFullscreen) {
-        engage();
-      }
+      engage();
       requestAnimationFrame(nudgeGameInput);
     };
     window.addEventListener('gamepadconnected', onPad);
-    return () => window.removeEventListener('gamepadconnected', onPad);
-  }, [engage, isFullscreen, nudgeGameInput]);
+    window.addEventListener('gamepaddisconnected', nudgeGameInput);
+    return () => {
+      window.removeEventListener('gamepadconnected', onPad);
+      window.removeEventListener('gamepaddisconnected', nudgeGameInput);
+    };
+  }, [engage, nudgeGameInput]);
+
+  useEffect(() => {
+    if (!engaged) {
+      return undefined;
+    }
+    let n = 0;
+    const id = window.setInterval(() => {
+      syncIframeGamepads(iframeRef.current);
+      n += 1;
+      if (n >= 25) {
+        window.clearInterval(id);
+      }
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [engaged]);
 
   useEffect(() => {
     if (!isFullscreen) {
@@ -331,8 +351,8 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
           allowFullScreen
           onLoad={() => {
             installIframeGamepadBridge(iframeRef.current);
-            if (engaged || isFullscreen) {
-              focusGameIframe(iframeRef.current);
+            if (engaged || isFullscreen || hasConnectedGamepad()) {
+              syncIframeGamepads(iframeRef.current);
             }
           }}
         />
@@ -340,7 +360,7 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
           <button type="button" className="game-embed-play-gate" onPointerUp={engage}>
             <span className="game-embed-play-gate__title">Tap to play</span>
             <span className="game-embed-play-gate__hint">
-              Starts this game here. It will not open a new page or reload.
+              Press a button on your controller, or tap here. The game stays on this page.
             </span>
           </button>
         ) : null}
@@ -348,11 +368,15 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
 
       <div className="game-embed-toolbar" role="toolbar" aria-label="Game player">
         <span className="game-embed-toolbar__hint">
-          {isFullscreen
-            ? 'Fullscreen — controller stays with the game'
-            : engaged
-              ? 'Playing — scroll down for game info'
-              : 'Tap the game to start. Fullscreen stays on this page.'}
+          {padConnected
+            ? isFullscreen
+              ? 'Controller detected — fullscreen'
+              : 'Controller detected — driving this game'
+            : isFullscreen
+              ? 'Fullscreen — plug in a controller anytime'
+              : engaged
+                ? 'Playing — scroll down for game info'
+                : 'Tap the game, or press a controller button, to start.'}
         </span>
         <div className="game-embed-toolbar__actions">
           {installHref && !isFullscreen ? (

@@ -98,8 +98,27 @@ function cmsDevPlugin(): Plugin {
   };
 }
 
+const GAME_PERMISSIONS_POLICY =
+  'gamepad=*, fullscreen=*, accelerometer=*, gyroscope=*, xr-spatial-tracking=*, pointer-lock=*';
+
+function gamepadPolicyPlugin(): Plugin {
+  const header = (_req: unknown, res: { setHeader: (name: string, value: string) => void }, next: () => void) => {
+    res.setHeader('Permissions-Policy', GAME_PERMISSIONS_POLICY);
+    next();
+  };
+  return {
+    name: 'gamepad-permissions-policy',
+    configureServer(server) {
+      server.middlewares.use(header);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(header);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), gamesJsonDevPlugin(), gamesDevPlugin(), cmsDevPlugin()],
+  plugins: [react(), gamesJsonDevPlugin(), gamesDevPlugin(), cmsDevPlugin(), gamepadPolicyPlugin()],
   // Absolute paths so refresh on deep links still loads /assets/* (not /play/assets/*).
   base: '/',
 });
