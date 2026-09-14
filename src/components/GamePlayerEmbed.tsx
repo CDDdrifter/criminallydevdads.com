@@ -4,9 +4,11 @@
  */
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
-  anyGamepadButtonPressed,
+  anyGamepadActivity,
   focusGameIframe,
   GAME_EMBED_ALLOW,
+  hasConnectedGamepad,
+  installIframeGamepadBridge,
   isGameControlKey,
   isTypingTarget,
   setGameEmbedActiveDocument,
@@ -72,12 +74,18 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
 
   const isFullscreen = fs || pseudoFs;
 
+  const nudgeGameInput = useCallback(() => {
+    const iframe = iframeRef.current;
+    installIframeGamepadBridge(iframe);
+    focusGameIframe(iframe);
+  }, []);
+
   const engage = useCallback(() => {
     setEngaged(true);
     requestAnimationFrame(() => {
-      focusGameIframe(iframeRef.current);
+      nudgeGameInput();
     });
-  }, []);
+  }, [nudgeGameInput]);
 
   useEffect(() => {
     setEngaged(false);
@@ -96,7 +104,15 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
 
   useEffect(() => {
     const sync = () => {
-      setFs(getFullscreenElement() === shellRef.current);
+      const nowFs = getFullscreenElement() === shellRef.current;
+      setFs(nowFs);
+      if (nowFs) {
+        setEngaged(true);
+        requestAnimationFrame(() => {
+          nudgeGameInput();
+          requestAnimationFrame(nudgeGameInput);
+        });
+      }
     };
     document.addEventListener('fullscreenchange', sync);
     document.addEventListener('webkitfullscreenchange', sync as EventListener);
@@ -104,7 +120,7 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
       document.removeEventListener('fullscreenchange', sync);
       document.removeEventListener('webkitfullscreenchange', sync as EventListener);
     };
-  }, []);
+  }, [nudgeGameInput]);
 
   useEffect(() => {
     if (!pseudoFs) {
@@ -178,14 +194,14 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
     }
     let raf = 0;
     const tick = () => {
-      if (anyGamepadButtonPressed()) {
+      if (anyGamepadActivity() || (isFullscreen && hasConnectedGamepad())) {
         engage();
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [engaged, engage]);
+  }, [engaged, engage, isFullscreen]);
 
   useEffect(() => {
     if (!engaged) {
@@ -194,14 +210,49 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
     let raf = 0;
     const tick = () => {
       const iframe = iframeRef.current;
-      if (iframe && document.activeElement !== iframe && anyGamepadButtonPressed()) {
-        focusGameIframe(iframe);
+      if (!iframe) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      const toolbarActive = document.activeElement?.closest('.game-embed-toolbar');
+      const shouldHold =
+        isFullscreen && hasConnectedGamepad()
+          ? !toolbarActive
+          : anyGamepadActivity();
+      if (document.activeElement !== iframe && shouldHold) {
+        nudgeGameInput();
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [engaged]);
+  }, [engaged, isFullscreen, nudgeGameInput]);
+
+  useEffect(() => {
+    const onPad = () => {
+      if (isFullscreen) {
+        engage();
+      }
+      requestAnimationFrame(nudgeGameInput);
+    };
+    window.addEventListener('gamepadconnected', onPad);
+    return () => window.removeEventListener('gamepadconnected', onPad);
+  }, [engage, isFullscreen, nudgeGameInput]);
+
+  useEffect(() => {
+    if (!isFullscreen) {
+      return undefined;
+    }
+    engage();
+    const t1 = window.setTimeout(nudgeGameInput, 0);
+    const t2 = window.setTimeout(nudgeGameInput, 120);
+    const t3 = window.setTimeout(nudgeGameInput, 400);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, [isFullscreen, engage, nudgeGameInput]);
 
   const enterFullscreen = useCallback(() => {
     const el = shellRef.current as FullscreenElement | null;
@@ -209,21 +260,34 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
       return;
     }
     engage();
+    const afterEnter = () => {
+      requestAnimationFrame(() => {
+        nudgeGameInput();
+        requestAnimationFrame(nudgeGameInput);
+      });
+    };
     if (isIPhone()) {
       setPseudoFs(true);
+      afterEnter();
       return;
     }
     try {
       const req = el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.();
       if (req && typeof (req as Promise<void>).then === 'function') {
-        void Promise.resolve(req).catch(() => setPseudoFs(true));
+        void Promise.resolve(req)
+          .then(afterEnter)
+          .catch(() => {
+            setPseudoFs(true);
+            afterEnter();
+          });
         return;
       }
     } catch {
       /* fall through */
     }
     setPseudoFs(true);
-  }, [engage]);
+    afterEnter();
+  }, [engage, nudgeGameInput]);
 
   const exitFullscreen = useCallback(() => {
     if (pseudoFs) {
@@ -243,9 +307,11 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
       }
       if (!engaged) {
         engage();
+      } else {
+        nudgeGameInput();
       }
     },
-    [engaged, engage],
+    [engaged, engage, nudgeGameInput],
   );
 
   return (
@@ -263,6 +329,12 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
           tabIndex={0}
           allow={GAME_EMBED_ALLOW}
           allowFullScreen
+          onLoad={() => {
+            installIframeGamepadBridge(iframeRef.current);
+            if (engaged || isFullscreen) {
+              focusGameIframe(iframeRef.current);
+            }
+          }}
         />
         {!engaged ? (
           <button type="button" className="game-embed-play-gate" onPointerUp={engage}>
@@ -277,7 +349,7 @@ export const GamePlayerEmbed = forwardRef<GamePlayerHandle, Props>(function Game
       <div className="game-embed-toolbar" role="toolbar" aria-label="Game player">
         <span className="game-embed-toolbar__hint">
           {isFullscreen
-            ? 'Fullscreen — game stays on this page'
+            ? 'Fullscreen — controller stays with the game'
             : engaged
               ? 'Playing — scroll down for game info'
               : 'Tap the game to start. Fullscreen stays on this page.'}

@@ -51,6 +51,57 @@ function upsertBlock(html, start, end, inner) {
   return html;
 }
 
+/** Early inline script so Godot sees parent gamepads after hub fullscreen. */
+export function gamepadFocusSnippet() {
+  return `<script>
+(function () {
+  if (window.__CDD_GAMEPAD_FOCUS__) {
+    return;
+  }
+  window.__CDD_GAMEPAD_FOCUS__ = true;
+  function focusCanvas() {
+    var canvas = document.getElementById('canvas') || document.querySelector('canvas');
+    if (canvas) {
+      if (!canvas.hasAttribute('tabindex')) {
+        canvas.setAttribute('tabindex', '0');
+      }
+      try {
+        canvas.focus({ preventScroll: true });
+      } catch (err) {
+        canvas.focus();
+      }
+    }
+    try {
+      window.focus();
+    } catch (err) {}
+  }
+  try {
+    if (window.parent && window.parent !== window && window.parent.navigator && window.parent.navigator.getGamepads && navigator.getGamepads) {
+      var localGet = navigator.getGamepads.bind(navigator);
+      var parentGet = window.parent.navigator.getGamepads.bind(window.parent.navigator);
+      navigator.getGamepads = function () {
+        var pads = localGet();
+        for (var i = 0; i < pads.length; i++) {
+          if (pads[i]) {
+            return pads;
+          }
+        }
+        return parentGet();
+      };
+    }
+  } catch (err) {}
+  window.addEventListener('message', function (event) {
+    if (event && event.data && event.data.type === 'cdd-game-focus') {
+      focusCanvas();
+    }
+  });
+  document.addEventListener('fullscreenchange', focusCanvas);
+  document.addEventListener('webkitfullscreenchange', focusCanvas);
+  window.addEventListener('gamepadconnected', focusCanvas);
+})();
+</script>`;
+}
+
 function shortName(title) {
   const trimmed = title.trim();
   if (trimmed.length <= 12) {
@@ -296,6 +347,16 @@ export async function injectGamePwa(gamesDir) {
       html = upsertBlock(html, '<!-- CDD-PWA -->', '<!-- /CDD-PWA -->', headInner);
     } else {
       html = html.replace('</head>', `<!-- CDD-PWA -->\n${headInner}\n<!-- /CDD-PWA -->\n</head>`);
+    }
+
+    const gamepadInner = gamepadFocusSnippet();
+    if (html.includes('<!-- CDD-GAMEPAD -->')) {
+      html = upsertBlock(html, '<!-- CDD-GAMEPAD -->', '<!-- /CDD-GAMEPAD -->', gamepadInner);
+    } else {
+      html = html.replace(
+        /<body([^>]*)>/i,
+        (open) => `${open}\n<!-- CDD-GAMEPAD -->\n${gamepadInner}\n<!-- /CDD-GAMEPAD -->`,
+      );
     }
 
     const bootInner = `<script src="pwa-boot.js" defer></script>`;

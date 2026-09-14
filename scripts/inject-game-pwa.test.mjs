@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseGodotExecutable, parseGodotFileSizes, parseGodotTitle } from './inject-game-pwa.mjs';
+import {
+  gamepadFocusSnippet,
+  parseGodotExecutable,
+  parseGodotFileSizes,
+  parseGodotTitle,
+} from './inject-game-pwa.mjs';
 
 test('parses Godot HTML5 export metadata', () => {
   const html = `<!DOCTYPE html>
@@ -20,4 +25,12 @@ test('parses Virtual Garden executable name', () => {
   const garden = 'const GODOT_CONFIG = {"executable":"VirtualGarden","fileSizes":{"VirtualGarden.pck":1,"VirtualGarden.wasm":2}};';
   assert.equal(parseGodotExecutable(garden), 'VirtualGarden');
   assert.deepEqual(parseGodotFileSizes(garden), { 'VirtualGarden.pck': 1, 'VirtualGarden.wasm': 2 });
+});
+
+test('gamepad focus snippet bridges parent pads and listens for hub focus', () => {
+  const snippet = gamepadFocusSnippet();
+  assert.match(snippet, /navigator\.getGamepads/);
+  assert.match(snippet, /cdd-game-focus/);
+  assert.match(snippet, /gamepadconnected/);
+  assert.match(snippet, /__CDD_GAMEPAD_FOCUS__/);
 });

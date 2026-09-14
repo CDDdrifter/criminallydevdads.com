@@ -12,14 +12,14 @@
     "index.audio.worklet.js",
     "index.audio.position.worklet.js",
     "cover.png",
-    "pwa-boot.js",
     "manifest.json",
+    "pwa-boot.js",
     "offline-cache.json"
   ],
   "sizes": {
     "index.pck": 473960,
     "index.wasm": 35739700,
-    "index.html": 5443,
+    "index.html": 5936,
     "index.js": 279925,
     "index.png": 21443,
     "index.icon.png": 3414,
@@ -27,9 +27,9 @@
     "index.audio.worklet.js": 7298,
     "index.audio.position.worklet.js": 2973,
     "cover.png": 21443,
-    "pwa-boot.js": 9552,
-    "manifest.json": 0,
-    "offline-cache.json": 0
+    "manifest.json": 468,
+    "pwa-boot.js": 10359,
+    "offline-cache.json": 809
   },
-  "bytes": 36573920
+  "bytes": 36576497
 }

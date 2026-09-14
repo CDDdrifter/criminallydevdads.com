@@ -11,8 +11,8 @@ const ASSETS = [
   "index.audio.worklet.js",
   "index.audio.position.worklet.js",
   "cover.png",
-  "pwa-boot.js",
   "manifest.json",
+  "pwa-boot.js",
   "offline-cache.json"
 ];
 

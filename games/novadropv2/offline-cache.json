@@ -28,8 +28,8 @@
     "index.audio.position.worklet.js": 2973,
     "cover.png": 21443,
     "manifest.json": 461,
-    "pwa-boot.js": 9552,
+    "pwa-boot.js": 10359,
     "offline-cache.json": 810
   },
-  "bytes": 36689417
+  "bytes": 36690224
 }

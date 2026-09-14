@@ -2,11 +2,19 @@
  * Helpers so keyboard / gamepad input reaches Godot (and other) games inside our play iframe.
  * Browsers only route keys to the embedded document when the iframe has focus; gamepads on
  * the web often need a user gesture + focus before Godot sees them.
+ *
+ * Fullscreen on the hub shell is especially picky: Chrome keeps pads on the parent document,
+ * so we refocus the iframe + inner canvas and (same-origin) fall back to the parent's pads.
  */
 
 /** Permissions Policy on the play iframe — keep in sync with GamePlayerEmbed. */
 export const GAME_EMBED_ALLOW =
-  'fullscreen; gamepad *; autoplay; gyroscope; accelerometer; xr-spatial-tracking; pointer-lock; keyboard-map';
+  'fullscreen; fullscreen *; gamepad; gamepad *; autoplay; gyroscope; accelerometer; xr-spatial-tracking; pointer-lock; keyboard-map';
+
+/** Posted into the game frame so Godot can grab canvas focus after hub fullscreen. */
+export const GAME_FOCUS_MESSAGE = 'cdd-game-focus';
+
+const AXIS_DEADZONE = 0.24;
 
 const GAME_KEY_CODES = new Set([
   'Space',
@@ -72,25 +80,91 @@ export function focusGameIframe(iframe: HTMLIFrameElement | null | undefined): v
   } catch {
     iframe.focus();
   }
+  try {
+    iframe.contentWindow?.focus();
+  } catch {
+    /* cross-origin */
+  }
+  try {
+    const doc = iframe.contentDocument;
+    const canvas =
+      (doc?.getElementById('canvas') as HTMLElement | null) ?? doc?.querySelector('canvas');
+    if (canvas) {
+      if (!canvas.hasAttribute('tabindex')) {
+        canvas.setAttribute('tabindex', '0');
+      }
+      canvas.focus({ preventScroll: true });
+    }
+  } catch {
+    /* cross-origin */
+  }
+  try {
+    iframe.contentWindow?.postMessage({ type: GAME_FOCUS_MESSAGE }, '*');
+  } catch {
+    /* ignore */
+  }
 }
 
-export function anyGamepadButtonPressed(): boolean {
+function listGamepads(): (Gamepad | null)[] {
   const getPads = navigator.getGamepads?.bind(navigator);
   if (!getPads) {
-    return false;
+    return [];
   }
-  const pads = getPads();
-  for (const pad of pads) {
+  return Array.from(getPads());
+}
+
+export function hasConnectedGamepad(): boolean {
+  return listGamepads().some(Boolean);
+}
+
+export function anyGamepadActivity(): boolean {
+  for (const pad of listGamepads()) {
     if (!pad) {
       continue;
     }
     for (const btn of pad.buttons) {
-      if (btn.pressed) {
+      if (btn.pressed || btn.value > 0.15) {
+        return true;
+      }
+    }
+    for (const axis of pad.axes) {
+      if (Math.abs(axis) > AXIS_DEADZONE) {
         return true;
       }
     }
   }
   return false;
+}
+
+export function anyGamepadButtonPressed(): boolean {
+  return anyGamepadActivity();
+}
+
+/** Same-origin: let Godot read pads from the parent when fullscreen hid them from the iframe. */
+export function installIframeGamepadBridge(iframe: HTMLIFrameElement | null | undefined): void {
+  if (!iframe) {
+    return;
+  }
+  try {
+    const win = iframe.contentWindow as (Window & { __cddGamepadBridge?: boolean }) | null;
+    if (!win || win.__cddGamepadBridge || !win.navigator.getGamepads) {
+      return;
+    }
+    const localGet = win.navigator.getGamepads.bind(win.navigator);
+    const parentGet = navigator.getGamepads?.bind(navigator);
+    win.navigator.getGamepads = function patchedGetGamepads() {
+      const local = localGet();
+      for (let i = 0; i < local.length; i += 1) {
+        if (local[i]) {
+          return local;
+        }
+      }
+      return parentGet ? parentGet() : local;
+    };
+    win.__cddGamepadBridge = true;
+  } catch {
+    /* cross-origin */
+  }
 }
 
 export function setGameEmbedActiveDocument(active: boolean): void {

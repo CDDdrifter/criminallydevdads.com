@@ -10,6 +10,32 @@
   }
   window.__CDD_PWA_BOOT__ = true;
 
+  function focusGameCanvas() {
+    var canvas = document.getElementById('canvas') || document.querySelector('canvas');
+    if (canvas) {
+      if (!canvas.hasAttribute('tabindex')) {
+        canvas.setAttribute('tabindex', '0');
+      }
+      try {
+        canvas.focus({ preventScroll: true });
+      } catch (err) {
+        canvas.focus();
+      }
+    }
+    try {
+      window.focus();
+    } catch (err) {}
+  }
+
+  window.addEventListener('message', function (event) {
+    if (event && event.data && event.data.type === 'cdd-game-focus') {
+      focusGameCanvas();
+    }
+  });
+  document.addEventListener('fullscreenchange', focusGameCanvas);
+  document.addEventListener('webkitfullscreenchange', focusGameCanvas);
+  window.addEventListener('gamepadconnected', focusGameCanvas);
+
   var CACHE_JSON = 'offline-cache.json';
   var SW_FILE = 'offline-sw.js';
 

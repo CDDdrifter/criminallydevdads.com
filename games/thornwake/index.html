@@ -103,6 +103,55 @@ body {
 <!-- /CDD-PWA -->
 </head>
 	<body>
+<!-- CDD-GAMEPAD -->
+<script>
+(function () {
+  if (window.__CDD_GAMEPAD_FOCUS__) {
+    return;
+  }
+  window.__CDD_GAMEPAD_FOCUS__ = true;
+  function focusCanvas() {
+    var canvas = document.getElementById('canvas') || document.querySelector('canvas');
+    if (canvas) {
+      if (!canvas.hasAttribute('tabindex')) {
+        canvas.setAttribute('tabindex', '0');
+      }
+      try {
+        canvas.focus({ preventScroll: true });
+      } catch (err) {
+        canvas.focus();
+      }
+    }
+    try {
+      window.focus();
+    } catch (err) {}
+  }
+  try {
+    if (window.parent && window.parent !== window && window.parent.navigator && window.parent.navigator.getGamepads && navigator.getGamepads) {
+      var localGet = navigator.getGamepads.bind(navigator);
+      var parentGet = window.parent.navigator.getGamepads.bind(window.parent.navigator);
+      navigator.getGamepads = function () {
+        var pads = localGet();
+        for (var i = 0; i < pads.length; i++) {
+          if (pads[i]) {
+            return pads;
+          }
+        }
+        return parentGet();
+      };
+    }
+  } catch (err) {}
+  window.addEventListener('message', function (event) {
+    if (event && event.data && event.data.type === 'cdd-game-focus') {
+      focusCanvas();
+    }
+  });
+  document.addEventListener('fullscreenchange', focusCanvas);
+  document.addEventListener('webkitfullscreenchange', focusCanvas);
+  window.addEventListener('gamepadconnected', focusCanvas);
+})();
+</script>
+<!-- /CDD-GAMEPAD -->
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>

@@ -19,7 +19,7 @@
   "sizes": {
     "VirtualGarden.pck": 161220,
     "VirtualGarden.wasm": 35739700,
-    "index.html": 5993,
+    "index.html": 5987,
     "VirtualGarden.js": 279925,
     "VirtualGarden.png": 21443,
     "VirtualGarden.icon.png": 1916,
@@ -27,9 +27,9 @@
     "VirtualGarden.audio.worklet.js": 7298,
     "VirtualGarden.audio.position.worklet.js": 2973,
     "cover.png": 48544,
-    "manifest.json": 483,
-    "pwa-boot.js": 9552,
-    "offline-cache.json": 943
+    "manifest.json": 477,
+    "pwa-boot.js": 10359,
+    "offline-cache.json": 947
   },
-  "bytes": 36291782
+  "bytes": 36292581
 }
