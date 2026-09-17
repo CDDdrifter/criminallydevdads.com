@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
 		<title>Thornwake</title>
 		<style>
 html, body, #canvas {
@@ -93,8 +93,124 @@ body {
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 
-	</head>
+	<!-- CDD-PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Thornwake" />
+<meta name="theme-color" content="#0d111a" />
+<!-- /CDD-PWA -->
+</head>
 	<body>
+<!-- CDD-GAMEPAD -->
+<script>
+(function () {
+  if (window.__CDD_GAMEPAD_FOCUS__) {
+    return;
+  }
+  window.__CDD_GAMEPAD_FOCUS__ = true;
+  function focusCanvas() {
+    var canvas = document.getElementById('canvas') || document.querySelector('canvas');
+    if (canvas) {
+      if (!canvas.hasAttribute('tabindex')) {
+        canvas.setAttribute('tabindex', '0');
+      }
+      try {
+        canvas.focus({ preventScroll: true });
+      } catch (err) {
+        canvas.focus();
+      }
+    }
+    try {
+      window.focus();
+    } catch (err) {}
+  }
+  function hasPad(pads) {
+    for (var i = 0; i < pads.length; i++) {
+      if (pads[i]) {
+        return true;
+      }
+    }
+    return false;
+  }
+  try {
+    if (window.parent && window.parent !== window && window.parent.navigator && window.parent.navigator.getGamepads && navigator.getGamepads) {
+      var localGet = navigator.getGamepads.bind(navigator);
+      var parentGet = window.parent.navigator.getGamepads.bind(window.parent.navigator);
+      navigator.getGamepads = function () {
+        var parentPads = null;
+        try {
+          parentPads = parentGet();
+        } catch (err) {}
+        if (parentPads && hasPad(parentPads)) {
+          return parentPads;
+        }
+        return localGet();
+      };
+    }
+  } catch (err) {}
+  var lastPadKey = '';
+  function announceConnectedPads(force) {
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var ids = [];
+    for (var i = 0; i < pads.length; i++) {
+      if (pads[i]) {
+        ids.push(String(pads[i].index) + ':' + pads[i].id);
+      }
+    }
+    var key = ids.join(',');
+    if (!force && key === lastPadKey) {
+      return;
+    }
+    lastPadKey = key;
+    for (var j = 0; j < pads.length; j++) {
+      var pad = pads[j];
+      if (!pad) {
+        continue;
+      }
+      try {
+        window.dispatchEvent(new GamepadEvent('gamepadconnected', { gamepad: pad }));
+      } catch (err) {}
+    }
+    if (key) {
+      focusCanvas();
+    }
+  }
+  window.addEventListener('message', function (event) {
+    if (!event || !event.data) {
+      return;
+    }
+    if (event.data.type === 'cdd-game-focus') {
+      focusCanvas();
+    }
+    if (event.data.type === 'cdd-gamepad-sync') {
+      focusCanvas();
+      announceConnectedPads(true);
+    }
+  });
+  document.addEventListener('fullscreenchange', function () {
+    focusCanvas();
+    announceConnectedPads(true);
+  });
+  document.addEventListener('webkitfullscreenchange', function () {
+    focusCanvas();
+    announceConnectedPads(true);
+  });
+  window.addEventListener('gamepadconnected', function () {
+    focusCanvas();
+  });
+  var tries = 0;
+  var bootTimer = setInterval(function () {
+    announceConnectedPads(true);
+    tries += 1;
+    if (tries > 40) {
+      clearInterval(bootTimer);
+    }
+  }, 400);
+})();
+</script>
+<!-- /CDD-GAMEPAD -->
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -111,7 +227,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":384924,"index.wasm":35739700},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":384396,"index.wasm":35739700},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -215,6 +331,9 @@ const engine = new Engine(GODOT_CONFIG);
 	}
 }());
 		</script>
-	</body>
+	<!-- CDD-PWA-BOOT -->
+<script src="pwa-boot.js" defer></script>
+<!-- /CDD-PWA-BOOT -->
+</body>
 </html>
 
