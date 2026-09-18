@@ -88,5 +88,14 @@
     "details": "Play as the last Warden of the Deepwood. Parry bolts, dash, and spend Verdance on Gale, Tether, Rootgrasp, and more as you fight the Pale Concord through branching rooms, shrines, and act bosses.",
     "thumbnail": "games/thornwake/cover.png",
     "filename": "thornwake.zip"
+  },
+  {
+    "id": "pixelforge",
+    "title": "PixelForge",
+    "type": "game",
+    "description": "A mobile-first pixel art editor — draw, animate, and export on your phone.",
+    "details": "Full-screen canvas with pinch-to-zoom, layers, animation timeline, onion skinning, and export to PNG, sprite sheet, and GIF. Pencil, fill, selection, and palettes built for touch.",
+    "thumbnail": "games/pixelforge/cover.png",
+    "filename": "pixelforge.zip"
   }
 ]
