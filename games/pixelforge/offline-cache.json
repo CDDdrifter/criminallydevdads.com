@@ -1,5 +1,5 @@
 {
-  "cacheName": "cdd-offline-pixelforge-307c2f0c39",
+  "cacheName": "cdd-offline-pixelforge-6e2fbf5869",
   "title": "PixelForge",
   "assets": [
     "index.html",
@@ -17,9 +17,9 @@
     "offline-cache.json"
   ],
   "sizes": {
-    "index.pck": 380252,
+    "index.pck": 443396,
     "index.wasm": 35739700,
-    "index.html": 5440,
+    "index.html": 5439,
     "index.js": 279925,
     "index.png": 21443,
     "index.icon.png": 496,
@@ -31,5 +31,5 @@
     "pwa-boot.js": 10434,
     "offline-cache.json": 809
   },
-  "bytes": 36471613
+  "bytes": 36534756
 }
