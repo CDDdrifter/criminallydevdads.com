@@ -1,5 +1,5 @@
 {
-  "cacheName": "cdd-offline-pixelforge-4d4cc71b52",
+  "cacheName": "cdd-offline-pixelforge-1103f992aa",
   "title": "PixelForge",
   "assets": [
     "index.html",
@@ -17,10 +17,10 @@
     "offline-cache.json"
   ],
   "sizes": {
-    "index.pck": 1295160,
-    "index.wasm": 35739700,
-    "index.html": 5440,
-    "index.js": 279925,
+    "index.pck": 1439488,
+    "index.wasm": 37685705,
+    "index.html": 6086,
+    "index.js": 315759,
     "index.png": 21443,
     "index.icon.png": 496,
     "index.apple-touch-icon.png": 939,
@@ -31,5 +31,5 @@
     "pwa-boot.js": 10434,
     "offline-cache.json": 810
   },
-  "bytes": 37386522
+  "bytes": 39513335
 }
